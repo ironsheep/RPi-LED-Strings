@@ -22,19 +22,21 @@
 #ifndef FRAME_BUFFER_H
 #define FRAME_BUFFER_H
 
+#include <stdint.h> 
+
 #define NUMBER_OF_PANELS 3
 #define LEDS_PER_PANEL 256
 #define BYTES_PER_LED 3
 
 #define NUMBER_OF_BUFFERS 2
 
-enum eLedPixel {
-	uint8 red;
-	uint8 green;
-	uint8 blue;
-}
+struct _LedPixel {
+	uint8_t red;
+	uint8_t green;
+	uint8_t blue;
+};
 
-//extern eLedPixel *pFrameBuffers; // [NUMBER_OF_BUFFERS][NUMBER_OF_PANELS][LEDS_PER_PANEL];
+//extern _LedPixel *pFrameBuffers; // [NUMBER_OF_BUFFERS][NUMBER_OF_PANELS][LEDS_PER_PANEL];
 
 // call to initialize our frame buffer (allocate, set to black, etc.)
 void initBuffers(void);

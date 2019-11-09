@@ -1,7 +1,7 @@
 Begin3
 Title:		led_test_001
 Version:	0.1.0
-Entered-date:	2019-11-08
+Entered-date:	2019-11-09
 Description:	testbed for GPIO and WS2812B String
 		led_test_001.lsm.  Generated from led_test_001.lsm.in by configure.
 		Please edit led_test_001.lsm.in to fix the Keywords and

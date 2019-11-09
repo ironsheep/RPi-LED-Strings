@@ -19,6 +19,8 @@
 
 */
 
+#include <stdio.h> 
+
 #include "ledGPIO.h"
 
 void initGPIO(void)

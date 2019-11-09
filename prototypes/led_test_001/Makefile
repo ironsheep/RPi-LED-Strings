@@ -107,7 +107,7 @@ am__installdirs = "$(DESTDIR)$(bindir)" "$(DESTDIR)$(infodir)" \
 	"$(DESTDIR)$(man1dir)"
 PROGRAMS = $(bin_PROGRAMS)
 am_led_test_001_OBJECTS = led_test_001.$(OBJEXT) xmalloc.$(OBJEXT) \
-	ledGPIO.$(OBJEXT) frameBuffer.$(OBJEXT)
+	ledGPIO.$(OBJEXT) frameBuffer.$(OBJEXT) ledScreen.$(OBJEXT)
 led_test_001_OBJECTS = $(am_led_test_001_OBJECTS)
 led_test_001_DEPENDENCIES =
 AM_V_P = $(am__v_P_$(V))
@@ -126,8 +126,8 @@ DEFAULT_INCLUDES = -I.
 depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__maybe_remake_depfiles = depfiles
 am__depfiles_remade = ./$(DEPDIR)/frameBuffer.Po \
-	./$(DEPDIR)/ledGPIO.Po ./$(DEPDIR)/led_test_001.Po \
-	./$(DEPDIR)/xmalloc.Po
+	./$(DEPDIR)/ledGPIO.Po ./$(DEPDIR)/ledScreen.Po \
+	./$(DEPDIR)/led_test_001.Po ./$(DEPDIR)/xmalloc.Po
 am__mv = mv -f
 COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
 	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
@@ -262,13 +262,13 @@ distuninstallcheck_listfiles = find . -type f -print
 am__distuninstallcheck_listfiles = $(distuninstallcheck_listfiles) \
   | sed 's|^\./|$(prefix)/|' | grep -v '$(infodir)/dir$$'
 distcleancheck_listfiles = find . -type f -print
-ACLOCAL = ${SHELL} /home/pi/Projects/LED-Strings/led_test_001/missing aclocal-1.16
+ACLOCAL = ${SHELL} /home/pi/Projects/LED-Strings/RPi-LED-Strings/prototypes/led_test_001/missing aclocal-1.16
 ALLOCA = 
 AMTAR = $${TAR-tar}
 AM_DEFAULT_VERBOSITY = 1
-AUTOCONF = ${SHELL} /home/pi/Projects/LED-Strings/led_test_001/missing autoconf
-AUTOHEADER = ${SHELL} /home/pi/Projects/LED-Strings/led_test_001/missing autoheader
-AUTOMAKE = ${SHELL} /home/pi/Projects/LED-Strings/led_test_001/missing automake-1.16
+AUTOCONF = ${SHELL} /home/pi/Projects/LED-Strings/RPi-LED-Strings/prototypes/led_test_001/missing autoconf
+AUTOHEADER = ${SHELL} /home/pi/Projects/LED-Strings/RPi-LED-Strings/prototypes/led_test_001/missing autoheader
+AUTOMAKE = ${SHELL} /home/pi/Projects/LED-Strings/RPi-LED-Strings/prototypes/led_test_001/missing automake-1.16
 AWK = mawk
 CC = gcc
 CCDEPMODE = depmode=gcc3
@@ -289,12 +289,12 @@ INSTALL_DATA = ${INSTALL} -m 644
 INSTALL_PROGRAM = ${INSTALL}
 INSTALL_SCRIPT = ${INSTALL}
 INSTALL_STRIP_PROGRAM = $(install_sh) -c -s
-ISODATE = 2019-11-08
+ISODATE = 2019-11-09
 LDFLAGS = 
 LIBOBJS = 
 LIBS = 
 LTLIBOBJS = 
-MAKEINFO = ${SHELL} /home/pi/Projects/LED-Strings/led_test_001/missing makeinfo
+MAKEINFO = ${SHELL} /home/pi/Projects/LED-Strings/RPi-LED-Strings/prototypes/led_test_001/missing makeinfo
 MKDIR_P = /bin/mkdir -p
 OBJEXT = o
 PACKAGE = led_test_001
@@ -309,10 +309,10 @@ SET_MAKE =
 SHELL = /bin/bash
 STRIP = 
 VERSION = 0.1.0
-abs_builddir = /home/pi/Projects/LED-Strings/led_test_001
-abs_srcdir = /home/pi/Projects/LED-Strings/led_test_001
-abs_top_builddir = /home/pi/Projects/LED-Strings/led_test_001
-abs_top_srcdir = /home/pi/Projects/LED-Strings/led_test_001
+abs_builddir = /home/pi/Projects/LED-Strings/RPi-LED-Strings/prototypes/led_test_001
+abs_srcdir = /home/pi/Projects/LED-Strings/RPi-LED-Strings/prototypes/led_test_001
+abs_top_builddir = /home/pi/Projects/LED-Strings/RPi-LED-Strings/prototypes/led_test_001
+abs_top_srcdir = /home/pi/Projects/LED-Strings/RPi-LED-Strings/prototypes/led_test_001
 ac_ct_CC = gcc
 am__include = include
 am__leading_dot = .
@@ -339,7 +339,7 @@ host_vendor = unknown
 htmldir = ${docdir}
 includedir = ${prefix}/include
 infodir = ${datarootdir}/info
-install_sh = ${SHELL} /home/pi/Projects/LED-Strings/led_test_001/install-sh
+install_sh = ${SHELL} /home/pi/Projects/LED-Strings/RPi-LED-Strings/prototypes/led_test_001/install-sh
 libdir = ${exec_prefix}/lib
 libexecdir = ${exec_prefix}/libexec
 localedir = ${datarootdir}/locale
@@ -360,7 +360,7 @@ target_alias =
 top_build_prefix = 
 top_builddir = .
 top_srcdir = .
-led_test_001_SOURCES = led_test_001.c xmalloc.c system.h aclocal.m4 led_test_001.1 ledGPIO.c frameBuffer.c
+led_test_001_SOURCES = led_test_001.c xmalloc.c system.h aclocal.m4 led_test_001.1 ledGPIO.c frameBuffer.c ledScreen.c
 
 #  uncomment the following if led_test_001 requires the math library
 #led_test_001_LDADD=-lm
@@ -489,6 +489,7 @@ distclean-compile:
 
 include ./$(DEPDIR)/frameBuffer.Po # am--include-marker
 include ./$(DEPDIR)/ledGPIO.Po # am--include-marker
+include ./$(DEPDIR)/ledScreen.Po # am--include-marker
 include ./$(DEPDIR)/led_test_001.Po # am--include-marker
 include ./$(DEPDIR)/xmalloc.Po # am--include-marker
 
@@ -969,6 +970,7 @@ distclean: distclean-am
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
 		-rm -f ./$(DEPDIR)/frameBuffer.Po
 	-rm -f ./$(DEPDIR)/ledGPIO.Po
+	-rm -f ./$(DEPDIR)/ledScreen.Po
 	-rm -f ./$(DEPDIR)/led_test_001.Po
 	-rm -f ./$(DEPDIR)/xmalloc.Po
 	-rm -f Makefile
@@ -1111,6 +1113,7 @@ maintainer-clean: maintainer-clean-am
 	-rm -rf $(top_srcdir)/autom4te.cache
 		-rm -f ./$(DEPDIR)/frameBuffer.Po
 	-rm -f ./$(DEPDIR)/ledGPIO.Po
+	-rm -f ./$(DEPDIR)/ledScreen.Po
 	-rm -f ./$(DEPDIR)/led_test_001.Po
 	-rm -f ./$(DEPDIR)/xmalloc.Po
 	-rm -f Makefile
