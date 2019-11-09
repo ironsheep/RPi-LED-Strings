@@ -8,6 +8,8 @@ test-driver
 ylwrap
 .deps
 
+prototypes/led_test_001/led_test_001
+
 # http://www.gnu.org/software/autoconf
 
 autom4te.cache
@@ -24,6 +26,7 @@ depcomp
 install-sh
 missing
 stamp-h1
+*.o
 
 # https://www.gnu.org/software/libtool/
 
