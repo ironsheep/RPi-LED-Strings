@@ -28,14 +28,17 @@ void initScreen(void)
 	// init buffers
 	initBuffers();
 	
-	// init gpio
-	initGPIO();
-	
 	// clear screen
 	clearScreen();
 	
-	// init display task
+	// init gpio
+	initGPIO();
 	
+	// init display task
+	blinkLED();
+	
+	// return GPIO to normal setup
+	restoreGPIO();
 }
 
 void clearScreen(void)

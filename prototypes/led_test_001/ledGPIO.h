@@ -23,5 +23,8 @@
 #define LED_GPIO_H
 
 void initGPIO(void);
+void restoreGPIO(void);
+
+void blinkLED(void);
 
 #endif /* LED_GPIO_H */
