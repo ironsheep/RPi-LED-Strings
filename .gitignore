@@ -8,6 +8,12 @@ test-driver
 ylwrap
 .deps
 
+# no macOS Files
+.DS_Store
+
+# not some of the UltraEdit files
+*.pui
+
 prototypes/led_test_001/led_test_001
 
 # http://www.gnu.org/software/autoconf

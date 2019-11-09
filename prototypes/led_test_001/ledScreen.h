@@ -19,24 +19,11 @@
 
 */
 
-#include "frameBuffer.h"
+#ifndef LED_SCREEN_H
+#define LED_SCREEN_H
 
-// setup our master frame buffer
-static eLedPixel *pFrameBuffers; // [NUMBER_OF_BUFFERS][NUMBER_OF_PANELS][LEDS_PER_PANEL];
-static int nLenFrameBuffer = (sizeof(struct eLedPixel) * LEDS_PER_PANEL * NUMBER_OF_PANELS * NUMBER_OF_BUFFERS);
+// initialize our display
+void initScreen(void);
+void clearScreen(void);
 
-void initBuffers(void)
-{
-	// alloc our frame buffers and init to black
-	if(pFrameBuffers == NULL) {
-		pFrameBuffers = xmalloc(nLenFrameBuffer);
-		printf("- Allocated frameBuffer@%p:[%d buffers][%d panels][%d LEDs][%d bytes]\n", pFrameBuffers, NUMBER_OF_BUFFERS, NUMBER_OF_PANELS, LEDS_PER_PANEL, sizeof(struct eLedPixel));
-	}
-}
-
-void clearBuffers(void)
-{
-	// write zeros to our entire set of buffers
-	memset(pFrameBuffers, 0, nLenFrameBuffer);
-	printf("- Buffers reset to zero\n");
-}
+#endif /* LED_SCREEN_H */

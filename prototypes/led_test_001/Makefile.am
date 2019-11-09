@@ -1,5 +1,5 @@
 bin_PROGRAMS=led_test_001
-led_test_001_SOURCES=led_test_001.c xmalloc.c system.h aclocal.m4 led_test_001.1 ledGPIO.c frameBuffer.c
+led_test_001_SOURCES=led_test_001.c xmalloc.c system.h aclocal.m4 led_test_001.1 ledGPIO.c frameBuffer.c ledScreen.c
 
 #  uncomment the following if led_test_001 requires the math library
 #led_test_001_LDADD=-lm

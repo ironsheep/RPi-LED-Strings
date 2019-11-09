@@ -27,6 +27,9 @@
 #include <argp.h>
 #include "system.h"
 
+// our main app entry point
+#include "ledScreen.h"
+
 #define EXIT_FAILURE 1
 
 #if ENABLE_NLS
@@ -83,12 +86,13 @@ static struct argp argp =
 int
 main (int argc, char **argv)
 {
-  textdomain(PACKAGE);
-  argp_parse(&argp, argc, argv, 0, NULL, NULL);
+	textdomain(PACKAGE);
+	argp_parse(&argp, argc, argv, 0, NULL, NULL);
 
-  /* TODO: do the work */
+	/* TODO: do the work */
+	initScreen();
 
-  exit (0);
+	exit (0);
 }
 
 /* Parse a single option.  */
