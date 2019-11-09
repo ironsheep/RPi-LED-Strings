@@ -92,35 +92,35 @@ gcc: fatal error: no input files
 compilation terminated.
 configure:3280: $? = 1
 configure:3300: checking whether the C compiler works
-configure:3322: gcc    conftest.c  >&5
+configure:3322: gcc  -I/opt/vc/include -L/opt/vc/lib conftest.c  >&5
 configure:3326: $? = 0
 configure:3374: result: yes
 configure:3377: checking for C compiler default output file name
 configure:3379: result: a.out
 configure:3385: checking for suffix of executables
-configure:3392: gcc -o conftest    conftest.c  >&5
+configure:3392: gcc -o conftest  -I/opt/vc/include -L/opt/vc/lib conftest.c  >&5
 configure:3396: $? = 0
 configure:3418: result: 
 configure:3440: checking whether we are cross compiling
-configure:3448: gcc -o conftest    conftest.c  >&5
+configure:3448: gcc -o conftest  -I/opt/vc/include -L/opt/vc/lib conftest.c  >&5
 configure:3452: $? = 0
 configure:3459: ./conftest
 configure:3463: $? = 0
 configure:3451: result: no
 configure:3456: checking for suffix of object files
-configure:3478: gcc -c   conftest.c >&5
+configure:3478: gcc -c  -I/opt/vc/include conftest.c >&5
 configure:3482: $? = 0
 configure:3503: result: o
 configure:3507: checking whether we are using the GNU C compiler
-configure:3526: gcc -c   conftest.c >&5
+configure:3526: gcc -c  -I/opt/vc/include conftest.c >&5
 configure:3526: $? = 0
 configure:3535: result: yes
 configure:3544: checking whether gcc accepts -g
-configure:3564: gcc -c -g  conftest.c >&5
+configure:3564: gcc -c -g -I/opt/vc/include conftest.c >&5
 configure:3564: $? = 0
 configure:3605: result: yes
 configure:3622: checking for gcc option to accept ISO C89
-configure:3685: gcc  -c -g -O2  conftest.c >&5
+configure:3685: gcc  -c -g -O2 -I/opt/vc/include conftest.c >&5
 configure:3685: $? = 0
 configure:3698: result: none needed
 configure:3723: checking whether gcc understands -c and -o together
@@ -137,9 +137,9 @@ configure:3817: result: yes (GNU style)
 configure:3842: checking dependency style of gcc
 configure:3953: result: gcc3
 configure:3976: checking how to run the C preprocessor
-configure:4007: gcc -E  conftest.c
+configure:4007: gcc -E -I/opt/vc/include conftest.c
 configure:4007: $? = 0
-configure:4021: gcc -E  conftest.c
+configure:4021: gcc -E -I/opt/vc/include conftest.c
 conftest.c:11:10: fatal error: ac_nonexistent.h: No such file or directory
  #include <ac_nonexistent.h>
           ^~~~~~~~~~~~~~~~~~
@@ -158,9 +158,9 @@ configure: failed program was:
 | /* end confdefs.h.  */
 | #include <ac_nonexistent.h>
 configure:4046: result: gcc -E
-configure:4066: gcc -E  conftest.c
+configure:4066: gcc -E -I/opt/vc/include conftest.c
 configure:4066: $? = 0
-configure:4080: gcc -E  conftest.c
+configure:4080: gcc -E -I/opt/vc/include conftest.c
 conftest.c:11:10: fatal error: ac_nonexistent.h: No such file or directory
  #include <ac_nonexistent.h>
           ^~~~~~~~~~~~~~~~~~
@@ -183,83 +183,83 @@ configure:4167: result: /bin/grep
 configure:4172: checking for egrep
 configure:4234: result: /bin/grep -E
 configure:4239: checking for ANSI C header files
-configure:4259: gcc -c -g -O2  conftest.c >&5
+configure:4259: gcc -c -g -O2 -I/opt/vc/include conftest.c >&5
 configure:4259: $? = 0
-configure:4332: gcc -o conftest -g -O2   conftest.c  >&5
+configure:4332: gcc -o conftest -g -O2 -I/opt/vc/include -L/opt/vc/lib conftest.c  >&5
 configure:4332: $? = 0
 configure:4332: ./conftest
 configure:4332: $? = 0
 configure:4343: result: yes
 configure:4356: checking for sys/types.h
-configure:4356: gcc -c -g -O2  conftest.c >&5
+configure:4356: gcc -c -g -O2 -I/opt/vc/include conftest.c >&5
 configure:4356: $? = 0
 configure:4356: result: yes
 configure:4356: checking for sys/stat.h
-configure:4356: gcc -c -g -O2  conftest.c >&5
+configure:4356: gcc -c -g -O2 -I/opt/vc/include conftest.c >&5
 configure:4356: $? = 0
 configure:4356: result: yes
 configure:4356: checking for stdlib.h
-configure:4356: gcc -c -g -O2  conftest.c >&5
+configure:4356: gcc -c -g -O2 -I/opt/vc/include conftest.c >&5
 configure:4356: $? = 0
 configure:4356: result: yes
 configure:4356: checking for string.h
-configure:4356: gcc -c -g -O2  conftest.c >&5
+configure:4356: gcc -c -g -O2 -I/opt/vc/include conftest.c >&5
 configure:4356: $? = 0
 configure:4356: result: yes
 configure:4356: checking for memory.h
-configure:4356: gcc -c -g -O2  conftest.c >&5
+configure:4356: gcc -c -g -O2 -I/opt/vc/include conftest.c >&5
 configure:4356: $? = 0
 configure:4356: result: yes
 configure:4356: checking for strings.h
-configure:4356: gcc -c -g -O2  conftest.c >&5
+configure:4356: gcc -c -g -O2 -I/opt/vc/include conftest.c >&5
 configure:4356: $? = 0
 configure:4356: result: yes
 configure:4356: checking for inttypes.h
-configure:4356: gcc -c -g -O2  conftest.c >&5
+configure:4356: gcc -c -g -O2 -I/opt/vc/include conftest.c >&5
 configure:4356: $? = 0
 configure:4356: result: yes
 configure:4356: checking for stdint.h
-configure:4356: gcc -c -g -O2  conftest.c >&5
+configure:4356: gcc -c -g -O2 -I/opt/vc/include conftest.c >&5
 configure:4356: $? = 0
 configure:4356: result: yes
 configure:4356: checking for unistd.h
-configure:4356: gcc -c -g -O2  conftest.c >&5
+configure:4356: gcc -c -g -O2 -I/opt/vc/include conftest.c >&5
 configure:4356: $? = 0
 configure:4356: result: yes
 configure:4371: checking for unistd.h
 configure:4371: result: yes
 configure:4371: checking sys/param.h usability
-configure:4371: gcc -c -g -O2  conftest.c >&5
+configure:4371: gcc -c -g -O2 -I/opt/vc/include conftest.c >&5
 configure:4371: $? = 0
 configure:4371: result: yes
 configure:4371: checking sys/param.h presence
-configure:4371: gcc -E  conftest.c
+configure:4371: gcc -E -I/opt/vc/include conftest.c
 configure:4371: $? = 0
 configure:4371: result: yes
 configure:4371: checking for sys/param.h
 configure:4371: result: yes
 configure:4371: checking sys/time.h usability
-configure:4371: gcc -c -g -O2  conftest.c >&5
+configure:4371: gcc -c -g -O2 -I/opt/vc/include conftest.c >&5
 configure:4371: $? = 0
 configure:4371: result: yes
 configure:4371: checking sys/time.h presence
-configure:4371: gcc -E  conftest.c
+configure:4371: gcc -E -I/opt/vc/include conftest.c
 configure:4371: $? = 0
 configure:4371: result: yes
 configure:4371: checking for sys/time.h
 configure:4371: result: yes
 configure:4371: checking time.h usability
-configure:4371: gcc -c -g -O2  conftest.c >&5
+configure:4371: gcc -c -g -O2 -I/opt/vc/include conftest.c >&5
 configure:4371: $? = 0
 configure:4371: result: yes
 configure:4371: checking time.h presence
-configure:4371: gcc -E  conftest.c
+configure:4371: gcc -E -I/opt/vc/include conftest.c
 configure:4371: $? = 0
 configure:4371: result: yes
 configure:4371: checking for time.h
 configure:4371: result: yes
 configure:4371: checking sys/mkdev.h usability
-configure:4371: gcc -c -g -O2  conftest.c >&5
+configure:4371: gcc -c -g -O2 -I/opt/vc/include conftest.c >&5
 conftest.c:58:10: fatal error: sys/mkdev.h: No such file or directory
  #include <sys/mkdev.h>
           ^~~~~~~~~~~~~
@@ -326,7 +326,7 @@ configure: failed program was:
 | #include <sys/mkdev.h>
 configure:4371: result: no
 configure:4371: checking sys/mkdev.h presence
-configure:4371: gcc -E  conftest.c
+configure:4371: gcc -E -I/opt/vc/include conftest.c
 conftest.c:25:10: fatal error: sys/mkdev.h: No such file or directory
  #include <sys/mkdev.h>
           ^~~~~~~~~~~~~
@@ -362,11 +362,11 @@ configure:4371: result: no
 configure:4371: checking for sys/mkdev.h
 configure:4371: result: no
 configure:4371: checking sys/sysmacros.h usability
-configure:4371: gcc -c -g -O2  conftest.c >&5
+configure:4371: gcc -c -g -O2 -I/opt/vc/include conftest.c >&5
 configure:4371: $? = 0
 configure:4371: result: yes
 configure:4371: checking sys/sysmacros.h presence
-configure:4371: gcc -E  conftest.c
+configure:4371: gcc -E -I/opt/vc/include conftest.c
 configure:4371: $? = 0
 configure:4371: result: yes
 configure:4371: checking for sys/sysmacros.h
@@ -376,27 +376,27 @@ configure:4371: result: yes
 configure:4371: checking for memory.h
 configure:4371: result: yes
 configure:4371: checking fcntl.h usability
-configure:4371: gcc -c -g -O2  conftest.c >&5
+configure:4371: gcc -c -g -O2 -I/opt/vc/include conftest.c >&5
 configure:4371: $? = 0
 configure:4371: result: yes
 configure:4371: checking fcntl.h presence
-configure:4371: gcc -E  conftest.c
+configure:4371: gcc -E -I/opt/vc/include conftest.c
 configure:4371: $? = 0
 configure:4371: result: yes
 configure:4371: checking for fcntl.h
 configure:4371: result: yes
 configure:4371: checking dirent.h usability
-configure:4371: gcc -c -g -O2  conftest.c >&5
+configure:4371: gcc -c -g -O2 -I/opt/vc/include conftest.c >&5
 configure:4371: $? = 0
 configure:4371: result: yes
 configure:4371: checking dirent.h presence
-configure:4371: gcc -E  conftest.c
+configure:4371: gcc -E -I/opt/vc/include conftest.c
 configure:4371: $? = 0
 configure:4371: result: yes
 configure:4371: checking for dirent.h
 configure:4371: result: yes
 configure:4371: checking sys/ndir.h usability
-configure:4371: gcc -c -g -O2  conftest.c >&5
+configure:4371: gcc -c -g -O2 -I/opt/vc/include conftest.c >&5
 conftest.c:63:10: fatal error: sys/ndir.h: No such file or directory
  #include <sys/ndir.h>
           ^~~~~~~~~~~~
@@ -468,7 +468,7 @@ configure: failed program was:
 | #include <sys/ndir.h>
 configure:4371: result: no
 configure:4371: checking sys/ndir.h presence
-configure:4371: gcc -E  conftest.c
+configure:4371: gcc -E -I/opt/vc/include conftest.c
 conftest.c:30:10: fatal error: sys/ndir.h: No such file or directory
  #include <sys/ndir.h>
           ^~~~~~~~~~~~
@@ -509,7 +509,7 @@ configure:4371: result: no
 configure:4371: checking for sys/ndir.h
 configure:4371: result: no
 configure:4371: checking ndir.h usability
-configure:4371: gcc -c -g -O2  conftest.c >&5
+configure:4371: gcc -c -g -O2 -I/opt/vc/include conftest.c >&5
 conftest.c:63:10: fatal error: ndir.h: No such file or directory
  #include <ndir.h>
           ^~~~~~~~
@@ -581,7 +581,7 @@ configure: failed program was:
 | #include <ndir.h>
 configure:4371: result: no
 configure:4371: checking ndir.h presence
-configure:4371: gcc -E  conftest.c
+configure:4371: gcc -E -I/opt/vc/include conftest.c
 conftest.c:30:10: fatal error: ndir.h: No such file or directory
  #include <ndir.h>
           ^~~~~~~~
@@ -622,50 +622,50 @@ configure:4371: result: no
 configure:4371: checking for ndir.h
 configure:4371: result: no
 configure:4371: checking alloca.h usability
-configure:4371: gcc -c -g -O2  conftest.c >&5
+configure:4371: gcc -c -g -O2 -I/opt/vc/include conftest.c >&5
 configure:4371: $? = 0
 configure:4371: result: yes
 configure:4371: checking alloca.h presence
-configure:4371: gcc -E  conftest.c
+configure:4371: gcc -E -I/opt/vc/include conftest.c
 configure:4371: $? = 0
 configure:4371: result: yes
 configure:4371: checking for alloca.h
 configure:4371: result: yes
 configure:4371: checking locale.h usability
-configure:4371: gcc -c -g -O2  conftest.c >&5
+configure:4371: gcc -c -g -O2 -I/opt/vc/include conftest.c >&5
 configure:4371: $? = 0
 configure:4371: result: yes
 configure:4371: checking locale.h presence
-configure:4371: gcc -E  conftest.c
+configure:4371: gcc -E -I/opt/vc/include conftest.c
 configure:4371: $? = 0
 configure:4371: result: yes
 configure:4371: checking for locale.h
 configure:4371: result: yes
 configure:4382: checking whether time.h and sys/time.h may both be included
-configure:4402: gcc -c -g -O2  conftest.c >&5
+configure:4402: gcc -c -g -O2 -I/opt/vc/include conftest.c >&5
 configure:4402: $? = 0
 configure:4409: result: yes
 configure:4420: checking utime.h usability
-configure:4420: gcc -c -g -O2  conftest.c >&5
+configure:4420: gcc -c -g -O2 -I/opt/vc/include conftest.c >&5
 configure:4420: $? = 0
 configure:4420: result: yes
 configure:4420: checking utime.h presence
-configure:4420: gcc -E  conftest.c
+configure:4420: gcc -E -I/opt/vc/include conftest.c
 configure:4420: $? = 0
 configure:4420: result: yes
 configure:4420: checking for utime.h
 configure:4420: result: yes
 configure:4431: checking for struct utimbuf
-configure:4461: gcc -c -g -O2  conftest.c >&5
+configure:4461: gcc -c -g -O2 -I/opt/vc/include conftest.c >&5
 configure:4461: $? = 0
 configure:4469: result: yes
 configure:4480: checking whether sys/types.h defines makedev
-configure:4496: gcc -o conftest -g -O2   conftest.c  >&5
+configure:4496: gcc -o conftest -g -O2 -I/opt/vc/include -L/opt/vc/lib conftest.c  >&5
 conftest.c: In function 'main':
 conftest.c:39:8: warning: implicit declaration of function 'makedev' [-Wimplicit-function-declaration]
  return makedev(0, 0);
         ^~~~~~~
-/usr/bin/ld: /tmp/ccGmrDwm.o: in function `main':
+/usr/bin/ld: /tmp/cc0EBQrR.o: in function `main':
 /home/pi/Projects/LED-Strings/RPi-LED-Strings/prototypes/led_test_001/conftest.c:39: undefined reference to `makedev'
 collect2: error: ld returned 1 exit status
 configure:4496: $? = 1
@@ -718,9 +718,9 @@ configure:4509: result: no
 configure:4519: checking for sys/sysmacros.h
 configure:4519: result: yes
 configure:4530: checking for size_t
-configure:4530: gcc -c -g -O2  conftest.c >&5
+configure:4530: gcc -c -g -O2 -I/opt/vc/include conftest.c >&5
 configure:4530: $? = 0
-configure:4530: gcc -c -g -O2  conftest.c >&5
+configure:4530: gcc -c -g -O2 -I/opt/vc/include conftest.c >&5
 conftest.c: In function 'main':
 conftest.c:72:21: error: expected expression before ')' token
  if (sizeof ((size_t)))
@@ -805,49 +805,49 @@ configure: failed program was:
 | }
 configure:4530: result: yes
 configure:4543: checking for working alloca.h
-configure:4560: gcc -o conftest -g -O2   conftest.c  >&5
+configure:4560: gcc -o conftest -g -O2 -I/opt/vc/include -L/opt/vc/lib conftest.c  >&5
 configure:4560: $? = 0
 configure:4568: result: yes
 configure:4576: checking for alloca
-configure:4613: gcc -o conftest -g -O2   conftest.c  >&5
+configure:4613: gcc -o conftest -g -O2 -I/opt/vc/include -L/opt/vc/lib conftest.c  >&5
 configure:4613: $? = 0
 configure:4621: result: yes
 configure:4727: checking whether struct tm is in sys/time.h or time.h
-configure:4747: gcc -c -g -O2  conftest.c >&5
+configure:4747: gcc -c -g -O2 -I/opt/vc/include conftest.c >&5
 configure:4747: $? = 0
 configure:4754: result: time.h
 configure:4762: checking for struct stat.st_blocks
-configure:4762: gcc -c -g -O2  conftest.c >&5
+configure:4762: gcc -c -g -O2 -I/opt/vc/include conftest.c >&5
 configure:4762: $? = 0
 configure:4762: result: yes
 configure:4785: checking for dirent.h that defines DIR
-configure:4804: gcc -c -g -O2  conftest.c >&5
+configure:4804: gcc -c -g -O2 -I/opt/vc/include conftest.c >&5
 configure:4804: $? = 0
 configure:4812: result: yes
 configure:4825: checking for library containing opendir
-configure:4856: gcc -o conftest -g -O2   conftest.c  >&5
+configure:4856: gcc -o conftest -g -O2 -I/opt/vc/include -L/opt/vc/lib conftest.c  >&5
 configure:4856: $? = 0
 configure:4873: result: none required
 configure:4940: checking whether closedir returns void
-configure:4964: gcc -o conftest -g -O2   conftest.c  >&5
+configure:4964: gcc -o conftest -g -O2 -I/opt/vc/include -L/opt/vc/lib conftest.c  >&5
 configure:4964: $? = 0
 configure:4964: ./conftest
 configure:4964: $? = 0
 configure:4974: result: no
 configure:4984: checking for mkfifo
-configure:4984: gcc -o conftest -g -O2   conftest.c  >&5
+configure:4984: gcc -o conftest -g -O2 -I/opt/vc/include -L/opt/vc/lib conftest.c  >&5
 configure:4984: $? = 0
 configure:4984: result: yes
 configure:4993: checking for mknod
-configure:4993: gcc -o conftest -g -O2   conftest.c  >&5
+configure:4993: gcc -o conftest -g -O2 -I/opt/vc/include -L/opt/vc/lib conftest.c  >&5
 configure:4993: $? = 0
 configure:4993: result: yes
 configure:4998: checking argp.h usability
-configure:4998: gcc -c -g -O2  conftest.c >&5
+configure:4998: gcc -c -g -O2 -I/opt/vc/include conftest.c >&5
 configure:4998: $? = 0
 configure:4998: result: yes
 configure:4998: checking argp.h presence
-configure:4998: gcc -E  conftest.c
+configure:4998: gcc -E -I/opt/vc/include conftest.c
 configure:4998: $? = 0
 configure:4998: result: yes
 configure:4998: checking for argp.h
@@ -891,12 +891,12 @@ ac_cv_env_CC_set=
 ac_cv_env_CC_value=
 ac_cv_env_CFLAGS_set=
 ac_cv_env_CFLAGS_value=
-ac_cv_env_CPPFLAGS_set=
-ac_cv_env_CPPFLAGS_value=
+ac_cv_env_CPPFLAGS_set=set
+ac_cv_env_CPPFLAGS_value=-I/opt/vc/include
 ac_cv_env_CPP_set=
 ac_cv_env_CPP_value=
-ac_cv_env_LDFLAGS_set=
-ac_cv_env_LDFLAGS_value=
+ac_cv_env_LDFLAGS_set=set
+ac_cv_env_LDFLAGS_value=-L/opt/vc/lib
 ac_cv_env_LIBS_set=
 ac_cv_env_LIBS_value=
 ac_cv_env_build_alias_set=
@@ -979,7 +979,7 @@ CC='gcc'
 CCDEPMODE='depmode=gcc3'
 CFLAGS='-g -O2'
 CPP='gcc -E'
-CPPFLAGS=''
+CPPFLAGS='-I/opt/vc/include'
 CYGPATH_W='echo'
 DEFS='-DHAVE_CONFIG_H'
 DEPDIR='.deps'
@@ -994,7 +994,7 @@ INSTALL_PROGRAM='${INSTALL}'
 INSTALL_SCRIPT='${INSTALL}'
 INSTALL_STRIP_PROGRAM='$(install_sh) -c -s'
 ISODATE='2019-11-09'
-LDFLAGS=''
+LDFLAGS='-L/opt/vc/lib'
 LIBOBJS=''
 LIBS=''
 LTLIBOBJS=''
@@ -1108,25 +1108,3 @@ target_alias=''
 #define HAVE_MKFIFO 1
 
 configure: exit 0
-
-## ---------------------- ##
-## Running config.status. ##
-## ---------------------- ##
-
-This file was extended by config.status, which was
-generated by GNU Autoconf 2.69.  Invocation command line was
-
-  CONFIG_FILES    = 
-  CONFIG_HEADERS  = 
-  CONFIG_LINKS    = 
-  CONFIG_COMMANDS = 
-  $ ./config.status Makefile depfiles
-
-on pifour
-
-config.status:882: creating Makefile
-config.status:1111: executing depfiles commands
-config.status:1188: cd .       && sed -e '/# am--include-marker/d' Makefile         | make -f - am--depfiles
-make[1]: Entering directory '/home/pi/Projects/LED-Strings/RPi-LED-Strings/prototypes/led_test_001'
-make[1]: Leaving directory '/home/pi/Projects/LED-Strings/RPi-LED-Strings/prototypes/led_test_001'
-config.status:1193: $? = 0

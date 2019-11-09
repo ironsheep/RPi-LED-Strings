@@ -20,6 +20,7 @@
 */
 
 #include <bcm_host.h>
+#include <stdio.h>
 
 #include "piSystem.h"
 

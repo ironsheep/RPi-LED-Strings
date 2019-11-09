@@ -26,6 +26,7 @@
 #include <unistd.h>
 
 #include "ledGPIO.h"
+#include "piSystem.h"
 
 // Access from ARM Running Linux
 
@@ -53,6 +54,9 @@ int pin2;
 #define OUT_GPIO(g) *(gpio+((g)/10)) |=  (1<<(((g)%10)*3))
 #define SET_GPIO_ALT(g,a) *(gpio+(((g)/10))) |= (((a)<=3?(a)+4:(a)==4?3:2)<<(((g)%10)*3))
 
+#define SET_GPIO(g) (*(gpio+7) = 1<<(g))
+#define CLR_GPIO(g) (*(gpio+10) = 1<<(g))
+
 #define GPIO_SET *(gpio+7)  // sets   bits which are 1 ignores bits which are 0
 #define GPIO_CLR *(gpio+10) // clears bits which are 1 ignores bits which are 0
 
@@ -65,7 +69,7 @@ int pin2;
 
 void initGPIO(void)
 {
-	pin0 = 0;	// gpio.0 - bcm 17
+	pin0 = 17;	// gpio.0 - bcm 17
 	pin1 = 2;	// gpio.2 - bcm 27
 	pin2 = 3;	// gpio.3 - bcm 22
 
@@ -100,6 +104,8 @@ void initGPIO(void)
    OUT_GPIO(pin0);
 
    printf("- GPIO is setup\n");
+
+   showSysInfo();
 }
 
 void restoreGPIO(void)
@@ -110,12 +116,13 @@ void restoreGPIO(void)
 
 void blinkLED(void)
 {
-	int loopMax = 10;
+ 	int uSec50milliSec = 50 * 1000;
+	int loopMax = 100;
 	for(int x=0; x<loopMax; x++) {
 		printf("- blink %d of %d\n", x+1, loopMax);
-		GPIO_SET = 1<<pin0;
-		sleep(1);
-		GPIO_CLR = 1<<pin0;
-		sleep(1);
+		SET_GPIO(pin0);
+		usleep(uSec50milliSec);
+		CLR_GPIO(pin0);
+		usleep(uSec50milliSec);
 	}
 }

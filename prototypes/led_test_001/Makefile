@@ -107,7 +107,8 @@ am__installdirs = "$(DESTDIR)$(bindir)" "$(DESTDIR)$(infodir)" \
 	"$(DESTDIR)$(man1dir)"
 PROGRAMS = $(bin_PROGRAMS)
 am_led_test_001_OBJECTS = led_test_001.$(OBJEXT) xmalloc.$(OBJEXT) \
-	ledGPIO.$(OBJEXT) frameBuffer.$(OBJEXT) ledScreen.$(OBJEXT)
+	ledGPIO.$(OBJEXT) frameBuffer.$(OBJEXT) ledScreen.$(OBJEXT) \
+	piSystem.$(OBJEXT)
 led_test_001_OBJECTS = $(am_led_test_001_OBJECTS)
 led_test_001_DEPENDENCIES =
 AM_V_P = $(am__v_P_$(V))
@@ -122,12 +123,13 @@ AM_V_at = $(am__v_at_$(V))
 am__v_at_ = $(am__v_at_$(AM_DEFAULT_VERBOSITY))
 am__v_at_0 = @
 am__v_at_1 = 
-DEFAULT_INCLUDES = -I.
+DEFAULT_INCLUDES = -I. 
 depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__maybe_remake_depfiles = depfiles
 am__depfiles_remade = ./$(DEPDIR)/frameBuffer.Po \
 	./$(DEPDIR)/ledGPIO.Po ./$(DEPDIR)/ledScreen.Po \
-	./$(DEPDIR)/led_test_001.Po ./$(DEPDIR)/xmalloc.Po
+	./$(DEPDIR)/led_test_001.Po ./$(DEPDIR)/piSystem.Po \
+	./$(DEPDIR)/xmalloc.Po
 am__mv = mv -f
 COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
 	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
@@ -274,7 +276,7 @@ CC = gcc
 CCDEPMODE = depmode=gcc3
 CFLAGS = -g -O2
 CPP = gcc -E
-CPPFLAGS = 
+CPPFLAGS = -I/opt/vc/include
 CYGPATH_W = echo
 DEFS = -DHAVE_CONFIG_H
 DEPDIR = .deps
@@ -290,7 +292,7 @@ INSTALL_PROGRAM = ${INSTALL}
 INSTALL_SCRIPT = ${INSTALL}
 INSTALL_STRIP_PROGRAM = $(install_sh) -c -s
 ISODATE = 2019-11-09
-LDFLAGS = 
+LDFLAGS = -L/opt/vc/lib
 LIBOBJS = 
 LIBS = 
 LTLIBOBJS = 
@@ -360,11 +362,11 @@ target_alias =
 top_build_prefix = 
 top_builddir = .
 top_srcdir = .
-led_test_001_SOURCES = led_test_001.c xmalloc.c system.h aclocal.m4 led_test_001.1 ledGPIO.c frameBuffer.c ledScreen.c
+led_test_001_SOURCES = led_test_001.c xmalloc.c system.h aclocal.m4 led_test_001.1 ledGPIO.c frameBuffer.c ledScreen.c piSystem.c
 
 #  uncomment the following if led_test_001 requires the math library
 #led_test_001_LDADD=-lm
-led_test_001_LDADD = -lpthread
+led_test_001_LDADD = -lpthread -lbcm_host
 EXTRA_DIST = led_test_001.lsm.in led_test_001.spec.in led_test_001.texinfo
 
 #  if you write a self-test script named `chk', uncomment the
@@ -491,6 +493,7 @@ include ./$(DEPDIR)/frameBuffer.Po # am--include-marker
 include ./$(DEPDIR)/ledGPIO.Po # am--include-marker
 include ./$(DEPDIR)/ledScreen.Po # am--include-marker
 include ./$(DEPDIR)/led_test_001.Po # am--include-marker
+include ./$(DEPDIR)/piSystem.Po # am--include-marker
 include ./$(DEPDIR)/xmalloc.Po # am--include-marker
 
 $(am__depfiles_remade):
@@ -972,6 +975,7 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/ledGPIO.Po
 	-rm -f ./$(DEPDIR)/ledScreen.Po
 	-rm -f ./$(DEPDIR)/led_test_001.Po
+	-rm -f ./$(DEPDIR)/piSystem.Po
 	-rm -f ./$(DEPDIR)/xmalloc.Po
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
@@ -1115,6 +1119,7 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/ledGPIO.Po
 	-rm -f ./$(DEPDIR)/ledScreen.Po
 	-rm -f ./$(DEPDIR)/led_test_001.Po
+	-rm -f ./$(DEPDIR)/piSystem.Po
 	-rm -f ./$(DEPDIR)/xmalloc.Po
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-aminfo \
