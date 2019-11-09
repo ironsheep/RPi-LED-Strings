@@ -18,6 +18,7 @@
   <Files>
     <File>ledGPIO.c</File>
     <File>xmalloc.c</File>
+    <File>piSystem.h</File>
     <File>frameBuffer.h</File>
     <File>xmalloc.h</File>
     <File>ledScreen.c</File>
@@ -27,6 +28,7 @@
     <File>system.h</File>
     <File>ledScreen.h</File>
     <File>led_test_001.c</File>
+    <File>piSystem.c</File>
     <File>led_test_001.1</File>
     <File>README.md</File>
   </Files>
