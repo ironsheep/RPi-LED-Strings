@@ -1,0 +1,21 @@
+Begin3
+Title:		led_test_001
+Version:	@VERSION@
+Entered-date:	@ISODATE@
+Description:	testbed for GPIO and WS2812B String
+		@configure_input@
+		Please edit led_test_001.lsm.in to fix the Keywords and
+		Primary-site entries, add several more lines of
+		description here if appropriate, and to delete these
+		instructions.
+Keywords:	[substitute your keywords here]
+Author: 	stephen@ironsheep.biz (Stephen M Moraco)
+Maintained-by:	stephen@ironsheep.biz (Stephen M Moraco)
+Primary-site:	metlab.unc.edu pub/Linux/apps/some/directory
+		31k led_test_001-@VERSION@.tar.gz
+		500  led_test_001.lsm
+Alternate-site: 
+Original-site:  
+Platforms:      
+Copying-policy:	GNU copyleft
+End
