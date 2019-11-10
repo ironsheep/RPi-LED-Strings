@@ -32,13 +32,16 @@ void initScreen(void)
 	clearScreen();
 	
 	// init gpio
-	initGPIO();
+	//initGPIO();
 	
 	// init display task
-	blinkLED();
+	//blinkLED();
 	
 	// return GPIO to normal setup
-	restoreGPIO();
+	//restoreGPIO();
+	
+	// run our file loader as test (working code yet?
+	loadTestImage();
 }
 
 void clearScreen(void)

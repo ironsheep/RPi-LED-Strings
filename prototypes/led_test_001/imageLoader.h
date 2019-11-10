@@ -22,5 +22,7 @@
 #ifndef IMAGE_LOADER_H
 #define IMAGE_LOADER_H
 
+void loadTestImage(void);
+
 
 #endif /* IMAGE_LOADER_H */
