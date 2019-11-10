@@ -20,8 +20,10 @@
     <File>xmalloc.c</File>
     <File>piSystem.h</File>
     <File>frameBuffer.h</File>
+    <File>commandProcessor.h</File>
     <File>xmalloc.h</File>
     <File>ledScreen.c</File>
+    <File>imageLoader.c</File>
     <File>Makefile.am</File>
     <File>ledGPIO.h</File>
     <File>frameBuffer.c</File>
@@ -29,7 +31,9 @@
     <File>ledScreen.h</File>
     <File>led_test_001.c</File>
     <File>piSystem.c</File>
+    <File>imageLoader.h</File>
     <File>led_test_001.1</File>
     <File>README.md</File>
+    <File>commandProcessor.c</File>
   </Files>
 </PRJ>
