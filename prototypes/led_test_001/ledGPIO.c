@@ -70,8 +70,8 @@ int pin2;
 void initGPIO(void)
 {
 	pin0 = 17;	// gpio.0 - bcm 17
-	pin1 = 2;	// gpio.2 - bcm 27
-	pin2 = 3;	// gpio.3 - bcm 22
+	pin1 = 27;	// gpio.2 - bcm 27
+	pin2 = 22;	// gpio.3 - bcm 22
 
    /* open /dev/mem */
    if ((mem_fd = open("/dev/mem", O_RDWR|O_SYNC) ) < 0) {
