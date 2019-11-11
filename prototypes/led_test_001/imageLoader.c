@@ -71,7 +71,8 @@ struct _BMPColorValue *getPixelAddressForRowColumn(uint8_t nRow, uint8_t nColumn
 		printf("- ERROR bad nColumn value [%d > %d]\n", nColumn, nColumns);
 	}
 	// Row is inverted in file...
-	int nRowIndex = (nRows - 1) - nRow;
+	// int nRowIndex = (nRows - 1) - nRow;
+	int nRowIndex = nRow;
 	// Column is normal in file...
 	int nColumnIndex = nColumn;
 	// now offset is simple (
@@ -146,7 +147,8 @@ void loadTestImage(void)
 	showPixelAtRC(23,31);
 	showPixelAtRC(0,31);
 
-	printf("\n- Bottom-left 8x8\n");
+	//printf("\n- Bottom-left 8x8\n");
+	printf("\n- Top-left 8x8\n");
 	showPixelAtRC(23,0);
 	showPixelAtRC(23,7);
 	showPixelAtRC(16,0);
@@ -158,7 +160,8 @@ void loadTestImage(void)
 	showPixelAtRC(8,0);
 	showPixelAtRC(8,7);
 
-	printf("\n- Top-left 8x8\n");
+	//printf("\n- Top-left 8x8\n");
+	printf("\n- Bottom-left 8x8\n");
 	showPixelAtRC(7,0);
 	showPixelAtRC(7,7);
 	showPixelAtRC(0,0);
