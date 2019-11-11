@@ -22,9 +22,25 @@
 #ifndef LED_GPIO_H
 #define LED_GPIO_H
 
+// our test hardware is mapped to the following GPIO pins
+enum eLedStringPins { 
+	LSP_TOP = 17,		// gpio.0 - bcm 17
+	LSP_MIDDLE = 27,	// gpio.2 - bcm 27
+	LSP_BOTTOM = 22,	// gpio.3 - bcm 22
+};
+
 void initGPIO(void);
 void restoreGPIO(void);
 
+void xmitOne(eLedStringPins gpioPin);
+void xmitZero(eLedStringPins gpioPin);
+void xmitReset(eLedStringPins gpioPin);
+
+
+// test routines so we can scope things
 void blinkLED(void);
+void testBit0Send(void);
+void testBit1Send(void);
+void testResetSend(void);
 
 #endif /* LED_GPIO_H */

@@ -42,7 +42,16 @@ void initScreen(void)
 	//restoreGPIO();
 	
 	// run our file loader as test (working code yet?
-	loadTestImage();
+	//loadTestImage();
+	
+	// scope our 0's
+	testBit0Send();
+	
+	// scope our 1's
+	//testBit1Send();
+	
+	// scope our RESET's
+	//testResetSend();
 }
 
 void clearScreen(void)

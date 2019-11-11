@@ -23,7 +23,7 @@
 #include <stdlib.h>
 #include <fcntl.h>
 #include <sys/mman.h>
-#include <unistd.h>
+#include <unistd.h>	// sleep() and others
 
 #include "ledGPIO.h"
 #include "piSystem.h"
@@ -45,10 +45,6 @@ void *gpio_map;
 // I/O access
 volatile unsigned *gpio;
 
-int pin0;
-int pin1;
-int pin2;
-
 // GPIO setup macros. Always use INP_GPIO(x) before using OUT_GPIO(x) or SET_GPIO_ALT(x,y)
 #define INP_GPIO(g) *(gpio+((g)/10)) &= ~(7<<(((g)%10)*3))
 #define OUT_GPIO(g) *(gpio+((g)/10)) |=  (1<<(((g)%10)*3))
@@ -69,10 +65,6 @@ int pin2;
 
 void initGPIO(void)
 {
-	pin0 = 17;	// gpio.0 - bcm 17
-	pin1 = 27;	// gpio.2 - bcm 27
-	pin2 = 22;	// gpio.3 - bcm 22
-
    /* open /dev/mem */
    if ((mem_fd = open("/dev/mem", O_RDWR|O_SYNC) ) < 0) {
       printf("can't open /dev/mem \n");
@@ -100,8 +92,14 @@ void initGPIO(void)
    gpio = (volatile unsigned *)gpio_map;
 
    // setup GPIO.0 as output
-   INP_GPIO(pin0);
-   OUT_GPIO(pin0);
+   INP_GPIO(LSP_TOP);
+   OUT_GPIO(LSP_TOP);
+   
+   INP_GPIO(LSP_MIDDLE);
+   OUT_GPIO(LSP_MIDDLE);
+   
+   INP_GPIO(LSP_BOTTOM);
+   OUT_GPIO(LSP_BOTTOM);
 
    printf("- GPIO is setup\n");
 
@@ -110,19 +108,137 @@ void initGPIO(void)
 
 void restoreGPIO(void)
 {
-   INP_GPIO(pin0);
+   INP_GPIO(LSP_TOP);
+   INP_GPIO(LSP_MIDDLE);
+   INP_GPIO(LSP_BOTTOM);
    printf("- GPIO is reset\n");
 }
 
 void blinkLED(void)
 {
+	// TEST code! LED Resistor wired to GPIO (pin 17)
  	int uSec50milliSec = 50 * 1000;
 	int loopMax = 100;
 	for(int x=0; x<loopMax; x++) {
 		printf("- blink %d of %d\n", x+1, loopMax);
-		SET_GPIO(pin0);
+		SET_GPIO(LSP_TOP);
 		usleep(uSec50milliSec);
-		CLR_GPIO(pin0);
+		CLR_GPIO(LSP_TOP);
 		usleep(uSec50milliSec);
 	}
 }
+#define USING_WS2812B
+
+// timing for WS2815  1360nSec period | 735.294KHz
+#ifdef USING_WS2815
+
+#define BASE_PERIOD_IN_NSEC 51
+#define T0H_MULTIPLE 6
+#define T1H_MULTIPLE 21
+#define T0_PERIOD_MULTIPLE 27
+#define TRESET_IN_USEC 280
+
+#endif
+
+// timing for WS2812B  1250nSec period | 800KHz
+#ifdef USING_WS2812B
+
+#define BASE_PERIOD_IN_NSEC 50
+#define T0H_MULTIPLE 8
+#define T1H_MULTIPLE 16
+#define T01_PERIOD_MULTIPLE 25
+#define TRESET_IN_USEC 50
+
+#endif
+
+
+#define T0H_IN_NSEC (T0H_MULTIPLE * BASE_PERIOD_IN_NSEC) 
+#define T0L_IN_NSEC ((T01_PERIOD_MULTIPLE - T0H_MULTIPLE) * BASE_PERIOD_IN_NSEC)
+#define T1H_IN_NSEC (T1H_MULTIPLE * BASE_PERIOD_IN_NSEC) 
+#define T1L_IN_NSEC ((T01_PERIOD_MULTIPLE - T1H_MULTIPLE) * BASE_PERIOD_IN_NSEC)
+#define TRESET_IN_NSEC (TRESET_IN_USEC * 1000) 
+
+void xmitOne(eLedStringPins gpioPin)
+{
+	struct timespec nIdleTime;
+	struct timespec nTimeRemaining;
+	int errno;
+	
+	nIdleTime.tv_nsec = T1H_IN_NSEC;
+	SET_GPIO(gpioPin);
+	errno = nonosleep(&nIdleTime, &nTimeRemaining);
+	if(errno != 0 || nTimeRemaining.tv_nsec != 0) {
+		printf("- T1H short! interrupted or error");
+	}
+	nIdleTime.tv_nsec = T1L_IN_NSEC;
+	CLR_GPIO(gpioPin);
+	errno = nonosleep(&nIdleTime, &nTimeRemaining);
+	if(errno != 0 || nTimeRemaining.tv_nsec != 0) {
+		printf("- T1L short! interrupted or error");
+	}
+}
+
+void xmitZero(eLedStringPins gpioPin)
+{
+	struct timespec nIdleTime;
+	struct timespec nTimeRemaining;
+	int errno;
+	
+	nIdleTime.tv_nsec = T0H_IN_NSEC;
+	SET_GPIO(gpioPin);
+	errno = nonosleep(&nIdleTime, &nTimeRemaining);
+	if(errno != 0 || nTimeRemaining.tv_nsec != 0) {
+		printf("- T1H short! interrupted or error");
+	}
+	nIdleTime.tv_nsec = T0L_IN_NSEC;
+	CLR_GPIO(gpioPin);
+	errno = nonosleep(&nIdleTime, &nTimeRemaining);
+	if(errno != 0 || nTimeRemaining.tv_nsec != 0) {
+		printf("- T1L short! interrupted or error");
+	}
+}
+
+void xmitReset(eLedStringPins gpioPin)
+{
+	struct timespec nIdleTime;
+	struct timespec nTimeRemaining;
+	int errno;
+	
+	nIdleTime.tv_nsec = TRESET_IN_NSEC;
+	CLR_GPIO(gpioPin);
+	errno = nonosleep(&nIdleTime, &nTimeRemaining);
+	if(errno != 0 || nTimeRemaining.tv_nsec != 0) {
+		printf("- T1L short! interrupted or error");
+	}
+}
+
+void testBit0Send(void)
+{
+	printf("- TEST 0's START");
+	for(int ctr=0; ctr<1000; ctr++) {
+		xmitZero(LSP_TOP);
+	}
+	printf("- TEST 0's END");
+}
+
+void testBit1Send(void);
+{
+	printf("- TEST 1's START");
+	for(int ctr=0; ctr<1000; ctr++) {
+		xmitOne(LSP_TOP);
+	}
+	printf("- TEST 1's START");
+}
+
+void testResetSend(void);
+{
+	printf("- TEST RESET's START");
+	SET_GPIO(LSP_TOP);
+	for(int ctr=0; ctr<1000; ctr++) {
+		xmitReset(LSP_TOP);
+		SET_GPIO(LSP_TOP);
+	}
+	printf("- TEST RESET's START");
+}
+
+
