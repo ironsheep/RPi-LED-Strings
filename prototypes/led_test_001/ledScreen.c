@@ -19,6 +19,8 @@
 
 */
 
+#include <stdio.h>
+
 #include "ledScreen.h"
 #include "frameBuffer.h"
 #include "imageLoader.h"
@@ -33,13 +35,10 @@ void initScreen(void)
 	clearScreen();
 	
 	// init gpio
-	//initGPIO();
+	initGPIO();
 	
 	// init display task
 	//blinkLED();
-	
-	// return GPIO to normal setup
-	//restoreGPIO();
 	
 	// run our file loader as test (working code yet?
 	//loadTestImage();
@@ -52,6 +51,9 @@ void initScreen(void)
 	
 	// scope our RESET's
 	//testResetSend();
+
+	// return GPIO to normal setup
+	restoreGPIO();
 }
 
 void clearScreen(void)

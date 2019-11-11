@@ -24,6 +24,7 @@
 #include <fcntl.h>
 #include <sys/mman.h>
 #include <unistd.h>	// sleep() and others
+#include <time.h>	// nanosleep() and others
 
 #include "ledGPIO.h"
 #include "piSystem.h"
@@ -62,9 +63,22 @@ volatile unsigned *gpio;
 #define GPIO_PULLCLK0 *(gpio+38) // Pull up/pull down clock
 
 
+static eLedStringPins outputPins[] = { LSP_TOP, LSP_MIDDLE, LSP_BOTTOM };
+static int nOutputPinsCount = sizeof(outputPins) / sizeof(eLedStringPins);
+
+void setupOutputPins(void)
+{
+	for(int pinIdx=0; pinIdx<nOutputPinsCount; pinIdx++) {
+   	   INP_GPIO(outputPins[pinIdx]);
+	   OUT_GPIO(outputPins[pinIdx]);
+	   CLR_GPIO(outputPins[pinIdx]);
+	}
+   printf("- GPIO outputs are setup\n");
+}
 
 void initGPIO(void)
 {
+   printf("- CLOCK TICS/SEC = %d\n", CLOCKS_PER_SEC);
    /* open /dev/mem */
    if ((mem_fd = open("/dev/mem", O_RDWR|O_SYNC) ) < 0) {
       printf("can't open /dev/mem \n");
@@ -91,26 +105,20 @@ void initGPIO(void)
    // Always use volatile pointer!
    gpio = (volatile unsigned *)gpio_map;
 
-   // setup GPIO.0 as output
-   INP_GPIO(LSP_TOP);
-   OUT_GPIO(LSP_TOP);
-   
-   INP_GPIO(LSP_MIDDLE);
-   OUT_GPIO(LSP_MIDDLE);
-   
-   INP_GPIO(LSP_BOTTOM);
-   OUT_GPIO(LSP_BOTTOM);
+   // setup GPIO's as output
+   setupOutputPins();
 
    printf("- GPIO is setup\n");
 
    showSysInfo();
 }
 
+
 void restoreGPIO(void)
 {
-   INP_GPIO(LSP_TOP);
-   INP_GPIO(LSP_MIDDLE);
-   INP_GPIO(LSP_BOTTOM);
+	for(int pinIdx=0; pinIdx<nOutputPinsCount; pinIdx++) {
+   	   INP_GPIO(outputPins[pinIdx]);
+	}
    printf("- GPIO is reset\n");
 }
 
@@ -158,87 +166,139 @@ void blinkLED(void)
 #define T1L_IN_NSEC ((T01_PERIOD_MULTIPLE - T1H_MULTIPLE) * BASE_PERIOD_IN_NSEC)
 #define TRESET_IN_NSEC (TRESET_IN_USEC * 1000) 
 
+void nSecDelay(int nSecDuration)
+{
+	volatile int ctr;
+	volatile int tst;
+	for(int ctr=0; ctr<(int)(((float)nSecDuration)/4.855); ctr++) { tst++; }
+}
+
 void xmitOne(eLedStringPins gpioPin)
+{
+	SET_GPIO(gpioPin);
+
+	nSecDelay(T1H_IN_NSEC);
+
+	CLR_GPIO(gpioPin);
+
+	nSecDelay(T1L_IN_NSEC);
+}
+
+void xmitOne001(eLedStringPins gpioPin)
 {
 	struct timespec nIdleTime;
 	struct timespec nTimeRemaining;
-	int errno;
+	int nError;
 	
+	printf("- write ONE\n");
+
+	nIdleTime.tv_sec = 0;
 	nIdleTime.tv_nsec = T1H_IN_NSEC;
 	SET_GPIO(gpioPin);
-	errno = nonosleep(&nIdleTime, &nTimeRemaining);
-	if(errno != 0 || nTimeRemaining.tv_nsec != 0) {
-		printf("- T1H short! interrupted or error");
+	nError = nanosleep(&nIdleTime, &nTimeRemaining);
+	if(nError != 0 || nTimeRemaining.tv_nsec != 0) {
+		//printf("- T1H short! interrupted (%d) or error (%d)\n", nTimeRemaining.tv_nsec, nError);
 	}
 	nIdleTime.tv_nsec = T1L_IN_NSEC;
 	CLR_GPIO(gpioPin);
-	errno = nonosleep(&nIdleTime, &nTimeRemaining);
-	if(errno != 0 || nTimeRemaining.tv_nsec != 0) {
-		printf("- T1L short! interrupted or error");
+	nError = nanosleep(&nIdleTime, &nTimeRemaining);
+	if(nError != 0 || nTimeRemaining.tv_nsec != 0) {
+		//printf("- T1L short! interrupted (%d) or error (%d)\n", nTimeRemaining.tv_nsec, nError);
 	}
 }
 
 void xmitZero(eLedStringPins gpioPin)
 {
+	SET_GPIO(gpioPin);
+
+	nSecDelay(T0H_IN_NSEC);
+
+	CLR_GPIO(gpioPin);
+
+	nSecDelay(T0L_IN_NSEC);
+}
+
+
+void xmitZero001(eLedStringPins gpioPin)
+{
 	struct timespec nIdleTime;
 	struct timespec nTimeRemaining;
-	int errno;
+	int nError;
+
+	//printf("- write ZERO\n");
 	
+	//printf("- write ZERO-HIGH\n");
+
+	nIdleTime.tv_sec = 0;
 	nIdleTime.tv_nsec = T0H_IN_NSEC;
 	SET_GPIO(gpioPin);
-	errno = nonosleep(&nIdleTime, &nTimeRemaining);
-	if(errno != 0 || nTimeRemaining.tv_nsec != 0) {
-		printf("- T1H short! interrupted or error");
+	nError = nanosleep(&nIdleTime, &nTimeRemaining);
+	if(nError != 0 || nTimeRemaining.tv_nsec != 0) {
+		//printf("- T0H short! interrupted (%d) or error (%d)\n", nTimeRemaining.tv_nsec, nError);
 	}
+
+	//printf("- write ZERO-LOW\n");
+
 	nIdleTime.tv_nsec = T0L_IN_NSEC;
 	CLR_GPIO(gpioPin);
-	errno = nonosleep(&nIdleTime, &nTimeRemaining);
-	if(errno != 0 || nTimeRemaining.tv_nsec != 0) {
-		printf("- T1L short! interrupted or error");
+	nError = nanosleep(&nIdleTime, &nTimeRemaining);
+	if(nError != 0 || nTimeRemaining.tv_nsec != 0) {
+		//printf("- T0L short! interrupted (%d) or error (%d)\n", nTimeRemaining.tv_nsec, nError);
 	}
 }
 
 void xmitReset(eLedStringPins gpioPin)
 {
+	CLR_GPIO(gpioPin);
+
+	nSecDelay(TRESET_IN_NSEC);
+}
+
+void xmitReset001(eLedStringPins gpioPin)
+{
 	struct timespec nIdleTime;
 	struct timespec nTimeRemaining;
-	int errno;
+	int nError;
+
+	printf("- write RESET\n");
 	
+	nIdleTime.tv_sec = 0;
 	nIdleTime.tv_nsec = TRESET_IN_NSEC;
 	CLR_GPIO(gpioPin);
-	errno = nonosleep(&nIdleTime, &nTimeRemaining);
-	if(errno != 0 || nTimeRemaining.tv_nsec != 0) {
-		printf("- T1L short! interrupted or error");
+	nError = nanosleep(&nIdleTime, &nTimeRemaining);
+	if(nError != 0 || nTimeRemaining.tv_nsec != 0) {
+		printf("- TRESET short! interrupted (%d) or error (%d)\n", nTimeRemaining.tv_nsec, nError);
 	}
 }
+
 
 void testBit0Send(void)
 {
-	printf("- TEST 0's START");
+	printf("- TEST 0's START\n");
 	for(int ctr=0; ctr<1000; ctr++) {
 		xmitZero(LSP_TOP);
 	}
-	printf("- TEST 0's END");
+	printf("- TEST 0's END\n");
 }
 
-void testBit1Send(void);
+void testBit1Send(void)
 {
-	printf("- TEST 1's START");
+	printf("- TEST 1's START\n");
 	for(int ctr=0; ctr<1000; ctr++) {
 		xmitOne(LSP_TOP);
 	}
-	printf("- TEST 1's START");
+	printf("- TEST 1's END\n");
 }
 
-void testResetSend(void);
+void testResetSend(void)
 {
-	printf("- TEST RESET's START");
+	printf("- TEST RESET's START\n");
 	SET_GPIO(LSP_TOP);
 	for(int ctr=0; ctr<1000; ctr++) {
 		xmitReset(LSP_TOP);
 		SET_GPIO(LSP_TOP);
 	}
-	printf("- TEST RESET's START");
+	printf("- TEST RESET's END\n");
 }
 
 

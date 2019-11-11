@@ -23,11 +23,11 @@
 #define LED_GPIO_H
 
 // our test hardware is mapped to the following GPIO pins
-enum eLedStringPins { 
+typedef enum _eLedStringPins { 
 	LSP_TOP = 17,		// gpio.0 - bcm 17
 	LSP_MIDDLE = 27,	// gpio.2 - bcm 27
 	LSP_BOTTOM = 22,	// gpio.3 - bcm 22
-};
+} eLedStringPins;;
 
 void initGPIO(void);
 void restoreGPIO(void);
