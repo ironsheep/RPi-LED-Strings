@@ -20,12 +20,15 @@
 */
 
 #include <sys/stat.h>
-#include <stdtypes.h>
+#include <stdint.h>
 #include <stdio.h> 
 
 
 #include "imageLoader.h"
 #include "xmalloc.h"
+#include "debug.h"
+
+// NOTE the following must be packed: REF: https://stackoverflow.com/questions/8568432/is-gccs-attribute-packed-pragma-pack-unsafe
 
 struct _BMPHeader {             // Total: 54 bytes
   uint16_t  type;             // Magic identifier: 0x4d42
@@ -44,33 +47,124 @@ struct _BMPHeader {             // Total: 54 bytes
   int32_t   y_resolution_ppm; // Pixels per meter
   uint32_t  num_colors;       // Number of colors  
   uint32_t  important_colors; // Important colors 
-};
+} __attribute__((packed));	// WARNING this MUST be PACKED!!!
 
-static char sTestFileName[] = "8pxSquaresLines.bmp";
+static char sTestFileName[] = "8pxSquaresMarked.bmp";
 
 static char *fileBuffer;
+
+static int nRows;
+static int nColumns;
+
+struct _BMPColorValue {
+  uint8_t blue;
+  uint8_t green;
+  uint8_t red;
+} __attribute__((packed));      // WARNING this MUST be PACKED!!!
+
+struct _BMPColorValue *getPixelAddressForRowColumn(uint8_t nRow, uint8_t nColumn)
+{
+	if(nRow > nRows - 1) {
+		printf("- ERROR bad nRow value [%d > %d]\n", nRow, nRows);
+	}
+	if(nColumn > nColumns - 1) {
+		printf("- ERROR bad nColumn value [%d > %d]\n", nColumn, nColumns);
+	}
+	// Row is inverted in file...
+	int nRowIndex = (nRows - 1) - nRow;
+	// Column is normal in file...
+	int nColumnIndex = nColumn;
+	// now offset is simple (
+	int nOffset = (nRowIndex * nColumns) + nColumnIndex;
+	printf("- Offset=%d, RC=(%d,%d)\n", nOffset, nRow, nColumn);
+	struct _BMPColorValue *rgbArray = (struct _BMPColorValue *)fileBuffer;
+	return &rgbArray[nOffset];
+}
+
+void showPixelAtRC(uint8_t nRow, uint8_t nColumn)
+{
+ 	struct _BMPColorValue *pRGBvalue;
+	pRGBvalue = getPixelAddressForRowColumn(nRow,nColumn);
+	printf("- RC=%d,%d @ %p is RGB=(%2x,%2x,%2x)\n", nRow, nColumn, pRGBvalue, pRGBvalue->red, pRGBvalue->green, pRGBvalue->blue);
+}
 
 void loadTestImage(void) 
 {
 	struct stat st;
 	stat(sTestFileName, &st);
-	size_t nFileSize = st.st_size;
-	
-	printf("File %s is %d bytes\n", sTestFileName, nFileSize);
-	fileBuffer = xmalloc(nFileSize);
+	printf("- File %s is %d bytes\n", sTestFileName, st.st_size);
 
 	int counter;
 	FILE *fpTestFile;
 	struct _BMPHeader bmpHeaderData;
+	printf("- File Header size=%u\n", sizeof(struct _BMPHeader));
 	
 	fpTestFile = fopen(sTestFileName,"rb");
 	if(!fpTestFile)
 	{
-		printf("ERROR: Unable to open file!\n");
+		printf("\nERROR: Unable to open file!\n\n");
 		return;
 	}
 	fread(&bmpHeaderData, sizeof(struct _BMPHeader), 1, fpTestFile);
-	printf("File %s: sz=%d, h/w=(%d,%d)\n", sTestFileName, bmpHeaderData.size, bmpHeaderData.height_px, bmpHeaderData.width_px);
+
+	nRows = bmpHeaderData.height_px;
+	nColumns = bmpHeaderData.width_px;
+
+	int nImageBytesNeeded = bmpHeaderData.width_px * bmpHeaderData.height_px * 3;
+	int nRowPadByteCount = (bmpHeaderData.height_px * 3) % 4;
+
+	printf("File %s: sz=%u, IMAGE h/w=(%d,%d) size=%u bytesNeeded=%d rowPad=%d\n", sTestFileName, bmpHeaderData.size, bmpHeaderData.height_px, bmpHeaderData.width_px, bmpHeaderData.image_size_bytes, nImageBytesNeeded, nRowPadByteCount);
+
+
+	hexDump("BMP Header", &bmpHeaderData, sizeof(struct _BMPHeader));
+
+	printf("- Addr header struct: %p\n", &bmpHeaderData);
+	printf("- Addr size: %p\n", &bmpHeaderData.size);
+	printf("- Addr width_px: %p\n", &bmpHeaderData.width_px);
+	printf("- Addr height_px: %p\n", &bmpHeaderData.height_px);
+	printf("- Addr image_size_bytes: %p\n", &bmpHeaderData.image_size_bytes);
+	uint8_t *pBuffer = (uint8_t *)&bmpHeaderData;
+	printf("- Addr image data: %p\n", &pBuffer[bmpHeaderData.offset]);
+
+
+	fileBuffer = xmalloc(nImageBytesNeeded);
+
+	// move to start of image bytes
+	fseek(fpTestFile, bmpHeaderData.offset, SEEK_SET);
+
+	// read the image data into our buffer
+	fread(fileBuffer, nImageBytesNeeded, 1, fpTestFile);
+
+	hexDump("Image bytes", fileBuffer, nImageBytesNeeded);
+
 	fclose(fpTestFile);
-	
+
+	// TESTS
+	printf("\n- Four corners\n");
+	showPixelAtRC(23,0);
+	showPixelAtRC(0,0);
+	showPixelAtRC(23,31);
+	showPixelAtRC(0,31);
+
+	printf("\n- Bottom-left 8x8\n");
+	showPixelAtRC(23,0);
+	showPixelAtRC(23,7);
+	showPixelAtRC(16,0);
+	showPixelAtRC(16,7);
+
+	printf("\n- Middle-left 8x8\n");
+	showPixelAtRC(15,0);
+	showPixelAtRC(15,7);
+	showPixelAtRC(8,0);
+	showPixelAtRC(8,7);
+
+	printf("\n- Top-left 8x8\n");
+	showPixelAtRC(7,0);
+	showPixelAtRC(7,7);
+	showPixelAtRC(0,0);
+	showPixelAtRC(0,7);
+
+	printf("\n- Done\n");
 }
+
+

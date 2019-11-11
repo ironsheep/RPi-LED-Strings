@@ -21,6 +21,7 @@
 
 #include "ledScreen.h"
 #include "frameBuffer.h"
+#include "imageLoader.h"
 #include "ledGPIO.h"
 
 void initScreen(void)
