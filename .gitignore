@@ -22,10 +22,8 @@ prototypes/led_test_001/led_test_001
 autom4te.cache
 autoscan.log
 autoscan-*.log
-aclocal.m4
 compile
 config.guess
-config.h.in
 config.sub
 configure
 configure.scan
