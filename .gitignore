@@ -25,6 +25,8 @@ autoscan-*.log
 compile
 config.guess
 config.sub
+config.log
+config.status
 configure
 configure.scan
 depcomp
