@@ -28,15 +28,19 @@
 
 // setup our master frame buffer
 static struct _LedPixel *pFrameBuffers; // [NUMBER_OF_BUFFERS][NUMBER_OF_PANELS][LEDS_PER_PANEL];
-static int nLenPanel = (sizeof(struct _LedPixel) * LEDS_PER_PANEL);
-static int nLenBuffer = (nLenPanel * NUMBER_OF_PANELS);
-static int nLenFrameBuffers = (nLenBuffer * NUMBER_OF_BUFFERS);
+static int nLenPanel;
+static int nLenBuffer;
+static int nLenFrameBuffers;
 
 void initBuffers(void)
 {
+	nLenPanel = (sizeof(struct _LedPixel) * LEDS_PER_PANEL);
+	nLenBuffer = (nLenPanel * NUMBER_OF_PANELS);
+	nLenFrameBuffers = (nLenBuffer * NUMBER_OF_BUFFERS);
+
 	// alloc our frame buffers and init to black
 	if(pFrameBuffers == NULL) {
-		pFrameBuffers = xmalloc(nLenFrameBuffer);
+		pFrameBuffers = xmalloc(nLenFrameBuffers);
 		printf("- Allocated frameBuffer@%p:[%d buffers][%d panels][%d LEDs][%d bytes]\n", pFrameBuffers, NUMBER_OF_BUFFERS, NUMBER_OF_PANELS, LEDS_PER_PANEL, sizeof(struct _LedPixel));
 	}
 }
@@ -44,7 +48,7 @@ void initBuffers(void)
 void clearBuffers(void)
 {
 	// write zeros to our entire set of buffers
-	memset(pFrameBuffers, 0, nLenFrameBuffer);
+	memset(pFrameBuffers, 0, nLenFrameBuffers);
 	printf("- Buffers reset to zero\n");
 }
 
@@ -73,8 +77,8 @@ struct _LedPixel *ptrBuffer(uint8_t nBuffer)
 	struct _LedPixel *desiredAddr = NULL;
 	
 	if(nBuffer < NUMBER_OF_BUFFERS) {
-		struct _LedPixel allBuffers[] = (struct _LedPixel *)pFrameBuffers;
-		desiredAddr = &allBuffers[nBuffer * (LEDS_PER_PANEL * NUMBER_OF_PANELS)];
+		struct _LedPixel *allBuffers = (struct _LedPixel *)pFrameBuffers;
+		desiredAddr = (struct _LedPixel *)&allBuffers[nBuffer * (LEDS_PER_PANEL * NUMBER_OF_PANELS)];
 	}
 	return desiredAddr;
 }
@@ -84,7 +88,7 @@ struct _LedPixel *ptrPanel(struct _LedPixel *pBuffer, uint8_t nPanel)
 	struct _LedPixel *desiredAddr = NULL;
 	
 	if(pBuffer != NULL && nPanel < NUMBER_OF_PANELS) {
-		struct _LedPixel *currBuffer[] = pBuffer;
+		struct _LedPixel *currBuffer = pBuffer;
 		desiredAddr = &currBuffer[nPanel * LEDS_PER_PANEL];
 	}
 	return desiredAddr;

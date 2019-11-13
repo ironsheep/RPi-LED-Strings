@@ -98,17 +98,20 @@ void initFileXlateMatrix(void)
 	//
 	for(int nPanelIndex = 0; nPanelIndex < NUMBER_OF_PANELS; nPanelIndex++) {	// [0-2] where 0 is top panel.
 		for(int nByteOfColorIndex = 0; nByteOfColorIndex < (LEDS_PER_PANEL * BYTES_PER_LED); nByteOfColorIndex++) {	// [0-767]
-			int nPixelIndex = nByteOfColorIndex % BYTES_PER_LED;	// [0-255]
-			int nPanelRowIndex = nPixelIndex % 8;	// [0-7]
+			int nColorIndex = nByteOfColorIndex % BYTES_PER_LED;	// [0-2]
+			int nPixelIndex = nByteOfColorIndex / BYTES_PER_LED;	// [0-255]
+			int nColumnIndex = nByteOfColorIndex / (ROWS_PER_PANEL * BYTES_PER_LED);
+			int nPanelColumnIndex = (COLUMNS_PER_PANEL - 1) - nColumnIndex;
+			int nPanelRowIndex = (nColumnIndex & 1 == 1) ? nPixelIndex % ROWS_PER_PANEL : (ROWS_PER_PANEL - 1) - (nPixelIndex % ROWS_PER_PANEL);	// [0-7]
 			int nRowIndex = (nPanelIndex * ROWS_PER_PANEL) + nPanelRowIndex;
-			int nColumnIndex = nByteOfColorIndex % (ROWS_PER_PANEL * BYTES_PER_LED);
-			printf("- RC={%d,%d} - pnl:%d, pnlRow:%d col:%d pxl:%d byte:%d\n",
+			printf("- RC={%d,%d} - pnl:%d, pnlRC={%d,%d} pxl:%d color:%d byte:%d\n",
 				nRowIndex,
 				nColumnIndex,
 				nPanelIndex,
 				nPanelRowIndex,
-				nColumnIndex,
+				nPanelColumnIndex,
 				nPixelIndex,
+				nColorIndex,
 				nByteOfColorIndex);
 		}
 	}
