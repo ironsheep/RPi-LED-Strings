@@ -29,6 +29,7 @@
 #include "frameBuffer.h"	// screen sizes too
 #include "imageLoader.h"
 #include "ledGPIO.h"
+#include "xmalloc.h"
 
 static int fileXlateMatrix[NUMBER_OF_PANELS * LEDS_PER_PANEL * BYTES_PER_LED];
 
@@ -44,6 +45,8 @@ typedef struct _threadParameters {
 	uint8_t *pFileBufferBaseAddress;
 } ThreadParameters;
 
+static int *pOffsetCheckTable;
+static int nImageBytesNeeded;
 
 // forward declarations - file internal routines
 void initFileXlateMatrix(void);
@@ -59,6 +62,10 @@ void initScreen(void)
 	
 	// run our file loader as test (working code yet?
 	loadTestImage();
+	
+	nImageBytesNeeded = getImageSizeInBytes();
+	pOffsetCheckTable = (void *)xmalloc(nImageBytesNeeded);
+
 	
 	// populate our fileBuffer indices
 	initFileXlateMatrix();
@@ -182,8 +189,22 @@ void initFileXlateMatrix(void)
 			}
 			int nColorOffset = pFileColorAddress - pFilePixelAddress;
 			int nFilePixelOffset = pFilePixelAddress - pFileBufferBaseAddress;
-			fileXlateMatrix[nByteOfColorIndex] = nFilePixelOffset + nColorOffset;
-			printf("- OFFSET[%d] = pix:%d + clr:%d\n", nByteOfColorIndex, nFilePixelOffset, nColorOffset);
+			int nOffsetValue = nFilePixelOffset + nColorOffset;
+			fileXlateMatrix[nByteOfColorIndex] = nOffsetValue;
+			printf("  -- OFFSET[%d] = pix:%d + clr:%d\n", nByteOfColorIndex, nFilePixelOffset, nColorOffset);
+			
+			// detect if offset used more than once. Should NEVER be!!
+			if(nOffsetValue >= nImageBytesNeeded) {
+					printf("\n- ERROR offset %d OUT OF RANGE: [0-%d]!",nOffsetValue, nImageBytesNeeded);
+			}
+			else {
+				if(pOffsetCheckTable[nOffsetValue] != 0) {
+					printf("\n- ERROR offset %d used more than once!",nOffsetValue);
+				}
+				else {
+					pOffsetCheckTable[nOffsetValue] = 1;	// mark this as used
+				}
+			}
 		}
 	}
 }

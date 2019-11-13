@@ -55,9 +55,15 @@ static char *fileBuffer;
 
 static int nRows;
 static int nColumns;
+static int nImageSizeInBytes;
 
 // forward declarations
 void show8x8cornersatRC(const char *title, int nRow, int nColumn);
+
+int getImageSizeInBytes(void)
+{
+	return nImageSizeInBytes;
+}
 
 struct _BMPColorValue *getBufferBaseAddress(void)
 {
@@ -113,6 +119,7 @@ void loadTestImage(void)
 	nColumns = bmpHeaderData.width_px;
 
 	int nImageBytesNeeded = bmpHeaderData.width_px * bmpHeaderData.height_px * 3;
+	nImageSizeInBytes = nImageBytesNeeded;
 	int nRowPadByteCount = (bmpHeaderData.height_px * 3) % 4;
 
 	printf("File %s: sz=%u, IMAGE h/w=(%d,%d) size=%u bytesNeeded=%d rowPad=%d\n", sTestFileName, bmpHeaderData.size, bmpHeaderData.height_px, bmpHeaderData.width_px, bmpHeaderData.image_size_bytes, nImageBytesNeeded, nRowPadByteCount);

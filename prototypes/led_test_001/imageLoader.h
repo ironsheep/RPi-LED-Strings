@@ -31,6 +31,7 @@ struct _BMPColorValue {
 
 void loadTestImage(void);
 
+int getImageSizeInBytes(void);
 struct _BMPColorValue *getBufferBaseAddress(void);
 struct _BMPColorValue *getPixelAddressForRowColumn(uint8_t nRow, uint8_t nColumn);
 
