@@ -20,6 +20,9 @@
 */
 
 #include <stdio.h>
+#include <stdbool.h>		// we use the bool type!!!
+#include <pthread.h>
+#include <semaphore.h>
 
 #include "ledScreen.h"
 #include "frameBuffer.h"	// screen sizes too
@@ -28,9 +31,22 @@
 
 static int fileXlateMatrix[NUMBER_OF_PANELS * LEDS_PER_PANEL * BYTES_PER_LED];
 
+static bool bThreadRun = false;
+
+sem_t semThreadStart; 
+
+
+typedef struct _threadParameters {
+	bool *runStop;
+	uint8_t nPanelNumber;
+	int *pFileXlateMatrix;
+	uint8_t *pFileBufferBaseAddress;
+} ThreadParameters;
+
+
 // forward declarations - file internal routines
 void initFileXlateMatrix(void);
-
+void *ledStringWriteThread(ThreadParameters *parameters);
 
 void initScreen(void)
 {
@@ -60,7 +76,22 @@ void initScreen(void)
 	
 	// scope our RESET's
 	//testResetSend();
+	
+	// start display threads
+	thread_t taskPanelTop;
+	
+	sem_init(&semThreadStart, 0, 1); 
+	
+	uint8_t *pFileBufferBaseAddress = (uint8_t *)getBufferBaseAddress();
 
+	ThreadParameters panelTopParams = { &bThreadRun, 0, &fileXlateMatrix, pFileBufferBaseAddress };
+	pthread_create(&taskPanelTop, NULL, ledStringWriteThread, &panelTopParams); 
+
+	sleep(1000);	// surely we're done in 1,000 seconds...
+	
+	pthread_join(taskPanelTop,NULL); // stop thread
+	sem_destroy(&semThreadStart); 	// done with mutex
+	
 	// return GPIO to normal setup
 	restoreGPIO();
 }
@@ -144,3 +175,56 @@ void initFileXlateMatrix(void)
 		}
 	}
 }
+
+// A normal C function that is executed as a thread  
+// when its name is specified in pthread_create() 
+void *ledStringWriteThread(ThreadParameters *parameters) 
+{ 
+	// calc matrix for this panel
+    int *pPanelFileXlateMatrix = &parameters->pFileXlateMatrix[parameters->nPanelNumber * (LEDS_PER_PANEL * BYTES_PER_LED)];
+    // calc GPIO pin for this panel
+    eLedStringPins threadsPin;
+    switch(parameters->nPanelNumber) {
+    	case 2: // bottom panel
+    		threadsPin = LSP_BOTTOM;
+    		break;
+    	case 1: // middle panel
+    		threadsPin = LSP_MIDDLE;
+    		break;
+    	default: // top panel
+    		threadsPin = LSP_TOP;
+    		break;
+    }
+    
+    xmitReset(threadsPin);
+    
+	// run write loop forever
+	while(true) {
+	    //wait 
+	    printf("- THREAD panel-%d waiting\n", parameters->nPanelNumber); 
+	    sem_wait(&semThreadStart); 
+	    
+	    // for each color send byte over GPIO bit 
+	    for(int nColorIndex = 0; nColorIndex < (LEDS_PER_PANEL * BYTES_PER_LED); nColorIndex++) {
+	    	int nFileBufferOffset = pPanelFileXlateMatrix[nColorIndex];
+	    	uint8_t nColorValue = parameters->pFileBufferBaseAddress[nFileBufferOffset];
+	    	// we write MSB first to LED string!
+	    	for(int nShiftValue = 7; shiftValue >= 0; shiftValue--; {
+	    		if(((nColorValue >> nShiftValue) & 1) == 1) {
+	    			xmitOne(threadsPin);
+	    		}
+	    		else {
+	    			xmitZero(threadsPin)
+	    		}
+	    	}
+	    }
+	    
+	    // now issue reset 
+	    xmitReset(threadsPin);
+	    
+	    //signal done
+	    printf("- THREAD panel-%d done\n", parameters->nPanelNumber); 
+	    sem_post(&semThreadStart); 
+	}
+    return NULL; 
+} 

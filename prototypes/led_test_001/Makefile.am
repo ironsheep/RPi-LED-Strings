@@ -3,7 +3,7 @@ led_test_001_SOURCES=led_test_001.c xmalloc.c system.h aclocal.m4 led_test_001.1
 
 #  uncomment the following if led_test_001 requires the math library
 #led_test_001_LDADD=-lm
-led_test_001_LDADD=-lpthread -lbcm_host
+led_test_001_LDADD=-lpthread -lbcm_host -lrt
 
 EXTRA_DIST=led_test_001.lsm.in led_test_001.spec.in led_test_001.texinfo
 

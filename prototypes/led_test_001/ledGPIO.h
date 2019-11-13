@@ -27,7 +27,7 @@ typedef enum _eLedStringPins {
 	LSP_TOP = 17,		// gpio.0 - bcm 17
 	LSP_MIDDLE = 27,	// gpio.2 - bcm 27
 	LSP_BOTTOM = 22,	// gpio.3 - bcm 22
-} eLedStringPins;;
+} eLedStringPins;
 
 void initGPIO(void);
 void restoreGPIO(void);
