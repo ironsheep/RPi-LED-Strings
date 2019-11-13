@@ -84,7 +84,7 @@ void initScreen(void)
 	
 	// scope our RESET's
 	//testResetSend();
-/*	
+
 	// start display threads
 	pthread_t taskPanelTop;
 	pthread_t taskPanelMid;
@@ -94,22 +94,39 @@ void initScreen(void)
 	
 	uint8_t *pFileBufferBaseAddress = (uint8_t *)getBufferBaseAddress();
 
+#define THREAD1_LIVE
+//#define THREAD2_LIVE
+//#define THREAD3_LIVE
+
+#ifdef THREAD1_LIVE
 	ThreadParameters panelTopParams = { &bThreadRun, 0, (int *)&fileXlateMatrix, pFileBufferBaseAddress };
 	pthread_create(&taskPanelTop, NULL, ledStringWriteThread, (void*)&panelTopParams); 
+#endif
 
+#ifdef THREAD2_LIVE
 	ThreadParameters panelMidParams = { &bThreadRun, 1, (int *)&fileXlateMatrix, pFileBufferBaseAddress };
 	pthread_create(&taskPanelMid, NULL, ledStringWriteThread, (void*)&panelMidParams); 
+#endif
 
+#ifdef THREAD3_LIVE
 	ThreadParameters panelBotParams = { &bThreadRun, 2, (int *)&fileXlateMatrix, pFileBufferBaseAddress };
 	pthread_create(&taskPanelBot, NULL, ledStringWriteThread, (void*)&panelBotParams); 
+#endif
 
 	sleep(3 * 60);	// surely we're done in 3 minutes...
 	
+#ifdef THREAD1_LIVE
 	pthread_join(taskPanelTop,NULL); // stop thread
+#endif
+
+#ifdef THREAD2_LIVE
 	pthread_join(taskPanelMid,NULL); // stop thread
+#endif
+
+#ifdef THREAD3_LIVE
 	pthread_join(taskPanelBot,NULL); // stop thread
+#endif
 	sem_destroy(&semThreadStart); 	// done with mutex
-*/
 	
 	// return GPIO to normal setup
 	restoreGPIO();
@@ -154,9 +171,13 @@ void initFileXlateMatrix(void)
 			int nColorIndex = nByteOfColorIndex % BYTES_PER_LED;	// [0-2]
 			int nPixelIndex = nByteOfColorIndex / BYTES_PER_LED;	// [0-255]
 			int nColumnIndex = nByteOfColorIndex / (ROWS_PER_PANEL * BYTES_PER_LED);
+			// invert file column value
+			nColumnIndex = (COLUMNS_PER_PANEL - 1) - nColumnIndex;
 			int nPanelColumnIndex = (COLUMNS_PER_PANEL - 1) - nColumnIndex;
 			int nPanelRowIndex = (nColumnIndex & 1 == 1) ? nPixelIndex % ROWS_PER_PANEL : (ROWS_PER_PANEL - 1) - (nPixelIndex % ROWS_PER_PANEL);	// [0-7]
 			int nRowIndex = (nPanelIndex * ROWS_PER_PANEL) + nPanelRowIndex;
+			// invert file row value
+			nRowIndex = ((ROWS_PER_PANEL * 3) - 1) - nRowIndex;
 			printf("- RC={%d,%d} - pnl:%d, pnlRC={%d,%d} pxl:%d color:%d byte:%d\n",
 				nRowIndex,
 				nColumnIndex,
@@ -195,7 +216,7 @@ void initFileXlateMatrix(void)
 			
 			// detect if offset used more than once. Should NEVER be!!
 			if(nOffsetValue >= nImageBytesNeeded) {
-					printf("\n- ERROR offset %d OUT OF RANGE: [0-%d]!",nOffsetValue, nImageBytesNeeded);
+				printf("\n- ERROR offset %d OUT OF RANGE: [0-%d]!",nOffsetValue, nImageBytesNeeded);
 			}
 			else {
 				if(pOffsetCheckTable[nOffsetValue] != 0) {
@@ -205,6 +226,7 @@ void initFileXlateMatrix(void)
 					pOffsetCheckTable[nOffsetValue] = 1;	// mark this as used
 				}
 			}
+			printf("\n");	// blank line
 		}
 	}
 }
@@ -234,7 +256,8 @@ void *ledStringWriteThread(void *vargp)
     xmitReset(threadsPin);
     
 	// run write loop forever
-	while(true) {
+
+	//while(true) {
 	    //wait 
 	    printf("- THREAD panel-%d waiting\n", parameters->nPanelNumber); 
 	    sem_wait(&semThreadStart); 
@@ -243,6 +266,9 @@ void *ledStringWriteThread(void *vargp)
 	    for(int nColorIndex = 0; nColorIndex < (LEDS_PER_PANEL * BYTES_PER_LED); nColorIndex++) {
 	    	int nFileBufferOffset = pPanelFileXlateMatrix[nColorIndex];
 	    	uint8_t nColorValue = parameters->pFileBufferBaseAddress[nFileBufferOffset];
+		if(nColorValue == 0xBC) {
+			nColorValue = 0x80;
+		}
 	    	// we write MSB first to LED string!
 	    	for(int nShiftValue = 7; nShiftValue >= 0; nShiftValue--) {
 	    		if(((nColorValue >> nShiftValue) & 1) == 1) {
@@ -260,6 +286,6 @@ void *ledStringWriteThread(void *vargp)
 	    //signal done
 	    printf("- THREAD panel-%d done\n", parameters->nPanelNumber); 
 	    sem_post(&semThreadStart); 
-	}
+	//}
     return NULL; 
 } 
