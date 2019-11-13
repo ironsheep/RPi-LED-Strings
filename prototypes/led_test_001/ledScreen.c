@@ -96,6 +96,9 @@ void initFileXlateMatrix(void)
 	//
 	//  The file buffer is 32w x 24h so each panel is a third of the height but full width!
 	//
+	// get base address of our file buffer so we can calculate offsets
+	uint8_t *pFileBufferBase = (uint8_t *)getBufferBaseAddress();
+	
 	for(int nPanelIndex = 0; nPanelIndex < NUMBER_OF_PANELS; nPanelIndex++) {	// [0-2] where 0 is top panel.
 		for(int nByteOfColorIndex = 0; nByteOfColorIndex < (LEDS_PER_PANEL * BYTES_PER_LED); nByteOfColorIndex++) {	// [0-767]
 			int nColorIndex = nByteOfColorIndex % BYTES_PER_LED;	// [0-2]
@@ -113,6 +116,31 @@ void initFileXlateMatrix(void)
 				nPixelIndex,
 				nColorIndex,
 				nByteOfColorIndex);
+				// at the beginning of each color do...
+			struct _BMPColorValue *pCurrFilePixel;
+			if(nColorIndex == 0) {
+				pCurrFilePixel = getPixelAddressForRowColumn(nRowIndex, nColumnIndex);
+			}
+			uint8_t *pFileColorAddress;
+			uint8_t *pFilePixelAddress = (uint8_t *)pCurrFilePixel;
+			switch(nColorIndex) {
+				case 0:	// string wants GREEN here
+					pFileColorAddress = &pCurrFilePixel->green;
+					break;
+				case 1:	// string wants RED here
+					pFileColorAddress = &pCurrFilePixel->red;
+					break;
+				case 2:	// string wants BLUE here
+					pFileColorAddress = &pCurrFilePixel->blue;
+					break;
+				default:
+					printf("- ERROR Bad color index (%d) NOT [0-2]\n", nColorIndex);
+					break;
+			}
+			int nColorOffset = pFileColorAddress - pFilePixelAddress;
+			int nFilePixelOffset = pFilePixelAddress - pFileBufferBaseAddress;
+			fileXlateMatrix[nByteOfColorIndex] = nFilePixelOffset + nColorOffset;
+			printf("- OFFSET[%d] = pix:%d + clr:%d\n", nByteOfColorIndex, nFilePixelOffset, nColorOffset);
 		}
 	}
 }

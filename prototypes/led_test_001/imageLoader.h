@@ -22,7 +22,16 @@
 #ifndef IMAGE_LOADER_H
 #define IMAGE_LOADER_H
 
+struct _BMPColorValue {
+  uint8_t blue;
+  uint8_t green;
+  uint8_t red;
+} __attribute__((packed));      // WARNING this MUST be PACKED!!!
+
+
 void loadTestImage(void);
 
+struct _BMPColorValue *getBufferBaseAddress(void);
+struct _BMPColorValue *getPixelAddressForRowColumn(uint8_t nRow, uint8_t nColumn);
 
 #endif /* IMAGE_LOADER_H */

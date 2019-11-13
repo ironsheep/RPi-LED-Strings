@@ -56,11 +56,10 @@ static char *fileBuffer;
 static int nRows;
 static int nColumns;
 
-struct _BMPColorValue {
-  uint8_t blue;
-  uint8_t green;
-  uint8_t red;
-} __attribute__((packed));      // WARNING this MUST be PACKED!!!
+struct _BMPColorValue *getBufferBaseAddress(void)
+{
+	return (struct _BMPColorValue *)fileBuffer;
+}
 
 struct _BMPColorValue *getPixelAddressForRowColumn(uint8_t nRow, uint8_t nColumn)
 {
