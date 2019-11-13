@@ -22,9 +22,15 @@
 #include <stdio.h>
 
 #include "ledScreen.h"
-#include "frameBuffer.h"
+#include "frameBuffer.h"	// screen sizes too
 #include "imageLoader.h"
 #include "ledGPIO.h"
+
+static int fileXlateMatrix[NUMBER_OF_PANELS * LEDS_PER_PANEL * BYTES_PER_LED];
+
+// forward declarations - file internal routines
+void initFileXlateMatrix(void);
+
 
 void initScreen(void)
 {
@@ -34,17 +40,20 @@ void initScreen(void)
 	// clear screen
 	clearScreen();
 	
+	// run our file loader as test (working code yet?
+	loadTestImage();
+	
+	// populate our fileBuffer indices
+	initFileXlateMatrix();
+	
 	// init gpio
 	initGPIO();
 	
 	// init display task
 	//blinkLED();
 	
-	// run our file loader as test (working code yet?
-	//loadTestImage();
-	
 	// scope our 0's
-	testBit0Send();
+	//testBit0Send();
 	
 	// scope our 1's
 	//testBit1Send();
@@ -59,4 +68,48 @@ void initScreen(void)
 void clearScreen(void)
 {
 	clearBuffers();
+}
+
+void initFileXlateMatrix(void)
+{
+	// panels are arranged in columns 8-pixels tall by 32 pixels wide
+	//
+	// column pixels are numbered bottom to top on right edge and every other column from there
+	//  rest of columns are numbered top to bottom on the in-between columns.
+	//
+	//  Numbering:
+	//
+	// COL:00  01         28   29   30   31
+	//   248  247	...  024  023  008  007
+	//   249  246	...  025  022  009  006
+	//   250  245	...  026  021  010  005
+	//   251  244	...  027  020  011  004
+	//   252  243	...  028  019  012  003
+	//   253  242	...  029  018  013  002
+	//   254  241	...  030  017  014  001
+	//   255  240	...  031  016  015  000
+	// 
+	//  effectively we think of the panel as one long string of pixels (256 of them.)
+	// 
+	// the file buffer has an access routine to provide ptr to RGB tuple for X,Y in width,height space
+	//  so call this routine to get pointer to location and also add in minor offset to R or G or B of color value too...
+	//
+	//  The file buffer is 32w x 24h so each panel is a third of the height but full width!
+	//
+	for(int nPanelIndex = 0; nPanelIndex < NUMBER_OF_PANELS; nPanelIndex++) {	// [0-2] where 0 is top panel.
+		for(int nByteOfColorIndex = 0; nByteOfColorIndex < (LEDS_PER_PANEL * BYTES_PER_LED); nByteOfColorIndex++) {	// [0-767]
+			int nPixelIndex = nByteOfColorIndex % BYTES_PER_LED;	// [0-255]
+			int nPanelRowIndex = nPixelIndex % 8;	// [0-7]
+			int nRowIndex = (nPanelIndex * ROWS_PER_PANEL) + nPanelRowIndex;
+			int nColumnIndex = nByteOfColorIndex % (ROWS_PER_PANEL * BYTES_PER_LED);
+			printf("- RC={%d,%d} - pnl:%d, pnlRow:%d col:%d pxl:%d byte:%d\n",
+				nRowIndex,
+				nColumnIndex,
+				nPanelIndex,
+				nPanelRowIndex,
+				nColumnIndex,
+				nPixelIndex,
+				nByteOfColorIndex);
+		}
+	}
 }

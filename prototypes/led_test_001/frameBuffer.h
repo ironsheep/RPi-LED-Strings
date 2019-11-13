@@ -27,14 +27,16 @@
 #define NUMBER_OF_PANELS 3
 #define LEDS_PER_PANEL 256
 #define BYTES_PER_LED 3
+#define ROWS_PER_PANEL 8
+#define COLUMNS_PER_PANEL 32
 
 #define NUMBER_OF_BUFFERS 2
 
 struct _LedPixel {
+	uint8_t green;	// sent first to string in order msb to lsb!
 	uint8_t red;
-	uint8_t green;
-	uint8_t blue;
-};
+	uint8_t blue;	// sent last to string
+} __attribute__((packed));	// WARNING this MUST be PACKED!!!
 
 //extern _LedPixel *pFrameBuffers; // [NUMBER_OF_BUFFERS][NUMBER_OF_PANELS][LEDS_PER_PANEL];
 
@@ -43,5 +45,16 @@ void initBuffers(void);
 
 // reset buffers so LED Screen goes blank
 void clearBuffers(void);
+
+// object counts
+uint8_t numberBuffers(void);
+uint8_t numberPanels(void);
+uint16_t maxLedsInBuffer(void);
+uint16_t maxLedsInPanel(void);
+
+
+// getting references to objects
+struct _LedPixel *ptrBuffer(uint8_t nBuffer); 
+struct _LedPixel *ptrPanel(struct _LedPixel *pBuffer, uint8_t nPanel);
 
 #endif /* FRAME_BUFFER_H */

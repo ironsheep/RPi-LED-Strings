@@ -22,6 +22,8 @@
 #ifndef LED_SCREEN_H
 #define LED_SCREEN_H
 
+// public routine declarations
+
 // initialize our display
 void initScreen(void);
 void clearScreen(void);
