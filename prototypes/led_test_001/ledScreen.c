@@ -23,6 +23,7 @@
 #include <stdbool.h>		// we use the bool type!!!
 #include <pthread.h>
 #include <semaphore.h>
+#include <unistd.h>  //Header file for sleep(). man 3 sleep for details.
 
 #include "ledScreen.h"
 #include "frameBuffer.h"	// screen sizes too
@@ -46,7 +47,7 @@ typedef struct _threadParameters {
 
 // forward declarations - file internal routines
 void initFileXlateMatrix(void);
-void *ledStringWriteThread(ThreadParameters *parameters);
+void *ledStringWriteThread(void *vargp);
 
 void initScreen(void)
 {
@@ -78,18 +79,28 @@ void initScreen(void)
 	//testResetSend();
 	
 	// start display threads
-	thread_t taskPanelTop;
+	pthread_t taskPanelTop;
+	pthread_t taskPanelMid;
+	pthread_t taskPanelBot;
 	
 	sem_init(&semThreadStart, 0, 1); 
 	
 	uint8_t *pFileBufferBaseAddress = (uint8_t *)getBufferBaseAddress();
 
-	ThreadParameters panelTopParams = { &bThreadRun, 0, &fileXlateMatrix, pFileBufferBaseAddress };
-	pthread_create(&taskPanelTop, NULL, ledStringWriteThread, &panelTopParams); 
+	ThreadParameters panelTopParams = { &bThreadRun, 0, (int *)&fileXlateMatrix, pFileBufferBaseAddress };
+	pthread_create(&taskPanelTop, NULL, ledStringWriteThread, (void*)&panelTopParams); 
 
-	sleep(1000);	// surely we're done in 1,000 seconds...
+	ThreadParameters panelMidParams = { &bThreadRun, 1, (int *)&fileXlateMatrix, pFileBufferBaseAddress };
+	pthread_create(&taskPanelMid, NULL, ledStringWriteThread, (void*)&panelMidParams); 
+
+	ThreadParameters panelBotParams = { &bThreadRun, 2, (int *)&fileXlateMatrix, pFileBufferBaseAddress };
+	pthread_create(&taskPanelBot, NULL, ledStringWriteThread, (void*)&panelBotParams); 
+
+	sleep(3 * 60);	// surely we're done in 3 minutes...
 	
 	pthread_join(taskPanelTop,NULL); // stop thread
+	pthread_join(taskPanelMid,NULL); // stop thread
+	pthread_join(taskPanelBot,NULL); // stop thread
 	sem_destroy(&semThreadStart); 	// done with mutex
 	
 	// return GPIO to normal setup
@@ -178,8 +189,10 @@ void initFileXlateMatrix(void)
 
 // A normal C function that is executed as a thread  
 // when its name is specified in pthread_create() 
-void *ledStringWriteThread(ThreadParameters *parameters) 
+void *ledStringWriteThread(void *vargp) 
 { 
+    // type the parameter so we can use it
+    ThreadParameters *parameters = (ThreadParameters *)vargp;
 	// calc matrix for this panel
     int *pPanelFileXlateMatrix = &parameters->pFileXlateMatrix[parameters->nPanelNumber * (LEDS_PER_PANEL * BYTES_PER_LED)];
     // calc GPIO pin for this panel
@@ -209,12 +222,12 @@ void *ledStringWriteThread(ThreadParameters *parameters)
 	    	int nFileBufferOffset = pPanelFileXlateMatrix[nColorIndex];
 	    	uint8_t nColorValue = parameters->pFileBufferBaseAddress[nFileBufferOffset];
 	    	// we write MSB first to LED string!
-	    	for(int nShiftValue = 7; shiftValue >= 0; shiftValue--; {
+	    	for(int nShiftValue = 7; nShiftValue >= 0; nShiftValue--) {
 	    		if(((nColorValue >> nShiftValue) & 1) == 1) {
 	    			xmitOne(threadsPin);
 	    		}
 	    		else {
-	    			xmitZero(threadsPin)
+	    			xmitZero(threadsPin);
 	    		}
 	    	}
 	    }
