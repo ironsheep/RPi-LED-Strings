@@ -97,7 +97,7 @@ void initFileXlateMatrix(void)
 	//  The file buffer is 32w x 24h so each panel is a third of the height but full width!
 	//
 	// get base address of our file buffer so we can calculate offsets
-	uint8_t *pFileBufferBase = (uint8_t *)getBufferBaseAddress();
+	uint8_t *pFileBufferBaseAddress = (uint8_t *)getBufferBaseAddress();
 	
 	for(int nPanelIndex = 0; nPanelIndex < NUMBER_OF_PANELS; nPanelIndex++) {	// [0-2] where 0 is top panel.
 		for(int nByteOfColorIndex = 0; nByteOfColorIndex < (LEDS_PER_PANEL * BYTES_PER_LED); nByteOfColorIndex++) {	// [0-767]
