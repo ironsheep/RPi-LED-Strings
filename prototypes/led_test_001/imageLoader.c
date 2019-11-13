@@ -56,6 +56,9 @@ static char *fileBuffer;
 static int nRows;
 static int nColumns;
 
+// forward declarations
+void show8x8cornersatRC(const char *title, int nRow, int nColumn);
+
 struct _BMPColorValue *getBufferBaseAddress(void)
 {
 	return (struct _BMPColorValue *)fileBuffer;
@@ -70,8 +73,7 @@ struct _BMPColorValue *getPixelAddressForRowColumn(uint8_t nRow, uint8_t nColumn
 		printf("- ERROR bad nColumn value [%d > %d]\n", nColumn, nColumns);
 	}
 	// Row is inverted in file...
-	// int nRowIndex = (nRows - 1) - nRow;
-	int nRowIndex = nRow;
+	int nRowIndex = (nRows - 1) - nRow;
 	// Column is normal in file...
 	int nColumnIndex = nColumn;
 	// now offset is simple (
@@ -140,33 +142,37 @@ void loadTestImage(void)
 	fclose(fpTestFile);
 
 	// TESTS
+	printf("\n\n- Image Indexing -----------------------\n");
 	printf("\n- Four corners\n");
 	showPixelAtRC(23,0);
 	showPixelAtRC(0,0);
 	showPixelAtRC(23,31);
 	showPixelAtRC(0,31);
 
-	//printf("\n- Bottom-left 8x8\n");
-	printf("\n- Top-left 8x8\n");
-	showPixelAtRC(23,0);
-	showPixelAtRC(23,7);
-	showPixelAtRC(16,0);
-	showPixelAtRC(16,7);
+	show8x8cornersatRC("Panel 0 8x8-0,0",0,0);
+	show8x8cornersatRC("Panel 0 8x8-0,1",0,8);
+	show8x8cornersatRC("Panel 0 8x8-0,2",0,16);
+	show8x8cornersatRC("Panel 0 8x8-0,3",0,24);
 
-	printf("\n- Middle-left 8x8\n");
-	showPixelAtRC(15,0);
-	showPixelAtRC(15,7);
-	showPixelAtRC(8,0);
-	showPixelAtRC(8,7);
+	show8x8cornersatRC("Panel 1 8x8-1,0",8,0);
+	show8x8cornersatRC("Panel 1 8x8-1,1",8,8);
+	show8x8cornersatRC("Panel 1 8x8-1,2",8,16);
+	show8x8cornersatRC("Panel 1 8x8-1,3",8,24);
 
-	//printf("\n- Top-left 8x8\n");
-	printf("\n- Bottom-left 8x8\n");
-	showPixelAtRC(7,0);
-	showPixelAtRC(7,7);
-	showPixelAtRC(0,0);
-	showPixelAtRC(0,7);
+	show8x8cornersatRC("Panel 2 8x8-2,0",16,0);
+	show8x8cornersatRC("Panel 2 8x8-2,1",16,8);
+	show8x8cornersatRC("Panel 2 8x8-2,2",16,16);
+	show8x8cornersatRC("Panel 2 8x8-2,3",16,24);
+	printf("\n- Image Indexing -----------------------\n\n\n");
+}
 
-	printf("\n- Done\n");
+void show8x8cornersatRC(const char *title, int nRow, int nColumn)
+{
+	printf("\n- %s 8x8\n", title);
+	showPixelAtRC(nRow+0,nColumn+0);
+	showPixelAtRC(nRow+0,nColumn+7);
+	showPixelAtRC(nRow+7,nColumn+0);
+	showPixelAtRC(nRow+7,nColumn+7);
 }
 
 

@@ -77,7 +77,7 @@ void initScreen(void)
 	
 	// scope our RESET's
 	//testResetSend();
-	
+/*	
 	// start display threads
 	pthread_t taskPanelTop;
 	pthread_t taskPanelMid;
@@ -102,6 +102,7 @@ void initScreen(void)
 	pthread_join(taskPanelMid,NULL); // stop thread
 	pthread_join(taskPanelBot,NULL); // stop thread
 	sem_destroy(&semThreadStart); 	// done with mutex
+*/
 	
 	// return GPIO to normal setup
 	restoreGPIO();
