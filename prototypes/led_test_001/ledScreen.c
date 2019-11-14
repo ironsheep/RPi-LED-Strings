@@ -99,9 +99,9 @@ void initScreen(void)
 	
 	uint8_t *pFileBufferBaseAddress = (uint8_t *)getBufferBaseAddress();
 
-//#define THREAD1_LIVE
-//#define THREAD2_LIVE
-//#define THREAD3_LIVE
+#define THREAD1_LIVE
+#define THREAD2_LIVE
+#define THREAD3_LIVE
 
 #ifdef THREAD1_LIVE
 	ThreadParameters panelTopParams = { &bThreadRun, 0, (int *)&fileXlateMatrix, pFileBufferBaseAddress };
@@ -195,10 +195,8 @@ void initFileXlateMatrix(void)
 			// panel rows alternate being 0->7 or 7->0!
 			int nPanelRowIndex = (nColumnIndex & 1 == 1) ? nPixelIndex % ROWS_PER_PANEL : (ROWS_PER_PANEL - 1) - (nPixelIndex % ROWS_PER_PANEL);	// [0-7]
 				
-			// FILE row index is inverted
-			int nRowIndex = (nPanelIndex * ROWS_PER_PANEL) + nPanelRowIndex;
-			// - invert file row value
-			nRowIndex = ((NUMBER_OF_PANELS * ROWS_PER_PANEL) - 1) - nRowIndex;
+			// FILE row index (rows within panel are inverted)
+			int nRowIndex = (nPanelIndex * ROWS_PER_PANEL) + ((ROWS_PER_PANEL - 1) - nPanelRowIndex);
 			
 			struct _BMPColorValue *pCurrFilePixel;
 			// at the beginning of each color do...
@@ -269,7 +267,7 @@ void initFileXlateMatrix(void)
 		// if NOT let's warn!
 		int nFileOffsetValue = fileXlateMatrix[nXlateOffset];
 		if(nFileOffsetValue > nImageBytesNeeded || nFileOffsetValue < 0) {
-			printf("- ERROR xlate[%d] not filled! -> has %d\n",  nIndex, nFileOffsetValue);
+			printf("- ERROR xlate[%d] not filled! -> has %d\n",  nXlateOffset, nFileOffsetValue);
 		}
 	}
 }
