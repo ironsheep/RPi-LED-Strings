@@ -99,7 +99,7 @@ void initScreen(void)
 	
 	uint8_t *pFileBufferBaseAddress = (uint8_t *)getBufferBaseAddress();
 
-#define THREAD1_LIVE
+//#define THREAD1_LIVE
 //#define THREAD2_LIVE
 //#define THREAD3_LIVE
 
