@@ -20,10 +20,11 @@
 */
 
 #include <stdio.h>
-#include <stdbool.h>		// we use the bool type!!!
+#include <stdbool.h>	// we use the bool type!!!
 #include <pthread.h>
 #include <semaphore.h>
-#include <unistd.h>  //Header file for sleep(). man 3 sleep for details.
+#include <unistd.h>		// Header file for sleep(). man 3 sleep for details.
+#include <string.h>		// for memxxx()
 
 #include "ledScreen.h"
 #include "frameBuffer.h"	// screen sizes too
@@ -63,9 +64,13 @@ void initScreen(void)
 	// run our file loader as test (working code yet?
 	loadTestImage();
 	
+	// fill translation buffer with not-set value
+	memset(&fileXlateMatrix, 0xFF, sizeof(fileXlateMatrix));
+
 	nImageBytesNeeded = getImageSizeInBytes();
 	pOffsetCheckTable = (void *)xmalloc(nImageBytesNeeded);
-
+	// fill offset-used buffer with not-set value
+	memset(pOffsetCheckTable, 0x00, nImageBytesNeeded);
 	
 	// populate our fileBuffer indices
 	initFileXlateMatrix();
@@ -227,6 +232,22 @@ void initFileXlateMatrix(void)
 				}
 			}
 			printf("\n");	// blank line
+		}
+	}
+	//  check to see that all offsets are used
+	for(int nIndex = 0; nIndex < nImageBytesNeeded; nIndex++) {	// [0-2] where 0 is top panel.
+		// each of these bytes if set are now 1 vs. 0 
+		// if NOT let's warn!
+		if(pOffsetCheckTable[nIndex] == 0) {
+			printf("- ERROR offset[%d] not used!\n",  nIndex);
+		}
+	}
+	// lastly check to see that all matrix locations are filled
+	for(int nIndex = 0; nIndex < nImageBytesNeeded; nIndex++) {	// [0-2] where 0 is top panel.
+		// each of these bytes if set are now 1 vs. 0 
+		// if NOT let's warn!
+		if(fileXlateMatrix[nIndex] != -1) {
+			printf("- ERROR xlate[%d] not filled!\n",  nIndex);
 		}
 	}
 }
