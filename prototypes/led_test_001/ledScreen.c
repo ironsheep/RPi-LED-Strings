@@ -113,18 +113,18 @@ void initScreen(void)
 	pthread_create(&taskPanelBot, NULL, ledStringWriteThread, (void*)&panelBotParams); 
 #endif
 
-	sleep(3 * 60);	// surely we're done in 3 minutes...
+	sleep(30);	// 30 seconds
 	
 #ifdef THREAD1_LIVE
-	pthread_join(taskPanelTop,NULL); // stop thread
+	//pthread_join(taskPanelTop,NULL); // stop thread
 #endif
 
 #ifdef THREAD2_LIVE
-	pthread_join(taskPanelMid,NULL); // stop thread
+	//pthread_join(taskPanelMid,NULL); // stop thread
 #endif
 
 #ifdef THREAD3_LIVE
-	pthread_join(taskPanelBot,NULL); // stop thread
+	//pthread_join(taskPanelBot,NULL); // stop thread
 #endif
 	sem_destroy(&semThreadStart); 	// done with mutex
 	
