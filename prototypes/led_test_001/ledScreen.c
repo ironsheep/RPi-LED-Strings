@@ -182,7 +182,7 @@ void initFileXlateMatrix(void)
 			int nPanelRowIndex = (nColumnIndex & 1 == 1) ? nPixelIndex % ROWS_PER_PANEL : (ROWS_PER_PANEL - 1) - (nPixelIndex % ROWS_PER_PANEL);	// [0-7]
 			int nRowIndex = (nPanelIndex * ROWS_PER_PANEL) + nPanelRowIndex;
 			// invert file row value
-			nRowIndex = ((ROWS_PER_PANEL * 3) - 1) - nRowIndex;
+			nRowIndex = ((NUMBER_OF_PANELS * ROWS_PER_PANEL) - 1) - nRowIndex;
 			printf("- RC={%d,%d} - pnl:%d, pnlRC={%d,%d} pxl:%d color:%d byte:%d\n",
 				nRowIndex,
 				nColumnIndex,
