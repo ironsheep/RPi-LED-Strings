@@ -226,9 +226,11 @@ void initFileXlateMatrix(void)
 			}
 			int nColorOffset = pFileColorAddress - pFilePixelAddress;
 			int nFilePixelOffset = pFilePixelAddress - pFileBufferBaseAddress;
-			int nOffsetValue = nFilePixelOffset + nColorOffset;
-			fileXlateMatrix[nPanelOffsetIndex + nByteOfColorIndex] = nOffsetValue;
-			printf("- File RC={%d,%d} - pnl:%d, pnlRC={%d,%d} pxl:%d color:%d byte:%d",
+			int nFileOffsetValue = nFilePixelOffset + nColorOffset;
+			// load matrix location with file offset
+			int nXlateOffset = nPanelOffsetIndex + nByteOfColorIndex;
+			fileXlateMatrix[nXlateOffset] = nFileOffsetValue;
+			printf("- File RC={%d,%d} - Panel[#%d, RC={%d,%d} px:%d color:%d byte:%d]",
 				nRowIndex,
 				nColumnIndex,
 				nPanelIndex,
@@ -237,36 +239,37 @@ void initFileXlateMatrix(void)
 				nPixelIndex,
 				nColorIndex,
 				nByteOfColorIndex);
-			printf("  -- MATRIX[%d] = (%d); [pix:%d + clr:%d] @%p\n", nByteOfColorIndex, nOffsetValue, nFilePixelOffset, nColorOffset, pCurrFilePixel);
+			printf("  -- MATRIX[%d] = (%d); FILE [px:%d + clr:%d] @%p\n", nXlateOffset, nFileOffsetValue, nFilePixelOffset, nColorOffset, pCurrFilePixel);
 			
 			// detect if offset used more than once. Should NEVER be!!
-			if(nOffsetValue >= nImageBytesNeeded) {
-				printf("\n- ERROR offset %d OUT OF RANGE: [0-%d]!\n",nOffsetValue, nImageBytesNeeded);
+			if(nFileOffsetValue >= nImageBytesNeeded) {
+				printf("\n- ERROR file-offset %d OUT OF RANGE: [0-%d]!\n", nFileOffsetValue, nImageBytesNeeded);
 			}
 			else {
-				if(pOffsetCheckTable[nOffsetValue] != 0) {
-					printf("\n- ERROR offset %d used more than once!\n",nOffsetValue);
+				if(pOffsetCheckTable[nFileOffsetValue] != 0) {
+					printf("\n- ERROR file-offset %d used more than once!\n", nFileOffsetValue);
 				}
 				else {
-					pOffsetCheckTable[nOffsetValue] = 1;	// mark this as used
+					pOffsetCheckTable[nFileOffsetValue] = 1;	// mark this as used
 				}
 			}
 		}
 	}
 	//  check to see that all offsets are used
-	for(int nIndex = 0; nIndex < nImageBytesNeeded; nIndex++) {	// [0-2] where 0 is top panel.
+	for(int nFileOffsetValue = 0; nFileOffsetValue < nImageBytesNeeded; nFileOffsetValue++) {	// [0-2] where 0 is top panel.
 		// each of these bytes if set are now 1 vs. 0 
 		// if NOT let's warn!
-		if(pOffsetCheckTable[nIndex] == 0) {
-			printf("- ERROR offset[%d] not used!\n",  nIndex);
+		if(pOffsetCheckTable[nFileOffsetValue] == 0) {
+			printf("- ERROR file-offset[%d] not used!\n",  nFileOffsetValue);
 		}
 	}
 	// lastly check to see that all matrix locations are filled
-	for(int nIndex = 0; nIndex < nImageBytesNeeded; nIndex++) {	// [0-2] where 0 is top panel.
+	for(int nXlateOffset = 0; nXlateOffset < nImageBytesNeeded; nXlateOffset++) {	// [0-2] where 0 is top panel.
 		// each of these bytes if set are now 1 vs. 0 
 		// if NOT let's warn!
-		if(fileXlateMatrix[nIndex] == -1) {
-			printf("- ERROR xlate[%d] not filled!\n",  nIndex);
+		int nFileOffsetValue = fileXlateMatrix[nXlateOffset];
+		if(nFileOffsetValue > nImageBytesNeeded || nFileOffsetValue < 0) {
+			printf("- ERROR xlate[%d] not filled! -> has %d\n",  nIndex, nFileOffsetValue);
 		}
 	}
 }
