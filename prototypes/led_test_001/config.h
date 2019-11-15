@@ -146,7 +146,7 @@
 /* #undef TM_IN_SYS_TIME */
 
 /* Version number of package */
-#define VERSION "0.1.0"
+#define VERSION "0.2.0"
 
 /* Define to `unsigned int' if <sys/types.h> does not define. */
 /* #undef size_t */

@@ -37,6 +37,14 @@
 #define BCM2708_PERI_BASE        0xFE000000
 #define GPIO_BASE                (BCM2708_PERI_BASE + 0x200000) /* GPIO controller */
 
+extern void nSecDelayASM(int nSecDuration);
+
+// with 0 nop's
+//#define nSecDelay(nSec) nSecDelayASM((int)((float)nSec/8.865))
+// testing basic delay routine
+//#define nSecDelay(nSec) nSecDelayASM(50)
+
+#define nSecDelay(nSec) nSecDelayASM((int)((float)nSec/14.85))
 
 #define PAGE_SIZE (4*1024)
 #define BLOCK_SIZE (4*1024)
@@ -124,7 +132,7 @@ void initGPIO(void)
 
    printf("- GPIO is setup\n");
 
-   showSysInfo();
+   //showSysInfo();
 }
 
 
@@ -180,12 +188,25 @@ void blinkLED(void)
 #define T1L_IN_NSEC ((T01_PERIOD_MULTIPLE - T1H_MULTIPLE) * BASE_PERIOD_IN_NSEC)
 #define TRESET_IN_NSEC (TRESET_IN_USEC * 1000) 
 
-void nSecDelay(int nSecDuration)
+
+
+void nSecDelay100(int nSecDuration)
 {
-	struct timespec delaySpec = { 0, nSecDuration };
+	struct timespec delaySpec;
 	struct timespec remainderSpec = { 0, 0 };
 
-	int status = clock_nanosleep(CLOCK_REALTIME, 0, &delaySpec, &remainderSpec);
+	int status = clock_gettime(CLOCK_MONOTONIC, &delaySpec);
+
+	delaySpec.tv_nsec += nSecDuration / 2;
+
+	// Normalize the time to account for the second boundary
+	if(delaySpec.tv_nsec >= 1000000000) {
+	    delaySpec.tv_nsec -= 1000000000;
+	    delaySpec.tv_sec++;
+	}
+	status = clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &delaySpec, &remainderSpec);
+
+	//int status = clock_nanosleep(CLOCK_REALTIME, 0, &delaySpec, &remainderSpec);
 	if(status != 0) {
 		char *message = NULL;
 		if(status == EINTR) {
@@ -209,7 +230,7 @@ void nSecDelay(int nSecDuration)
 	}
 }
 
-void nSecDelay002(int nSecDuration)
+void nSecDelay200(int nSecDuration)
 {
 	volatile int ctr;
 	volatile int tst;

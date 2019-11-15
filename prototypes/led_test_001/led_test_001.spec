@@ -3,7 +3,7 @@
 # Copyright (c) 2019 Stephen M Moraco stephen@ironsheep.biz
 #
 %define name led_test_001
-%define version 0.1.0
+%define version 0.2.0
 %define release 1
 %define manifest %{_builddir}/%{name}-%{version}-%{release}.manifest
 

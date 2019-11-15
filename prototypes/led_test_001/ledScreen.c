@@ -38,6 +38,8 @@ static bool bThreadRun = false;
 
 sem_t semThreadStart; 
 
+//#define TEST1s
+#define TEST0s
 
 typedef struct _threadParameters {
 	bool *runStop;
@@ -85,11 +87,15 @@ void initScreen(void)
 	// init display task
 	//blinkLED();
 	
-	// scope our 0's
-	//testBit0Send();
+#ifdef TEST0s
+	// cope our 0's
+	testBit0Send();
+#endif
 	
+#ifdef TEST1s
 	// scope our 1's
-	//testBit1Send();
+	testBit1Send();
+#endif
 	
 	// scope our RESET's
 	//testResetSend();
@@ -311,7 +317,7 @@ void *ledStringWriteThread(void *vargp)
 	//while(true) {
 	    //wait 
 	    printf("- THREAD panel-%d waiting\n", parameters->nPanelNumber); 
-	    sem_wait(&semThreadStart); 
+	    //sem_wait(&semThreadStart); 
 	    
 	    // for each color send byte over GPIO bit 
 	    for(int nColorIndex = 0; nColorIndex < (LEDS_PER_PANEL * BYTES_PER_LED); nColorIndex++) {
@@ -336,7 +342,7 @@ void *ledStringWriteThread(void *vargp)
 	    
 	    //signal done
 	    printf("- THREAD panel-%d done\n", parameters->nPanelNumber); 
-	    sem_post(&semThreadStart); 
+	    //sem_post(&semThreadStart); 
 	//}
     return NULL; 
 } 

@@ -1,7 +1,7 @@
 Begin3
 Title:		led_test_001
-Version:	0.1.0
-Entered-date:	2019-11-12
+Version:	0.2.0
+Entered-date:	2019-11-14
 Description:	testbed for GPIO and WS2812B String
 		led_test_001.lsm.  Generated from led_test_001.lsm.in by configure.
 		Please edit led_test_001.lsm.in to fix the Keywords and
@@ -12,7 +12,7 @@ Keywords:	[substitute your keywords here]
 Author: 	stephen@ironsheep.biz (Stephen M Moraco)
 Maintained-by:	stephen@ironsheep.biz (Stephen M Moraco)
 Primary-site:	metlab.unc.edu pub/Linux/apps/some/directory
-		31k led_test_001-0.1.0.tar.gz
+		31k led_test_001-0.2.0.tar.gz
 		500  led_test_001.lsm
 Alternate-site: 
 Original-site:  
