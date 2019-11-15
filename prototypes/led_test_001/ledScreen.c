@@ -61,6 +61,8 @@ void initScreen(void)
 	// clear screen
 	clearScreen();
 	
+#ifdef DISABLED_FOR_NOW
+
 	// run our file loader as test (working code yet?
 	loadTestImage();
 	
@@ -74,6 +76,8 @@ void initScreen(void)
 	
 	// populate our fileBuffer indices
 	initFileXlateMatrix();
+
+#endif
 	
 	// init gpio
 	initGPIO();
@@ -89,6 +93,9 @@ void initScreen(void)
 	
 	// scope our RESET's
 	//testResetSend();
+
+
+#ifdef DISABLED_FOR_NOW
 
 	// start display threads
 	pthread_t taskPanelTop;
@@ -118,7 +125,7 @@ void initScreen(void)
 	pthread_create(&taskPanelBot, NULL, ledStringWriteThread, (void*)&panelBotParams); 
 #endif
 
-	sleep(30);	// 30 seconds
+	//sleep(30);	// 30 seconds
 	
 #ifdef THREAD1_LIVE
 	//pthread_join(taskPanelTop,NULL); // stop thread
@@ -132,6 +139,9 @@ void initScreen(void)
 	//pthread_join(taskPanelBot,NULL); // stop thread
 #endif
 	sem_destroy(&semThreadStart); 	// done with mutex
+
+
+#endif
 	
 	// return GPIO to normal setup
 	restoreGPIO();

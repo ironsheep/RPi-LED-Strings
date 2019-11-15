@@ -25,6 +25,7 @@
 #include <sys/mman.h>
 #include <unistd.h>	// sleep() and others
 #include <time.h>	// nanosleep() and others
+#include <errno.h>	// nanosleep() and others
 
 #include "ledGPIO.h"
 #include "piSystem.h"
@@ -79,6 +80,19 @@ void setupOutputPins(void)
 void initGPIO(void)
 {
    printf("- CLOCK TICS/SEC = %d\n", CLOCKS_PER_SEC);
+
+   struct timespec timeSpec;
+   int status = clock_getres(CLOCK_REALTIME, &timeSpec);
+   if(status != 0) {
+     char *message = "unknown value";
+     if(status == EINVAL) {
+        message = "EINVAL: clk_id not supported";
+	}
+     printf(" -GETRES ERROR(%d): %s\n", message);
+   }
+   else {
+     printf("- GETRES says: seconds=%d, nano=%d\n\n", timeSpec.tv_sec, timeSpec.tv_nsec);
+   }
    /* open /dev/mem */
    if ((mem_fd = open("/dev/mem", O_RDWR|O_SYNC) ) < 0) {
       printf("can't open /dev/mem \n");
@@ -167,6 +181,35 @@ void blinkLED(void)
 #define TRESET_IN_NSEC (TRESET_IN_USEC * 1000) 
 
 void nSecDelay(int nSecDuration)
+{
+	struct timespec delaySpec = { 0, nSecDuration };
+	struct timespec remainderSpec = { 0, 0 };
+
+	int status = clock_nanosleep(CLOCK_REALTIME, 0, &delaySpec, &remainderSpec);
+	if(status != 0) {
+		char *message = NULL;
+		if(status == EINTR) {
+			message = "EINTR: Interrupted";
+		}
+		else if(status == EINVAL) {
+			message = "EINVAL: Bad time Value";
+		}
+		else if(status == ENOTSUP) {
+			message = "ENOTSUP: clock type not supported";
+		}
+		if(message == NULL) {
+			printf("- clock_nanosleep(): ERROR: Unknown value (%d)\n", status);
+		}
+		else {
+			printf("- clock_nanosleep(): ERROR: %s\n", message);
+		}
+	}
+	if(remainderSpec.tv_nsec != 0) {
+		printf("- clock_nanosleep() time remaining (%d nSec)\n", remainderSpec.tv_nsec);
+	}
+}
+
+void nSecDelay002(int nSecDuration)
 {
 	volatile int ctr;
 	volatile int tst;
