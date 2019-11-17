@@ -13,16 +13,29 @@
 #include <linux/module.h>           // Core header for loading LKMs into the kernel
 #include <linux/kernel.h>           // Contains types, macros, functions for the kernel
 #include <linux/version.h>
-#include <linux/types.h>			// for dev_t
-#include <linux/kdev_t.h>			// foir registering device Maj/Min
-#include <linux/fs.h>				// for *_chrdev_region() calls
+#include <linux/types.h>            // for dev_t
+#include <linux/kdev_t.h>           // foir registering device Maj/Min
+#include <linux/fs.h>               // for *_chrdev_region() calls
 #include <linux/device.h>
 #include <linux/cdev.h>
-#include <linux/string.h>			// for strxxx() and memxxx() calls
-#include <linux/uaccess.h>	// copy_*_user
+#include <linux/string.h>           // for strxxx() and memxxx() calls
+#include <linux/uaccess.h>          // copy_*_user
+#include <linux/proc_fs.h>          // proc filesystem support
+#include <linux/jiffies.h>
+#include <linux/fcntl.h>	        // O_ACCMODE
+#include <linux/slab.h>		        // kmalloc()
+#include <linux/errno.h>	        // error codes
+#include <linux/seq_file.h>
 
 #include "LEDfifoConfigureIOCtl.h"
 
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(3,10,0))
+#define STR_PRINTF_RET(len, str, args...) len += sprintf(page + len, str, ## args)
+#elif (LINUX_VERSION_CODE < KERNEL_VERSION(4,3,0))
+#define STR_PRINTF_RET(len, str, args...) len += seq_printf(m, str, ## args)
+#else
+#define STR_PRINTF_RET(len, str, args...) seq_printf(m, str, ## args)
+#endif
 
 MODULE_LICENSE("GPL");              ///< The license type -- this affects runtime behavior
 MODULE_AUTHOR("Stephen M Moraco");      ///< The author -- visible when you use modinfo
@@ -33,11 +46,16 @@ static char *name = "{nameParm}";        ///< An example LKM argument -- default
 module_param(name, charp, S_IRUGO); ///< Param desc. charp = char ptr, S_IRUGO can be read/not changed
 MODULE_PARM_DESC(name, "The name to display in /var/log/kern.log");  ///< parameter description
  
-   
+#define LED_FIFO_MAJOR 0   /* dynamic major by default */
+#define LED_FIFO_NR_DEVS 1    /* ledfifo0  (not ledfifo0-ledfifoN) */
+
 
 static dev_t firstDevNbr; // Global variable for the first device number
 static struct cdev c_dev; // Global variable for the character device structure
 static struct class *cl; // Global variable for the device class
+
+static struct proc_dir_entry *parent, *file, *link;
+static int state = 0;
 
 
 #define DEFAULT_LED_STRTYPE "WS2812B"
@@ -49,7 +67,7 @@ static struct class *cl; // Global variable for the device class
 
 
 static unsigned char ledType[FIFO_MAX_STR_LEN+1] = DEFAULT_LED_STRTYPE; // +1 for zero term.
-static int gpioPins[FIFO_MAX_PIN_COUNT];	// max 3 gpio pins can be assigned
+static int gpioPins[FIFO_MAX_PIN_COUNT];    // max 3 gpio pins can be assigned
 static int periodDurationNsec = DEFAULT_PERIOD_IN_NSEC;
 static int periodCount = DEFAULT_PERIOD_COUNT;
 static int periodT0HCount = DEFAULT_T0H_COUNT;
@@ -97,38 +115,38 @@ static long LEDfifo_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 
     printk(KERN_INFO "Driver: ioctl()\n");
 
-	/*
-	* extract the type and number bitfields, and don't decode
-	* wrong cmds: return ENOTTY (inappropriate ioctl) before access_ok()
-	*/
-	if (_IOC_TYPE(cmd) != LED_FIFO_IOC_MAGIC)
-		return -ENOTTY;
-	if (_IOC_NR(cmd) > LED_FIFO_IOC_MAXNR)
-		return -ENOTTY;
-		
-	/*
-	* the direction is a bitmask, and VERIFY_WRITE catches R/W * transfers.
-	* `Type' is user-oriented, while access_ok is kernel-oriented, so the 
-	* concept of "read" and * "write" is reversed
-	*/
-	if (_IOC_DIR(cmd) & _IOC_READ)
-		err = !access_ok(VERIFY_WRITE, (void __user *)arg, _IOC_SIZE(cmd));
-	if ((!err) && (_IOC_DIR(cmd) & _IOC_WRITE))
-		err = !access_ok(VERIFY_READ, (void __user *)arg, _IOC_SIZE(cmd));
-	if (err)
-		return -EFAULT;
+    /*
+    * extract the type and number bitfields, and don't decode
+    * wrong cmds: return ENOTTY (inappropriate ioctl) before access_ok()
+    */
+    if (_IOC_TYPE(cmd) != LED_FIFO_IOC_MAGIC)
+        return -ENOTTY;
+    if (_IOC_NR(cmd) > LED_FIFO_IOC_MAXNR)
+        return -ENOTTY;
+        
+    /*
+    * the direction is a bitmask, and VERIFY_WRITE catches R/W * transfers.
+    * `Type' is user-oriented, while access_ok is kernel-oriented, so the 
+    * concept of "read" and * "write" is reversed
+    */
+    if (_IOC_DIR(cmd) & _IOC_READ)
+        err = !access_ok(VERIFY_WRITE, (void __user *)arg, _IOC_SIZE(cmd));
+    if ((!err) && (_IOC_DIR(cmd) & _IOC_WRITE))
+        err = !access_ok(VERIFY_READ, (void __user *)arg, _IOC_SIZE(cmd));
+    if (err)
+        return -EFAULT;
 
-	/*
-	* now handle the legitimate command
-	*/
+    /*
+    * now handle the legitimate command 
+    */
     switch (cmd)
     {
         case CMD_GET_VARIABLES:
-        	memset(cfg.ledType, 0, FIFO_MAX_STR_LEN+1);
-        	strncpy(cfg.ledType, ledType, FIFO_MAX_STR_LEN);
-			for(pinIndex = 0; pinIndex < FIFO_MAX_PIN_COUNT; pinIndex++) {
-				cfg.gpioPins[pinIndex] = gpioPins[pinIndex];
-			}
+            memset(cfg.ledType, 0, FIFO_MAX_STR_LEN+1);
+            strncpy(cfg.ledType, ledType, FIFO_MAX_STR_LEN);
+            for(pinIndex = 0; pinIndex < FIFO_MAX_PIN_COUNT; pinIndex++) {
+                cfg.gpioPins[pinIndex] = gpioPins[pinIndex];
+            }
             cfg.periodDurationNsec = periodDurationNsec;
             cfg.periodCount = periodCount;
             cfg.periodT0HCount = periodT0HCount;
@@ -142,17 +160,17 @@ static long LEDfifo_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
             }
             break;
         case CMD_SET_VARIABLES:
-        	// copy_from_user(to,from,count)
+            // copy_from_user(to,from,count)
             if (copy_from_user(&cfg, (configure_arg_t *)arg,
                 sizeof(configure_arg_t)))
             {
                 return -EACCES;
             }
-        	memset(ledType, 0, FIFO_MAX_STR_LEN+1);
-        	strncpy(ledType, DEFAULT_LED_STRTYPE, FIFO_MAX_STR_LEN);
-			for(pinIndex = 0; pinIndex < FIFO_MAX_PIN_COUNT; pinIndex++) {
-				gpioPins[pinIndex] = cfg.gpioPins[pinIndex];
-			}
+            memset(ledType, 0, FIFO_MAX_STR_LEN+1);
+            strncpy(ledType, DEFAULT_LED_STRTYPE, FIFO_MAX_STR_LEN);
+            for(pinIndex = 0; pinIndex < FIFO_MAX_PIN_COUNT; pinIndex++) {
+                gpioPins[pinIndex] = cfg.gpioPins[pinIndex];
+            }
             periodDurationNsec = cfg.periodDurationNsec;
             periodCount = cfg.periodCount;
             periodT0HCount = cfg.periodT0HCount;
@@ -160,20 +178,20 @@ static long LEDfifo_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
             periodTRESETCount = cfg.periodTRESETCount;
            break;
         case CMD_RESET_VARIABLES:
-        	// reconfigure for WS2812B
-        	memset(ledType, 0, FIFO_MAX_STR_LEN+1);
-        	strncpy(ledType, DEFAULT_LED_STRTYPE, FIFO_MAX_STR_LEN);
-			for(pinIndex = 0; pinIndex < FIFO_MAX_PIN_COUNT; pinIndex++) {
-				gpioPins[pinIndex] = 0;
-			}
-			periodDurationNsec = DEFAULT_PERIOD_IN_NSEC;
-			periodCount = DEFAULT_PERIOD_COUNT;
-			periodT0HCount = DEFAULT_T0H_COUNT;
-			periodT1HCount = DEFAULT_T1H_COUNT;
-			periodTRESETCount = DEFAULT_TRESET_COUNT;
+            // reconfigure for WS2812B
+            memset(ledType, 0, FIFO_MAX_STR_LEN+1);
+            strncpy(ledType, DEFAULT_LED_STRTYPE, FIFO_MAX_STR_LEN);
+            for(pinIndex = 0; pinIndex < FIFO_MAX_PIN_COUNT; pinIndex++) {
+                gpioPins[pinIndex] = 0;
+            }
+            periodDurationNsec = DEFAULT_PERIOD_IN_NSEC;
+            periodCount = DEFAULT_PERIOD_COUNT;
+            periodT0HCount = DEFAULT_T0H_COUNT;
+            periodT1HCount = DEFAULT_T1H_COUNT;
+            periodTRESETCount = DEFAULT_TRESET_COUNT;
            break;
         default:
-            return -EINVAL;	// unknown command?  How'd this happen?
+            return -EINVAL; // unknown command?  How'd this happen?
     }
 
     return 0;
@@ -186,12 +204,54 @@ static struct file_operations LEDfifoLKM_fops =
     .open = LEDfifo_open,
     .release = LEDfifo_close,
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(2,6,35))
-	.ioctl = LEDfifo_ioctl,
+    .ioctl = LEDfifo_ioctl,
 #else
-	.unlocked_ioctl = LEDfifo_ioctl,
+    .unlocked_ioctl = LEDfifo_ioctl,
 #endif
     .read = LEDfifo_read,
     .write = LEDfifo_write
+};
+
+/*
+static unsigned char ledType[FIFO_MAX_STR_LEN+1] = DEFAULT_LED_STRTYPE; // +1 for zero term.
+static int gpioPins[FIFO_MAX_PIN_COUNT];    // max 3 gpio pins can be assigned
+static int periodDurationNsec = DEFAULT_PERIOD_IN_NSEC;
+static int periodCount = DEFAULT_PERIOD_COUNT;
+static int periodT0HCount = DEFAULT_T0H_COUNT;
+static int periodT1HCount = DEFAULT_T1H_COUNT;
+static int periodTRESETCount = DEFAULT_TRESET_COUNT;
+
+*/
+static int config_read(struct seq_file *m, void *v)
+{
+    int len = 0;
+    float freqInKHz;
+    
+    STR_PRINTF_RET(len, "LED String Type: %s\n", ledType);
+    STR_PRINTF_RET(len, "GPIO Pins Assigned:\n");
+    for(pinIndex = 0; pinIndex < FIFO_MAX_PIN_COUNT; pinIndex++) {
+        STR_PRINTF_RET(len, " - #%d\n",gpioPins[pinIndex]);
+    }
+    freqInKHz = 1 / ((float)periodDurationNsec * (float)periodCount * 0.000000001);
+    STR_PRINTF_RET(len, "Serial Stream: %.3f KHz (%d x %d nSec periods)\n", freqInKHz, periodCount,  periodDurationNsec);
+    STR_PRINTF_RET(len, "        Bit0: Hi %d nSec -> Lo %d nSec\n", periodT0HCount * periodDurationNsec, (periodCount - periodT0HCount) * periodDurationNsec);
+    STR_PRINTF_RET(len, "        Bit1: Hi %d nSec -> Lo %d nSec\n", periodT1HCount * periodDurationNsec, (periodCount - periodT1HCount) * periodDurationNsec);
+    STR_PRINTF_RET(len, "       Reset: Lo %.2f uSec\n", ((float)periodTRESETCount * float)periodDurationNsec) / 1000.0);
+    STR_PRINTF_RET(len, "\n");
+    
+    return len;
+}
+
+static int config_open(struct inode *inode, struct file *file)
+{
+    return single_open(file, config_read, NULL);
+}
+
+static struct file_operations proc_fops =
+{
+    .owner = THIS_MODULE,
+    .open = config_open,
+    .read = seq_read
 };
 
 /** @brief The LKM initialization function
@@ -204,19 +264,19 @@ static int __init LEDfifoLKM_init(void){
     int ret;
     struct device *dev_ret;
 
-	printk(KERN_INFO "LEDfifo: init(%s)\n", name);
-	
+    printk(KERN_INFO "LEDfifo: init(%s)\n", name);
+    
 
-	printk(KERN_INFO "LEDfifo: ofcd registered");
-	if ((ret = alloc_chrdev_region(&firstDevNbr, 0, 3, "ledfifo")) < 0)
-	{
-		//printk(KERN_WARNING "LEDfifo: can't get major %d\n", scull_major);
-		printk(KERN_WARNING "LEDfifo: can't get major\n");
-	    return ret;
-	}
-	printk(KERN_INFO "<Major, Minor>: <%d, %d>\n", MAJOR(firstDevNbr), MINOR(firstDevNbr));
-	
-    if (IS_ERR(cl = class_create(THIS_MODULE, "chardrv")))		// FIXME: UIDONE what should this be "???"
+    printk(KERN_INFO "LEDfifo: ofcd registered");
+    if ((ret = alloc_chrdev_region(&firstDevNbr, LED_FIFO_MAJOR, LED_FIFO_NR_DEVS, "ledfifo")) < 0)
+    {
+        //printk(KERN_WARNING "LEDfifo: can't get major %d\n", scull_major);
+        printk(KERN_WARNING "LEDfifo: can't alloc major\n");
+        return ret;
+    }
+    printk(KERN_INFO "<Major, Minor>: <%d, %d>\n", MAJOR(firstDevNbr), MINOR(firstDevNbr));
+    
+    if (IS_ERR(cl = class_create(THIS_MODULE, "chardrv")))      // FIXME: UIDONE what should this be "???"
     {
         unregister_chrdev_region(firstDevNbr, 1);
         return PTR_ERR(cl);
@@ -236,8 +296,20 @@ static int __init LEDfifoLKM_init(void){
         unregister_chrdev_region(firstDevNbr, 1);
         return ret;
     }
+    
+    // and now our proc entries (fm Chap16)
+    if ((parent = proc_mkdir("driver/ledfifo", NULL)) == NULL)
+    {
+        return -1;
+    }
+    if ((file = proc_create("config", 0444, parent, &proc_fops)) == NULL)
+    {
+        remove_proc_entry("driver/ledfifo", NULL);
+        return -1;
+    }
+    proc_set_user(link, KUIDT_INIT(0), KGIDT_INIT(100));
 
-	return 0;
+    return 0;
 }
  
 /** @brief The LKM cleanup function
@@ -245,15 +317,19 @@ static int __init LEDfifoLKM_init(void){
  *  code is used for a built-in driver (not a LKM) that this function is not required.
  */
 static void __exit LEDfifoLKM_exit(void){
-	printk(KERN_INFO "LEDfifo: Exit(%s)\n", name);
-	
-	// fm Chapt5
+    printk(KERN_INFO "LEDfifo: Exit(%s)\n", name);
+    
+    // fm Chapt16
+    remove_proc_entry("config", parent);
+    remove_proc_entry("driver/ledfifo", NULL);
+    
+    // fm Chapt5
     cdev_del(&c_dev);
     device_destroy(cl, firstDevNbr);
     class_destroy(cl);
     // fm Chapt4
-	unregister_chrdev_region(firstDevNbr, 3);
-	printk(KERN_INFO "LEDfifo: ofcd unregistered");
+    unregister_chrdev_region(firstDevNbr, 3);
+    printk(KERN_INFO "LEDfifo: ofcd unregistered");
 }
  
 /** @brief A module must use the module_init() module_exit() macros from linux/init.h, which

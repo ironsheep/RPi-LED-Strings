@@ -9,7 +9,7 @@
 typedef struct _configure
 {
     unsigned char ledType[FIFO_MAX_STR_LEN+1]; // +1 for zero term.
-    int gpioPins[FIFO_MAX_PIN_COUNT];	// max 3 gpio pins can be assigned
+    int gpioPins[FIFO_MAX_PIN_COUNT];   // max 3 gpio pins can be assigned
     int periodDurationNsec;
     int periodCount;
     int periodT0HCount;
@@ -25,4 +25,4 @@ typedef struct _configure
 
 #define LED_FIFO_IOC_MAXNR 3
 
-#endif	// LED_FIFO_CONFIGURE_IOCTL_H
+#endif  // LED_FIFO_CONFIGURE_IOCTL_H
