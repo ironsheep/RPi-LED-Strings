@@ -14,6 +14,33 @@
 
 #include "LEDfifoConfigureIOCtl.h"
 
+// forward declarations
+void get_vars(int fd);
+void clr_vars(int fd);
+void set_vars(int fd);
+void testLOOPingControl(int fd);
+
+// test app
+int main()
+{
+        int fd;
+        int32_t value;
+        int32_t number;
+        
+        printf("\nOpening Driver\n");
+        fd = open("/dev/ledfifo0", O_RDWR);
+        if(fd < 0) {
+                printf("Cannot open device file...\n");
+                return -1;
+        }
+ 
+        testLOOPingControl(fd);
+  
+        printf("Closing Driver\n");
+        close(fd);
+}
+
+
 void get_vars(int fd)
 {
     configure_arg_t q;
@@ -36,4 +63,32 @@ void clr_vars(int fd)
     {
         perror("query_app ioctl clr");
     }
+}
+
+void testLOOPingControl(int fd)
+{
+    printf("testLOOPingControl() ENTRY\n");
+    int loopStatusBefore = ioctl(fd, CMD_GET_LOOP_ENABLE);
+    printf("- loop Enable (before): %d\n", loopStatusBefore);
+    
+    int testValue = (loopStatusBefore == 0) ? -1 : 0;
+    
+    // write alternate value
+    if((ioctl(fd, CMD_SET_LOOP_ENABLE, testValue) == -1)
+    {
+        perror("query_app ioctl SET LOOP");
+    }
+    
+    // check value on readback
+    int loopStatusAfter = ioctl(fd, CMD_GET_LOOP_ENABLE);
+    printf("- loop Enable (after): %d\n", loopStatusAfter);
+    
+    if(loopStatusAfter == testValue) {
+        printf("- TEST PASS\n");
+    }
+    else {
+        printf("- TEST FAILURE!!\n");
+    }
+    
+    printf("testLOOPingControl() EXIT\n");
 }
