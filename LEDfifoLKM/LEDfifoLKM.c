@@ -19,6 +19,7 @@
 #include <linux/device.h>
 #include <linux/cdev.h>
 #include <linux/string.h>			// for strxxx() and memxxx() calls
+#include <linux/uaccess.h>	// copy_*_user
 
 #include "LEDfifoConfigureIOCtl.h"
 
@@ -28,7 +29,7 @@ MODULE_AUTHOR("Stephen M Moraco");      ///< The author -- visible when you use 
 MODULE_DESCRIPTION("An LED Matrix display GPIO Driver.");  ///< The description -- see modinfo
 MODULE_VERSION("0.1");              ///< The version of the module
  
-static char *name = "world";        ///< An example LKM argument -- default value is "world"
+static char *name = "{nameParm}";        ///< An example LKM argument -- default value is "{nameParm}"
 module_param(name, charp, S_IRUGO); ///< Param desc. charp = char ptr, S_IRUGO can be read/not changed
 MODULE_PARM_DESC(name, "The name to display in /var/log/kern.log");  ///< parameter description
  
@@ -39,15 +40,15 @@ static struct cdev c_dev; // Global variable for the character device structure
 static struct class *cl; // Global variable for the device class
 
 
-#define DEFAULT_LED_STRTYPE = "WS2812B"
-#define DEFAULT_PERIOD_IN_NSEC = 50;
-#define DEFAULT_PERIOD_COUNT = 25;
-#define DEFAULT_T0H_COUNT = 8;
-#define DEFAULT_T1H_COUNT = 16;
-#define DEFAULT_TRESET_COUNT = 1000;
+#define DEFAULT_LED_STRTYPE "WS2812B"
+#define DEFAULT_PERIOD_IN_NSEC 50
+#define DEFAULT_PERIOD_COUNT 25
+#define DEFAULT_T0H_COUNT 8
+#define DEFAULT_T1H_COUNT 16
+#define DEFAULT_TRESET_COUNT 1000
 
 
-static unsigned char name[FIFO_MAX_STR_LEN+1] = DEFAULT_LED_STRTYPE; // +1 for zero term.
+static unsigned char ledType[FIFO_MAX_STR_LEN+1] = DEFAULT_LED_STRTYPE; // +1 for zero term.
 static int gpioPins[FIFO_MAX_PIN_COUNT];	// max 3 gpio pins can be assigned
 static int periodDurationNsec = DEFAULT_PERIOD_IN_NSEC;
 static int periodCount = DEFAULT_PERIOD_COUNT;
@@ -60,16 +61,22 @@ static int LEDfifo_open(struct inode *i, struct file *f)
     printk(KERN_INFO "Driver: open()\n");
     return 0;
 }
+
+
 static int LEDfifo_close(struct inode *i, struct file *f)
 {
     printk(KERN_INFO "Driver: close()\n");
     return 0;
 }
+
+
 static ssize_t LEDfifo_read(struct file *f, char __user *buf, size_t len, loff_t *off)
 {
     printk(KERN_INFO "Driver: read()\n");
     return 0;
 }
+
+
 static ssize_t LEDfifo_write(struct file *f, const char __user *buf, size_t len,
     loff_t *off)
 {
@@ -84,8 +91,11 @@ static int LEDfifo_ioctl(struct inode *i, struct file *f, unsigned int cmd,
 static long LEDfifo_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 #endif
 {
-    printk(KERN_INFO "Driver: ioctl()\n");
     configure_arg_t cfg;
+    int err = 0;
+    int pinIndex;
+
+    printk(KERN_INFO "Driver: ioctl()\n");
 
 	/*
 	* extract the type and number bitfields, and don't decode
@@ -101,7 +111,6 @@ static long LEDfifo_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 	* `Type' is user-oriented, while access_ok is kernel-oriented, so the 
 	* concept of "read" and * "write" is reversed
 	*/
-	int err = 0;
 	if (_IOC_DIR(cmd) & _IOC_READ)
 		err = !access_ok(VERIFY_WRITE, (void __user *)arg, _IOC_SIZE(cmd));
 	if ((!err) && (_IOC_DIR(cmd) & _IOC_WRITE))
@@ -115,9 +124,9 @@ static long LEDfifo_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
     switch (cmd)
     {
         case CMD_GET_VARIABLES:
-        	memset(cfg.name, 0, FIFO_MAX_STR_LEN+1);
-        	strncpy(cfg.name, name, FIFO_MAX_STR_LEN);
-			for(int pinIndex = 0; pinIndex < FIFO_MAX_PIN_COUNT; pinIndex++) {
+        	memset(cfg.ledType, 0, FIFO_MAX_STR_LEN+1);
+        	strncpy(cfg.ledType, ledType, FIFO_MAX_STR_LEN);
+			for(pinIndex = 0; pinIndex < FIFO_MAX_PIN_COUNT; pinIndex++) {
 				cfg.gpioPins[pinIndex] = gpioPins[pinIndex];
 			}
             cfg.periodDurationNsec = periodDurationNsec;
@@ -126,7 +135,7 @@ static long LEDfifo_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
             cfg.periodT1HCount = periodT1HCount;
             cfg.periodTRESETCount = periodTRESETCount;
             // copy_to_user(to,from,count)
-            if (copy_to_user((configure_arg_t *)arg, &q,
+            if (copy_to_user((configure_arg_t *)arg, &cfg,
                 sizeof(configure_arg_t)))
             {
                 return -EACCES;
@@ -134,14 +143,14 @@ static long LEDfifo_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
             break;
         case CMD_SET_VARIABLES:
         	// copy_from_user(to,from,count)
-            if (copy_fm_user(&cfg, (configure_arg_t *)arg,
+            if (copy_from_user(&cfg, (configure_arg_t *)arg,
                 sizeof(configure_arg_t)))
             {
                 return -EACCES;
             }
-        	memset(name, 0, FIFO_MAX_STR_LEN+1);
-        	strncpy(name, DEFAULT_LED_STRTYPE, FIFO_MAX_STR_LEN);
-			for(int pinIndex = 0; pinIndex < FIFO_MAX_PIN_COUNT; pinIndex++) {
+        	memset(ledType, 0, FIFO_MAX_STR_LEN+1);
+        	strncpy(ledType, DEFAULT_LED_STRTYPE, FIFO_MAX_STR_LEN);
+			for(pinIndex = 0; pinIndex < FIFO_MAX_PIN_COUNT; pinIndex++) {
 				gpioPins[pinIndex] = cfg.gpioPins[pinIndex];
 			}
             periodDurationNsec = cfg.periodDurationNsec;
@@ -152,9 +161,9 @@ static long LEDfifo_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
            break;
         case CMD_RESET_VARIABLES:
         	// reconfigure for WS2812B
-        	memset(name, 0, FIFO_MAX_STR_LEN+1);
-        	strncpy(name, DEFAULT_LED_STRTYPE, FIFO_MAX_STR_LEN);
-			for(int pinIndex = 0; pinIndex < FIFO_MAX_PIN_COUNT; pinIndex++) {
+        	memset(ledType, 0, FIFO_MAX_STR_LEN+1);
+        	strncpy(ledType, DEFAULT_LED_STRTYPE, FIFO_MAX_STR_LEN);
+			for(pinIndex = 0; pinIndex < FIFO_MAX_PIN_COUNT; pinIndex++) {
 				gpioPins[pinIndex] = 0;
 			}
 			periodDurationNsec = DEFAULT_PERIOD_IN_NSEC;
@@ -177,9 +186,9 @@ static struct file_operations LEDfifoLKM_fops =
     .open = LEDfifo_open,
     .release = LEDfifo_close,
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(2,6,35))
-	.ioctl = LEDfifo_ioctl
+	.ioctl = LEDfifo_ioctl,
 #else
-	.unlocked_ioctl = LEDfifo_ioctl
+	.unlocked_ioctl = LEDfifo_ioctl,
 #endif
     .read = LEDfifo_read,
     .write = LEDfifo_write
@@ -192,10 +201,11 @@ static struct file_operations LEDfifoLKM_fops =
  *  @return returns 0 if successful
  */
 static int __init LEDfifoLKM_init(void){
-	printk(KERN_INFO "LEDfifo: init()\n", name);
-	
-	int ret;
+    int ret;
     struct device *dev_ret;
+
+	printk(KERN_INFO "LEDfifo: init(%s)\n", name);
+	
 
 	printk(KERN_INFO "LEDfifo: ofcd registered");
 	if ((ret = alloc_chrdev_region(&firstDevNbr, 0, 3, "ledfifo")) < 0)
@@ -235,7 +245,7 @@ static int __init LEDfifoLKM_init(void){
  *  code is used for a built-in driver (not a LKM) that this function is not required.
  */
 static void __exit LEDfifoLKM_exit(void){
-	printk(KERN_INFO "LEDfifo: Exit()\n", name);
+	printk(KERN_INFO "LEDfifo: Exit(%s)\n", name);
 	
 	// fm Chapt5
     cdev_del(&c_dev);

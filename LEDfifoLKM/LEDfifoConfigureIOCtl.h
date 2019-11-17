@@ -6,15 +6,15 @@
 #define FIFO_MAX_STR_LEN 15
 #define FIFO_MAX_PIN_COUNT 3
 
-typedef struct
+typedef struct _configure
 {
-	unsigned char name[FIFO_MAX_STR_LEN+1]; // +1 for zero term.
-    int gpioPins[FIFO_MAX_PIN_COUNT],	// max 3 gpio pins can be assigned
-    int periodDurationNsec,
-    int periodCount,
-    int periodT0HCount,
-    int periodT1HCount,
-    int periodTRESETCount,
+    unsigned char ledType[FIFO_MAX_STR_LEN+1]; // +1 for zero term.
+    int gpioPins[FIFO_MAX_PIN_COUNT];	// max 3 gpio pins can be assigned
+    int periodDurationNsec;
+    int periodCount;
+    int periodT0HCount;
+    int periodT1HCount;
+    int periodTRESETCount;
 } configure_arg_t;
 
 #define LED_FIFO_IOC_MAGIC 'e'
