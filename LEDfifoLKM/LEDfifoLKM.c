@@ -54,8 +54,9 @@ static dev_t firstDevNbr; // Global variable for the first device number
 static struct cdev c_dev; // Global variable for the character device structure
 static struct class *cl; // Global variable for the device class
 
-static struct proc_dir_entry *parent, *file, *link;
-static int state = 0;
+static struct proc_dir_entry *parent;
+static struct proc_dir_entry *file;
+static struct proc_dir_entry *link;
 
 
 #define DEFAULT_LED_STRTYPE "WS2812B"
@@ -225,18 +226,25 @@ static int periodTRESETCount = DEFAULT_TRESET_COUNT;
 static int config_read(struct seq_file *m, void *v)
 {
     int len = 0;
-    float freqInKHz;
+    //int freqInKHz;
+    int pinIndex;
     
     STR_PRINTF_RET(len, "LED String Type: %s\n", ledType);
     STR_PRINTF_RET(len, "GPIO Pins Assigned:\n");
     for(pinIndex = 0; pinIndex < FIFO_MAX_PIN_COUNT; pinIndex++) {
-        STR_PRINTF_RET(len, " - #%d\n",gpioPins[pinIndex]);
+        if(gpioPins[pinIndex] != 0) {
+        	STR_PRINTF_RET(len, " - #%d - GPIO %d\n", pinIndex+1, gpioPins[pinIndex]);
+	} 
+	else {
+        	STR_PRINTF_RET(len, " - #%d - {not set}\n", pinIndex+1);
+	}
     }
-    freqInKHz = 1 / ((float)periodDurationNsec * (float)periodCount * 0.000000001);
-    STR_PRINTF_RET(len, "Serial Stream: %.3f KHz (%d x %d nSec periods)\n", freqInKHz, periodCount,  periodDurationNsec);
+    //freqInKHz = 1 / (periodDurationNsec * periodCount * 0.000000001);
+    STR_PRINTF_RET(len, "Serial Stream: (%d x %d nSec periods)\n", periodCount,  periodDurationNsec);
+    //STR_PRINTF_RET(len, "Serial Stream: %d KHz (%d x %d nSec periods)\n", freqInKHz, periodCount,  periodDurationNsec);
     STR_PRINTF_RET(len, "        Bit0: Hi %d nSec -> Lo %d nSec\n", periodT0HCount * periodDurationNsec, (periodCount - periodT0HCount) * periodDurationNsec);
     STR_PRINTF_RET(len, "        Bit1: Hi %d nSec -> Lo %d nSec\n", periodT1HCount * periodDurationNsec, (periodCount - periodT1HCount) * periodDurationNsec);
-    STR_PRINTF_RET(len, "       Reset: Lo %.2f uSec\n", ((float)periodTRESETCount * float)periodDurationNsec) / 1000.0);
+    STR_PRINTF_RET(len, "       Reset: Lo %d nSec\n", (periodTRESETCount * periodDurationNsec));
     STR_PRINTF_RET(len, "\n");
     
     return len;
