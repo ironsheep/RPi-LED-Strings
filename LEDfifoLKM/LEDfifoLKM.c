@@ -56,7 +56,6 @@ static struct class *cl; // Global variable for the device class
 
 static struct proc_dir_entry *parent;
 static struct proc_dir_entry *file;
-static struct proc_dir_entry *link;
 
 
 #define DEFAULT_LED_STRTYPE "WS2812B"
@@ -103,12 +102,7 @@ static ssize_t LEDfifo_write(struct file *f, const char __user *buf, size_t len,
     return len;
 }
 
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(2,6,35))
-static int LEDfifo_ioctl(struct inode *i, struct file *f, unsigned int cmd,
-    unsigned long arg)
-#else
 static long LEDfifo_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
-#endif
 {
     configure_arg_t cfg;
     int err = 0;
@@ -203,14 +197,10 @@ static struct file_operations LEDfifoLKM_fops =
 {
     .owner = THIS_MODULE,
     .open = LEDfifo_open,
-    .release = LEDfifo_close,
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(2,6,35))
-    .ioctl = LEDfifo_ioctl,
-#else
-    .unlocked_ioctl = LEDfifo_ioctl,
-#endif
     .read = LEDfifo_read,
-    .write = LEDfifo_write
+    .write = LEDfifo_write,
+    .release = LEDfifo_close,
+    .unlocked_ioctl = LEDfifo_ioctl
 };
 
 /*
@@ -275,7 +265,7 @@ static int __init LEDfifoLKM_init(void){
     printk(KERN_INFO "LEDfifo: init(%s)\n", name);
     
 
-    printk(KERN_INFO "LEDfifo: ofcd registered");
+    printk(KERN_INFO "LEDfifo: ofcd register");
     if ((ret = alloc_chrdev_region(&firstDevNbr, LED_FIFO_MAJOR, LED_FIFO_NR_DEVS, "ledfifo")) < 0)
     {
         //printk(KERN_WARNING "LEDfifo: can't get major %d\n", scull_major);
@@ -296,6 +286,7 @@ static int __init LEDfifoLKM_init(void){
         return PTR_ERR(dev_ret);
     }
 
+    printk(KERN_INFO "LEDfifo: c_dev add");
     cdev_init(&c_dev, &LEDfifoLKM_fops);
     if ((ret = cdev_add(&c_dev, firstDevNbr, 1)) < 0)
     {
@@ -306,6 +297,7 @@ static int __init LEDfifoLKM_init(void){
     }
     
     // and now our proc entries (fm Chap16)
+    printk(KERN_INFO "LEDfifo: /proc/driver add");
     if ((parent = proc_mkdir("driver/ledfifo", NULL)) == NULL)
     {
         return -1;
@@ -315,7 +307,7 @@ static int __init LEDfifoLKM_init(void){
         remove_proc_entry("driver/ledfifo", NULL);
         return -1;
     }
-    proc_set_user(link, KUIDT_INIT(0), KGIDT_INIT(100));
+    printk(KERN_INFO "LEDfifo: init complete.");
 
     return 0;
 }
