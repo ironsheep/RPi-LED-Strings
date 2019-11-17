@@ -165,7 +165,7 @@ static long LEDfifo_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
                 return -EACCES;
             }
             memset(ledType, 0, FIFO_MAX_STR_LEN+1);
-            strncpy(ledType, DEFAULT_LED_STRTYPE, FIFO_MAX_STR_LEN);
+            strncpy(ledType, cfg.ledType, FIFO_MAX_STR_LEN);
             for(pinIndex = 0; pinIndex < FIFO_MAX_PIN_COUNT; pinIndex++) {
                 gpioPins[pinIndex] = cfg.gpioPins[pinIndex];
             }
