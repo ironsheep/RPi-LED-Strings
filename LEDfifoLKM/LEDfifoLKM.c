@@ -262,7 +262,7 @@ static int __init LEDfifoLKM_init(void){
     int ret;
     struct device *dev_ret;
 
-    printk(KERN_INFO "LEDfifo: init(%s)\n", name);
+    printk(KERN_INFO "LEDfifo: init(%s) ENTRY\n", name);
     
 
     printk(KERN_INFO "LEDfifo: ofcd register");
@@ -272,7 +272,7 @@ static int __init LEDfifoLKM_init(void){
         printk(KERN_WARNING "LEDfifo: can't alloc major\n");
         return ret;
     }
-    printk(KERN_INFO "<Major, Minor>: <%d, %d>\n", MAJOR(firstDevNbr), MINOR(firstDevNbr));
+    printk(KERN_INFO "LEDfifo: <Major, Minor>: <%d, %d>\n", MAJOR(firstDevNbr), MINOR(firstDevNbr));
     
     if (IS_ERR(cl = class_create(THIS_MODULE, "chardrv")))      // FIXME: UIDONE what should this be "???"
     {
@@ -286,7 +286,7 @@ static int __init LEDfifoLKM_init(void){
         return PTR_ERR(dev_ret);
     }
 
-    printk(KERN_INFO "LEDfifo: c_dev add");
+    printk(KERN_INFO "LEDfifo: c_dev add\n");
     cdev_init(&c_dev, &LEDfifoLKM_fops);
     if ((ret = cdev_add(&c_dev, firstDevNbr, 1)) < 0)
     {
@@ -297,7 +297,7 @@ static int __init LEDfifoLKM_init(void){
     }
     
     // and now our proc entries (fm Chap16)
-    printk(KERN_INFO "LEDfifo: /proc/driver add");
+    printk(KERN_INFO "LEDfifo: /proc/driver add\n");
     if ((parent = proc_mkdir("driver/ledfifo", NULL)) == NULL)
     {
         return -1;
@@ -307,7 +307,7 @@ static int __init LEDfifoLKM_init(void){
         remove_proc_entry("driver/ledfifo", NULL);
         return -1;
     }
-    printk(KERN_INFO "LEDfifo: init complete.");
+    printk(KERN_INFO "LEDfifo: init EXIT\n");
 
     return 0;
 }

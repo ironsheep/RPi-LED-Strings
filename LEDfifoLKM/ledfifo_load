@@ -23,7 +23,7 @@ if [ -n "${major}" ]; then
 # Not all distributions have staff, some have "wheel" instead. 
 group="staff"
 grep -q '^staff:' /etc/group || group="wheel"
-(set -x;chgrp $group /dev/${device}[0-3] chmod $mode /dev/${device}[0-3])
+(set -x;chgrp $group /dev/${device}[0-3]; chmod $mode /dev/${device}[0-3])
 else
 echo "$0: failed to grab major node id"
 fi
