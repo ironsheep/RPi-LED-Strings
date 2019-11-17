@@ -11,9 +11,9 @@
  
 #include <stdio.h>
 #include <sys/ioctl.h>
-#include <fcntl.h>	// for open()
-#include <unistd.h> 	// for close
-#include <string.h> 	// for strxxx()
+#include <fcntl.h>  // for open()
+#include <unistd.h>     // for close
+#include <string.h>     // for strxxx()
 
 #include "LEDfifoConfigureIOCtl.h"
 
@@ -43,10 +43,10 @@ int main()
     
     testSetPins(fd);
 
-	testSet2815(fd);
+    testSet2815(fd);
     get_vars(fd);
 
-	clr_vars(fd);
+    clr_vars(fd);
     get_vars(fd);
     
     printf("Closing Driver\n");
@@ -128,22 +128,22 @@ void testSet2815(int fd)
     
     printf("-> testSetPins() ENTRY\n");
 
-	strcpy(deviceValues.ledType, "WS2815\0");
-        deviceValues.gpioPins[0] = 17;
-        deviceValues.gpioPins[1] = 27;
-        deviceValues.gpioPins[2] = 22;
-        deviceValues.periodDurationNsec = 50;
-        deviceValues.periodCount = 27;
-        deviceValues.periodT0HCount = 6;
-        deviceValues.periodT1HCount = 21;
-        deviceValues.periodTRESETCount = 5600;
-        if (ioctl(fd, CMD_SET_VARIABLES, &deviceValues) == -1)
-        {
-            perror("query_app ioctl set");
-	}
-	else {
-                    printf("- TEST PASS\n");
-	}
+    strcpy(deviceValues.ledType, "WS2815\0");
+    deviceValues.gpioPins[0] = 17;
+    deviceValues.gpioPins[1] = 27;
+    deviceValues.gpioPins[2] = 22;
+    deviceValues.periodDurationNsec = 50;
+    deviceValues.periodCount = 27;
+    deviceValues.periodT0HCount = 6;
+    deviceValues.periodT1HCount = 21;
+    deviceValues.periodTRESETCount = 5600;
+    if (ioctl(fd, CMD_SET_VARIABLES, &deviceValues) == -1)
+    {
+        perror("query_app ioctl set");
+    }
+    else {
+        printf("- TEST PASS\n");
+    }
 }
 
 void clr_vars(int fd)
