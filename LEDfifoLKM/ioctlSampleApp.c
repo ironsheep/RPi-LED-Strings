@@ -11,6 +11,8 @@
  
 #include <stdio.h>
 #include <sys/ioctl.h>
+#include <fcntl.h>	// for open()
+#include <unistd.h> 	// for close
 
 #include "LEDfifoConfigureIOCtl.h"
 
@@ -24,8 +26,6 @@ void testLOOPingControl(int fd);
 int main()
 {
         int fd;
-        int32_t value;
-        int32_t number;
         
         printf("\nOpening Driver\n");
         fd = open("/dev/ledfifo0", O_RDWR);
@@ -33,7 +33,7 @@ int main()
                 printf("Cannot open device file...\n");
                 return -1;
         }
- 
+ 	get_vars(fd);
         testLOOPingControl(fd);
   
         printf("Closing Driver\n");
@@ -45,16 +45,19 @@ void get_vars(int fd)
 {
     configure_arg_t q;
 
+    printf("-> get_vars() ENTRY\n");
+
     if (ioctl(fd, CMD_GET_VARIABLES, &q) == -1)
     {
         perror("query_app ioctl get");
     }
     else
     {
-        printf("LED Type : %d\n", q.ledType);
+        printf(" - LED Type: [%s]\n", q.ledType);
         //printf("Dignity: %d\n", q.dignity);
         //printf("Ego    : %d\n", q.ego);
     }
+    printf("-- get_vars() EXIT\n\n");
 }
 
 void clr_vars(int fd)
@@ -67,21 +70,21 @@ void clr_vars(int fd)
 
 void testLOOPingControl(int fd)
 {
-    printf("testLOOPingControl() ENTRY\n");
+    printf("-> testLOOPingControl() ENTRY\n");
     int loopStatusBefore = ioctl(fd, CMD_GET_LOOP_ENABLE);
-    printf("- loop Enable (before): %d\n", loopStatusBefore);
+    printf(" - loop Enable (before): %d\n", loopStatusBefore);
     
     int testValue = (loopStatusBefore == 0) ? -1 : 0;
     
     // write alternate value
-    if((ioctl(fd, CMD_SET_LOOP_ENABLE, testValue) == -1)
+    if(ioctl(fd, CMD_SET_LOOP_ENABLE, testValue) == -1)
     {
         perror("query_app ioctl SET LOOP");
     }
     
     // check value on readback
     int loopStatusAfter = ioctl(fd, CMD_GET_LOOP_ENABLE);
-    printf("- loop Enable (after): %d\n", loopStatusAfter);
+    printf(" - loop Enable (after): %d\n", loopStatusAfter);
     
     if(loopStatusAfter == testValue) {
         printf("- TEST PASS\n");
@@ -90,5 +93,5 @@ void testLOOPingControl(int fd)
         printf("- TEST FAILURE!!\n");
     }
     
-    printf("testLOOPingControl() EXIT\n");
+    printf("-- testLOOPingControl() EXIT\n\n");
 }
