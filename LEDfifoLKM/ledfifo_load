@@ -12,7 +12,7 @@ mode="664"
 (set -x;rm -f /dev/${device}[0-3])
 
 #major=$(awk "\$2==\"$module\" {print \$1}" /proc/devices)
-major=$(cat /proc/devices | grep ${device} | cut -d' ' -f1)
+major=$(cat /proc/devices | grep ${device} | cut -d' ' -f1 | sort -n | tail -1)
 if [ -n "${major}" ]; then
 (set -x;mknod /dev/${device}0 c ${major} 0)
 #mknod /dev/${device}1 c $major 1

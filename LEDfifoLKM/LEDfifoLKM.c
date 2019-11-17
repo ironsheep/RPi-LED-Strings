@@ -64,6 +64,7 @@ static struct proc_dir_entry *file;
 #define DEFAULT_T0H_COUNT 8
 #define DEFAULT_T1H_COUNT 16
 #define DEFAULT_TRESET_COUNT 1000
+#define DEFAULT_LOOP_ENABLE 0
 
 
 static unsigned char ledType[FIFO_MAX_STR_LEN+1] = DEFAULT_LED_STRTYPE; // +1 for zero term.
@@ -73,6 +74,7 @@ static int periodCount = DEFAULT_PERIOD_COUNT;
 static int periodT0HCount = DEFAULT_T0H_COUNT;
 static int periodT1HCount = DEFAULT_T1H_COUNT;
 static int periodTRESETCount = DEFAULT_TRESET_COUNT;
+static int loopEnabled = DEFAULT_LOOP_ENABLE;
 
 static int LEDfifo_open(struct inode *i, struct file *f)
 {
@@ -105,6 +107,7 @@ static ssize_t LEDfifo_write(struct file *f, const char __user *buf, size_t len,
 static long LEDfifo_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 {
     configure_arg_t cfg;
+    long retval = 0;  // default to returning success
     int err = 0;
     int pinIndex;
 
@@ -185,11 +188,17 @@ static long LEDfifo_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
             periodT1HCount = DEFAULT_T1H_COUNT;
             periodTRESETCount = DEFAULT_TRESET_COUNT;
            break;
+        case CMD_GET_LOOP_ENABLE:
+	    retval = loopEnabled;
+	   break;
+        case CMD_SET_LOOP_ENABLE:
+	    loopEnabled = arg;
+	   break;
         default:
             return -EINVAL; // unknown command?  How'd this happen?
     }
 
-    return 0;
+    return retval;
 }
 
 
@@ -203,21 +212,12 @@ static struct file_operations LEDfifoLKM_fops =
     .unlocked_ioctl = LEDfifo_ioctl
 };
 
-/*
-static unsigned char ledType[FIFO_MAX_STR_LEN+1] = DEFAULT_LED_STRTYPE; // +1 for zero term.
-static int gpioPins[FIFO_MAX_PIN_COUNT];    // max 3 gpio pins can be assigned
-static int periodDurationNsec = DEFAULT_PERIOD_IN_NSEC;
-static int periodCount = DEFAULT_PERIOD_COUNT;
-static int periodT0HCount = DEFAULT_T0H_COUNT;
-static int periodT1HCount = DEFAULT_T1H_COUNT;
-static int periodTRESETCount = DEFAULT_TRESET_COUNT;
-
-*/
 static int config_read(struct seq_file *m, void *v)
 {
     int len = 0;
     //int freqInKHz;
     int pinIndex;
+    unsigned char *loopStatus;
     
     STR_PRINTF_RET(len, "LED String Type: %s\n", ledType);
     STR_PRINTF_RET(len, "GPIO Pins Assigned:\n");
@@ -235,6 +235,9 @@ static int config_read(struct seq_file *m, void *v)
     STR_PRINTF_RET(len, "        Bit0: Hi %d nSec -> Lo %d nSec\n", periodT0HCount * periodDurationNsec, (periodCount - periodT0HCount) * periodDurationNsec);
     STR_PRINTF_RET(len, "        Bit1: Hi %d nSec -> Lo %d nSec\n", periodT1HCount * periodDurationNsec, (periodCount - periodT1HCount) * periodDurationNsec);
     STR_PRINTF_RET(len, "       Reset: Lo %d nSec\n", (periodTRESETCount * periodDurationNsec));
+    STR_PRINTF_RET(len, "\n");
+    loopStatus = (loopEnabled) ? "YES" : "no";
+    STR_PRINTF_RET(len, "  Looping Enabled: %s\n", loopStatus);
     STR_PRINTF_RET(len, "\n");
     
     return len;
@@ -272,9 +275,9 @@ static int __init LEDfifoLKM_init(void){
         printk(KERN_WARNING "LEDfifo: can't alloc major\n");
         return ret;
     }
-    printk(KERN_INFO "LEDfifo: <Major, Minor>: <%d, %d>\n", MAJOR(firstDevNbr), MINOR(firstDevNbr));
+    printk(KERN_INFO "LEDfifo: <Major, Minor>: <%d, %d> (dev_t=0x%8X)\n", MAJOR(firstDevNbr), MINOR(firstDevNbr), firstDevNbr);
     
-    if (IS_ERR(cl = class_create(THIS_MODULE, "chardrv")))      // FIXME: UIDONE what should this be "???"
+    if (IS_ERR(cl = class_create(THIS_MODULE, "ledfifo")))      // should find this in /sys/class/ledfifo
     {
         unregister_chrdev_region(firstDevNbr, 1);
         return PTR_ERR(cl);
@@ -319,17 +322,20 @@ static int __init LEDfifoLKM_init(void){
 static void __exit LEDfifoLKM_exit(void){
     printk(KERN_INFO "LEDfifo: Exit(%s)\n", name);
     
-    // fm Chapt16
+    // fm Chap16
     remove_proc_entry("config", parent);
     remove_proc_entry("driver/ledfifo", NULL);
     
-    // fm Chapt5
+    // fm Chap5
     cdev_del(&c_dev);
     device_destroy(cl, firstDevNbr);
     class_destroy(cl);
-    // fm Chapt4
-    unregister_chrdev_region(firstDevNbr, 3);
-    printk(KERN_INFO "LEDfifo: ofcd unregistered");
+
+    // fm Chap4
+    printk(KERN_INFO "LEDfifo: (dev_t=0x%8X)\n", firstDevNbr);
+    unregister_chrdev_region(firstDevNbr, 1);
+
+    printk(KERN_INFO "LEDfifo: ofcd unregistered\n");
 }
  
 /** @brief A module must use the module_init() module_exit() macros from linux/init.h, which
