@@ -1,7 +1,7 @@
 #!/bin/bash
 # REF: https://lwn.net/images/pdf/LDD3/ch03.pdf - Page 47
 
-module="LEDfifoLKM" 
+module="LEDfifo" 
 device="ledfifo" 
 mode="664"
 

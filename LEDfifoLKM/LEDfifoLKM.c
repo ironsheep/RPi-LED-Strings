@@ -240,7 +240,7 @@ static int config_read(struct seq_file *m, void *v)
 	}
     }
     //freqInKHz = 1 / (periodDurationNsec * periodCount * 0.000000001);
-    STR_PRINTF_RET(len, "Serial Stream: (%d x %d nSec periods)\n", periodCount,  periodDurationNsec);
+    STR_PRINTF_RET(len, "Serial Stream: %d nSec Period (%d x %d nSec increments)\n", (periodCount * periodDurationNsec), periodCount,  periodDurationNsec);
     //STR_PRINTF_RET(len, "Serial Stream: %d KHz (%d x %d nSec periods)\n", freqInKHz, periodCount,  periodDurationNsec);
     STR_PRINTF_RET(len, "        Bit0: Hi %d nSec -> Lo %d nSec\n", periodT0HCount * periodDurationNsec, (periodCount - periodT0HCount) * periodDurationNsec);
     STR_PRINTF_RET(len, "        Bit1: Hi %d nSec -> Lo %d nSec\n", periodT1HCount * periodDurationNsec, (periodCount - periodT1HCount) * periodDurationNsec);

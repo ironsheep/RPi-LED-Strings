@@ -5,7 +5,7 @@ Linux Kernel Loadable Module: a 256x3x24b FIFO for driving LED Matrix GPIO Pins
 - write to hand off single screen FIFO content for display on LED Matrix Screen
 - writev to hand off DMA-like FIFO content (multiple frames) for display on LED Matrix Screen
 - ioctl to configure looping/replay of multi-frame screen-set
-- /proc/drivers - cat 'em to see current config values
+- /proc filesystem:  cat  /proc/driver/ledfifo/config  to see current config values
 
 
 ---
