@@ -12,7 +12,17 @@
 #include <linux/init.h>             // Macros used to mark up functions e.g., __init __exit
 #include <linux/module.h>           // Core header for loading LKMs into the kernel
 #include <linux/kernel.h>           // Contains types, macros, functions for the kernel
- 
+#include <linux/version.h>
+#include <linux/types.h>			// for dev_t
+#include <linux/kdev_t.h>			// foir registering device Maj/Min
+#include <linux/fs.h>				// for *_chrdev_region() calls
+#include <linux/device.h>
+#include <linux/cdev.h>
+#include <linux/string.h>			// for strxxx() and memxxx() calls
+
+#include "LEDfifoConfigureIOCtl.h"
+
+
 MODULE_LICENSE("GPL");              ///< The license type -- this affects runtime behavior
 MODULE_AUTHOR("Stephen M Moraco");      ///< The author -- visible when you use modinfo
 MODULE_DESCRIPTION("An LED Matrix display GPIO Driver.");  ///< The description -- see modinfo
@@ -22,6 +32,159 @@ static char *name = "world";        ///< An example LKM argument -- default valu
 module_param(name, charp, S_IRUGO); ///< Param desc. charp = char ptr, S_IRUGO can be read/not changed
 MODULE_PARM_DESC(name, "The name to display in /var/log/kern.log");  ///< parameter description
  
+   
+
+static dev_t firstDevNbr; // Global variable for the first device number
+static struct cdev c_dev; // Global variable for the character device structure
+static struct class *cl; // Global variable for the device class
+
+
+#define DEFAULT_LED_STRTYPE = "WS2812B"
+#define DEFAULT_PERIOD_IN_NSEC = 50;
+#define DEFAULT_PERIOD_COUNT = 25;
+#define DEFAULT_T0H_COUNT = 8;
+#define DEFAULT_T1H_COUNT = 16;
+#define DEFAULT_TRESET_COUNT = 1000;
+
+
+static unsigned char name[FIFO_MAX_STR_LEN+1] = DEFAULT_LED_STRTYPE; // +1 for zero term.
+static int gpioPins[FIFO_MAX_PIN_COUNT];	// max 3 gpio pins can be assigned
+static int periodDurationNsec = DEFAULT_PERIOD_IN_NSEC;
+static int periodCount = DEFAULT_PERIOD_COUNT;
+static int periodT0HCount = DEFAULT_T0H_COUNT;
+static int periodT1HCount = DEFAULT_T1H_COUNT;
+static int periodTRESETCount = DEFAULT_TRESET_COUNT;
+
+static int LEDfifo_open(struct inode *i, struct file *f)
+{
+    printk(KERN_INFO "Driver: open()\n");
+    return 0;
+}
+static int LEDfifo_close(struct inode *i, struct file *f)
+{
+    printk(KERN_INFO "Driver: close()\n");
+    return 0;
+}
+static ssize_t LEDfifo_read(struct file *f, char __user *buf, size_t len, loff_t *off)
+{
+    printk(KERN_INFO "Driver: read()\n");
+    return 0;
+}
+static ssize_t LEDfifo_write(struct file *f, const char __user *buf, size_t len,
+    loff_t *off)
+{
+    printk(KERN_INFO "Driver: write()\n");
+    return len;
+}
+
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(2,6,35))
+static int LEDfifo_ioctl(struct inode *i, struct file *f, unsigned int cmd,
+    unsigned long arg)
+#else
+static long LEDfifo_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
+#endif
+{
+    printk(KERN_INFO "Driver: ioctl()\n");
+    configure_arg_t cfg;
+
+	/*
+	* extract the type and number bitfields, and don't decode
+	* wrong cmds: return ENOTTY (inappropriate ioctl) before access_ok()
+	*/
+	if (_IOC_TYPE(cmd) != LED_FIFO_IOC_MAGIC)
+		return -ENOTTY;
+	if (_IOC_NR(cmd) > LED_FIFO_IOC_MAXNR)
+		return -ENOTTY;
+		
+	/*
+	* the direction is a bitmask, and VERIFY_WRITE catches R/W * transfers.
+	* `Type' is user-oriented, while access_ok is kernel-oriented, so the 
+	* concept of "read" and * "write" is reversed
+	*/
+	int err = 0;
+	if (_IOC_DIR(cmd) & _IOC_READ)
+		err = !access_ok(VERIFY_WRITE, (void __user *)arg, _IOC_SIZE(cmd));
+	if ((!err) && (_IOC_DIR(cmd) & _IOC_WRITE))
+		err = !access_ok(VERIFY_READ, (void __user *)arg, _IOC_SIZE(cmd));
+	if (err)
+		return -EFAULT;
+
+	/*
+	* now handle the legitimate command
+	*/
+    switch (cmd)
+    {
+        case CMD_GET_VARIABLES:
+        	memset(cfg.name, 0, FIFO_MAX_STR_LEN+1);
+        	strncpy(cfg.name, name, FIFO_MAX_STR_LEN);
+			for(int pinIndex = 0; pinIndex < FIFO_MAX_PIN_COUNT; pinIndex++) {
+				cfg.gpioPins[pinIndex] = gpioPins[pinIndex];
+			}
+            cfg.periodDurationNsec = periodDurationNsec;
+            cfg.periodCount = periodCount;
+            cfg.periodT0HCount = periodT0HCount;
+            cfg.periodT1HCount = periodT1HCount;
+            cfg.periodTRESETCount = periodTRESETCount;
+            // copy_to_user(to,from,count)
+            if (copy_to_user((configure_arg_t *)arg, &q,
+                sizeof(configure_arg_t)))
+            {
+                return -EACCES;
+            }
+            break;
+        case CMD_SET_VARIABLES:
+        	// copy_from_user(to,from,count)
+            if (copy_fm_user(&cfg, (configure_arg_t *)arg,
+                sizeof(configure_arg_t)))
+            {
+                return -EACCES;
+            }
+        	memset(name, 0, FIFO_MAX_STR_LEN+1);
+        	strncpy(name, DEFAULT_LED_STRTYPE, FIFO_MAX_STR_LEN);
+			for(int pinIndex = 0; pinIndex < FIFO_MAX_PIN_COUNT; pinIndex++) {
+				gpioPins[pinIndex] = cfg.gpioPins[pinIndex];
+			}
+            periodDurationNsec = cfg.periodDurationNsec;
+            periodCount = cfg.periodCount;
+            periodT0HCount = cfg.periodT0HCount;
+            periodT1HCount = cfg.periodT1HCount;
+            periodTRESETCount = cfg.periodTRESETCount;
+           break;
+        case CMD_RESET_VARIABLES:
+        	// reconfigure for WS2812B
+        	memset(name, 0, FIFO_MAX_STR_LEN+1);
+        	strncpy(name, DEFAULT_LED_STRTYPE, FIFO_MAX_STR_LEN);
+			for(int pinIndex = 0; pinIndex < FIFO_MAX_PIN_COUNT; pinIndex++) {
+				gpioPins[pinIndex] = 0;
+			}
+			periodDurationNsec = DEFAULT_PERIOD_IN_NSEC;
+			periodCount = DEFAULT_PERIOD_COUNT;
+			periodT0HCount = DEFAULT_T0H_COUNT;
+			periodT1HCount = DEFAULT_T1H_COUNT;
+			periodTRESETCount = DEFAULT_TRESET_COUNT;
+           break;
+        default:
+            return -EINVAL;	// unknown command?  How'd this happen?
+    }
+
+    return 0;
+}
+
+
+static struct file_operations LEDfifoLKM_fops =
+{
+    .owner = THIS_MODULE,
+    .open = LEDfifo_open,
+    .release = LEDfifo_close,
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(2,6,35))
+	.ioctl = LEDfifo_ioctl
+#else
+	.unlocked_ioctl = LEDfifo_ioctl
+#endif
+    .read = LEDfifo_read,
+    .write = LEDfifo_write
+};
+
 /** @brief The LKM initialization function
  *  The static keyword restricts the visibility of the function to within this C file. The __init
  *  macro means that for a built-in driver (not a LKM) the function is only used at initialization
@@ -29,8 +192,42 @@ MODULE_PARM_DESC(name, "The name to display in /var/log/kern.log");  ///< parame
  *  @return returns 0 if successful
  */
 static int __init LEDfifoLKM_init(void){
-   printk(KERN_INFO "LEDfifo: Hello %s from the LEDfifo LKM!\n", name);
-   return 0;
+	printk(KERN_INFO "LEDfifo: init()\n", name);
+	
+	int ret;
+    struct device *dev_ret;
+
+	printk(KERN_INFO "LEDfifo: ofcd registered");
+	if ((ret = alloc_chrdev_region(&firstDevNbr, 0, 3, "ledfifo")) < 0)
+	{
+		//printk(KERN_WARNING "LEDfifo: can't get major %d\n", scull_major);
+		printk(KERN_WARNING "LEDfifo: can't get major\n");
+	    return ret;
+	}
+	printk(KERN_INFO "<Major, Minor>: <%d, %d>\n", MAJOR(firstDevNbr), MINOR(firstDevNbr));
+	
+    if (IS_ERR(cl = class_create(THIS_MODULE, "chardrv")))		// FIXME: UIDONE what should this be "???"
+    {
+        unregister_chrdev_region(firstDevNbr, 1);
+        return PTR_ERR(cl);
+    }
+    if (IS_ERR(dev_ret = device_create(cl, NULL, firstDevNbr, NULL, "ledfifo")))
+    {
+        class_destroy(cl);
+        unregister_chrdev_region(firstDevNbr, 1);
+        return PTR_ERR(dev_ret);
+    }
+
+    cdev_init(&c_dev, &LEDfifoLKM_fops);
+    if ((ret = cdev_add(&c_dev, firstDevNbr, 1)) < 0)
+    {
+        device_destroy(cl, firstDevNbr);
+        class_destroy(cl);
+        unregister_chrdev_region(firstDevNbr, 1);
+        return ret;
+    }
+
+	return 0;
 }
  
 /** @brief The LKM cleanup function
@@ -38,7 +235,15 @@ static int __init LEDfifoLKM_init(void){
  *  code is used for a built-in driver (not a LKM) that this function is not required.
  */
 static void __exit LEDfifoLKM_exit(void){
-   printk(KERN_INFO "LEDfifo: Goodbye %s from the LEDfifo LKM!\n", name);
+	printk(KERN_INFO "LEDfifo: Exit()\n", name);
+	
+	// fm Chapt5
+    cdev_del(&c_dev);
+    device_destroy(cl, firstDevNbr);
+    class_destroy(cl);
+    // fm Chapt4
+	unregister_chrdev_region(firstDevNbr, 3);
+	printk(KERN_INFO "LEDfifo: ofcd unregistered");
 }
  
 /** @brief A module must use the module_init() module_exit() macros from linux/init.h, which
@@ -47,3 +252,6 @@ static void __exit LEDfifoLKM_exit(void){
  */
 module_init(LEDfifoLKM_init);
 module_exit(LEDfifoLKM_exit);
+
+
+
