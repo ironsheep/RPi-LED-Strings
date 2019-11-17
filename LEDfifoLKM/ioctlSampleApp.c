@@ -21,51 +21,108 @@ void get_vars(int fd);
 void clr_vars(int fd);
 void set_vars(int fd);
 void testLOOPingControl(int fd);
+void testSetPins(int fd);
 
 // test app
 int main()
 {
-        int fd;
-        
-        printf("\nOpening Driver\n");
-        fd = open("/dev/ledfifo0", O_RDWR);
-        if(fd < 0) {
-                printf("Cannot open device file...\n");
-                return -1;
-        }
- 	get_vars(fd);
-        testLOOPingControl(fd);
-  
-        printf("Closing Driver\n");
-        close(fd);
+    int fd;
+    
+    printf("\nOpening Driver\n");
+    fd = open("/dev/ledfifo0", O_RDWR);
+    if(fd < 0) {
+        printf("ERROR: Failed to open device file...\n");
+        return -1;
+    }
+    
+    get_vars(fd);
+    
+    testLOOPingControl(fd);
+    
+    testSetPins(fd);
+    
+    printf("Closing Driver\n");
+    close(fd);
 }
 
 
 void get_vars(int fd)
 {
-    configure_arg_t q;
-
+    configure_arg_t deviceValues;
+    
     printf("-> get_vars() ENTRY\n");
-
-    if (ioctl(fd, CMD_GET_VARIABLES, &q) == -1)
+    
+    if (ioctl(fd, CMD_GET_VARIABLES, &deviceValues) == -1)
     {
         perror("query_app ioctl get");
     }
     else
     {
-        printf(" - LED Type: [%s]\n", q.ledType);
-        //printf("Dignity: %d\n", q.dignity);
-        //printf("Ego    : %d\n", q.ego);
+        printf(" - LED Type: [%s]\n", deviceValues.ledType);
+        for(int pinIndex=0; pinIndex<FIFO_MAX_PIN_COUNT; pinIndex++) {
+            if(deviceValues.gpioPins[pinIndex] != 0) {
+                printf(" - Pin #%d: GPIO %d\n", pinIndex+1, deviceValues.gpioPins[pinIndex]);
+             }
+             else {
+                printf(" - Pin #%d: {notSet}\n", pinIndex+1);
+            }
+        }
+        float freqInKHz = 1.0 / (deviceValues.periodCount * deviceValues.periodDurationNsec);
+        printf(" - LED String: %.3f KHz: %d nSec period (%dx %d nSec sub-periods)\n", freqInKHz, (deviceValues.periodCount * deviceValues.periodDurationNsec), eviceValues.periodCount, deviceValues.periodDurationNsec);
+        printf("      - Bit 0: T0H %d nSec, T0L %d nSec\n", deviceValues.periodT0HCount, deviceValues.periodCount - deviceValues.periodT0HCount);
+        printf("      - Bit 1: T0H %d nSec, T0L %d nSec\n", deviceValues.periodT1HCount, deviceValues.periodCount - deviceValues.periodT1HCount);
+        printf("      - RESET: %.2f uSec\n", deviceValues.periodTRESETCount * periodDurationNsec / 1000);
     }
     printf("-- get_vars() EXIT\n\n");
 }
 
+void testSetPins(int fd)
+{
+    configure_arg_t deviceValues;
+    
+    printf("-> testSetPins() ENTRY\n");
+    if (ioctl(fd, CMD_GET_VARIABLES, &deviceValues) == -1)
+    {
+        perror("query_app ioctl get");
+    }
+    else
+    {
+        deviceValues.gpioPins[0] = 17;
+        deviceValues.gpioPins[1] = 27;
+        deviceValues.gpioPins[2] = 22;
+        if (ioctl(fd, CMD_SET_VARIABLES, &deviceValues) == -1)
+        {
+            perror("query_app ioctl set");
+        }
+        else {
+            if (ioctl(fd, CMD_GET_VARIABLES, &deviceValues) == -1)
+            {
+                perror("query_app ioctl get");
+            }
+            else {
+                if(deviceValues.gpioPins[0] != 0 && deviceValues.gpioPins[1] != 0 && deviceValues.gpioPins[2] != 0) {
+                    printf("- TEST PASS\n");
+                }
+                else {
+                    printf("- TEST FAILURE!!\n");
+                }
+            }
+        }
+    }
+
+    printf("-- testSetPins() EXIT\n\n");
+
+}
+
 void clr_vars(int fd)
 {
+    printf("-> clr_vars() ENTRY\n");
+
     if (ioctl(fd, CMD_RESET_VARIABLES) == -1)
     {
         perror("query_app ioctl clr");
     }
+    printf("-- clr_vars() EXIT\n\n");
 }
 
 void testLOOPingControl(int fd)
