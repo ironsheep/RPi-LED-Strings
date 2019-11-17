@@ -13,6 +13,7 @@
 #include <sys/ioctl.h>
 #include <fcntl.h>	// for open()
 #include <unistd.h> 	// for close
+#include <string.h> 	// for strxxx()
 
 #include "LEDfifoConfigureIOCtl.h"
 
@@ -22,6 +23,7 @@ void clr_vars(int fd);
 void set_vars(int fd);
 void testLOOPingControl(int fd);
 void testSetPins(int fd);
+void testSet2815(int fd);
 
 // test app
 int main()
@@ -40,6 +42,12 @@ int main()
     testLOOPingControl(fd);
     
     testSetPins(fd);
+
+	testSet2815(fd);
+    get_vars(fd);
+
+	clr_vars(fd);
+    get_vars(fd);
     
     printf("Closing Driver\n");
     close(fd);
@@ -67,11 +75,11 @@ void get_vars(int fd)
                 printf(" - Pin #%d: {notSet}\n", pinIndex+1);
             }
         }
-        float freqInKHz = 1.0 / (deviceValues.periodCount * deviceValues.periodDurationNsec);
-        printf(" - LED String: %.3f KHz: %d nSec period (%dx %d nSec sub-periods)\n", freqInKHz, (deviceValues.periodCount * deviceValues.periodDurationNsec), eviceValues.periodCount, deviceValues.periodDurationNsec);
+        float freqInKHz = 1.0 / (deviceValues.periodCount * deviceValues.periodDurationNsec * 0.000000001) / 1000.0;
+        printf(" - LED String: %.3f KHz: %d nSec period (%dx %d nSec sub-periods)\n", freqInKHz, (deviceValues.periodCount * deviceValues.periodDurationNsec), deviceValues.periodCount, deviceValues.periodDurationNsec);
         printf("      - Bit 0: T0H %d nSec, T0L %d nSec\n", deviceValues.periodT0HCount, deviceValues.periodCount - deviceValues.periodT0HCount);
         printf("      - Bit 1: T0H %d nSec, T0L %d nSec\n", deviceValues.periodT1HCount, deviceValues.periodCount - deviceValues.periodT1HCount);
-        printf("      - RESET: %.2f uSec\n", deviceValues.periodTRESETCount * periodDurationNsec / 1000);
+        printf("      - RESET: %.1f uSec\n", (deviceValues.periodTRESETCount * deviceValues.periodDurationNsec) / 1000.0);
     }
     printf("-- get_vars() EXIT\n\n");
 }
@@ -112,6 +120,30 @@ void testSetPins(int fd)
 
     printf("-- testSetPins() EXIT\n\n");
 
+}
+
+void testSet2815(int fd)
+{
+    configure_arg_t deviceValues;
+    
+    printf("-> testSetPins() ENTRY\n");
+
+	strcpy(deviceValues.ledType, "WS2815\0");
+        deviceValues.gpioPins[0] = 17;
+        deviceValues.gpioPins[1] = 27;
+        deviceValues.gpioPins[2] = 22;
+        deviceValues.periodDurationNsec = 50;
+        deviceValues.periodCount = 27;
+        deviceValues.periodT0HCount = 6;
+        deviceValues.periodT1HCount = 21;
+        deviceValues.periodTRESETCount = 5600;
+        if (ioctl(fd, CMD_SET_VARIABLES, &deviceValues) == -1)
+        {
+            perror("query_app ioctl set");
+	}
+	else {
+                    printf("- TEST PASS\n");
+	}
 }
 
 void clr_vars(int fd)
