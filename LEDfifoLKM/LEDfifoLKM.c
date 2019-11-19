@@ -1,4 +1,4 @@
-nBitShiftValue/**
+/**
  * @file    LEDfifoLKM.c
  * @author  Stephen M Moraco
  * @date    15 November 2019
@@ -29,7 +29,7 @@ nBitShiftValue/**
 
 // get raspbery PI details
 #include <asm/io.h>
-#include <mach/platform.h>
+//#include <mach/platform.h>
 #include <linux/delay.h>
 #include <linux/interrupt.h>    // for tasklets
 
@@ -73,6 +73,7 @@ MODULE_PARM_DESC(name, "The name to display in /var/log/kern.log");  ///< parame
 #endif
 
 // forward declarations
+static long LEDfifo_ioctl(struct file *f, unsigned int cmd, unsigned long arg);
 static void resetCurrentPins(void);
 static void initCurrentPins(void);
 static void initBitTableForCurrentPins(void);
@@ -164,8 +165,8 @@ static struct file_operations LEDfifoLKM_fops =
     .open = LEDfifo_open,
     .read = LEDfifo_read,
     .write = LEDfifo_write,
-    .readv = LEDfifo_readv,
-    .writev = LEDfifo_writev,
+//    .readv = LEDfifo_readv,
+//    .writev = LEDfifo_writev,
      .release = LEDfifo_close,
     .unlocked_ioctl = LEDfifo_ioctl
 };
@@ -266,25 +267,25 @@ static long LEDfifo_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
             if(arg == 0) {
                 //textXmitZeros(1000);
                 tasklet_init(&tasklet, taskletTestWrites, 0); 
-                tasklet_hi_schedule(tasklet);
+                tasklet_hi_schedule(&tasklet);
             }
             else {
                 //textXmitOnes(1000);
                 tasklet_init(&tasklet, taskletTestWrites, 1); 
-                tasklet_hi_schedule(tasklet);
+                tasklet_hi_schedule(&tasklet);
            }
             break;
         case CMD_CLEAR_SCREEN:
             requestedCommand = DO_FILL_SCREEN;
             requestedColor = 0x000000;  // black
             tasklet_init(&tasklet, taskletScreenFill, requestedColor); 
-            tasklet_hi_schedule(tasklet);
+            tasklet_hi_schedule(&tasklet);
             break;
         case CMD_SET_SCREEN_COLOR:
             requestedCommand = DO_FILL_SCREEN;
             requestedColor = arg;
             tasklet_init(&tasklet, taskletScreenFill, requestedColor); 
-            tasklet_hi_schedule(tasklet);
+            tasklet_hi_schedule(&tasklet);
             break;
         default:
             return -EINVAL; // unknown command?  How'd this happen?
@@ -453,7 +454,12 @@ struct GpioRegisters {
     uint32_t GPCLR[2];
 };
  
-struct GpioRegisters *s_pGpioRegisters = (struct GpioRegisters *)__io_address(GPIO_BASE);
+//struct GpioRegisters *s_pGpioRegisters = (struct GpioRegisters *)__io_address(GPIO_BASE);
+
+#define BCM2708_PERI_BASE        0xFE000000
+#define GPIO_BASE                (BCM2708_PERI_BASE + 0x200000) /* GPIO controller */
+
+struct GpioRegisters *s_pGpioRegisters = (struct GpioRegisters *)GPIO_BASE;
 
 // ---------------------
 // Operation NOTE:
@@ -540,7 +546,7 @@ static uint32_t pinsAllActive;
 //
 
 #define PIN_PRESENT(pinIdx) ((gpioPins[pinIdx] != 0) ? 1 : 0)
-#define PIN_VALUE_IF_SELECTED(index, ) ((gpioPins[pinIdx] != 0) ? 1 : 0)
+//#define PIN_VALUE_IF_SELECTED(index, ) ((gpioPins[pinIdx] != 0) ? 1 : 0)
  
     
 static void initBitTableForCurrentPins(void)
@@ -557,16 +563,21 @@ static void initBitTableForCurrentPins(void)
     uint32_t pinValueIdx2;
     uint32_t pinsAllHigh;
     uint32_t pinsAllLow;
-    uint32_t allSetPins;
-    uint8_t nEntryIdx;
+    //uint32_t allSetPins;
+    uint8_t nAllPins;
+    //uint8_t nEntryIdx;
+    uint8_t nTableIdx;
     uint8_t nWordIdx;
     uint8_t nPinCount;
     uint8_t nMaxTableEntries;
     uint8_t nMinHighPeriodLength;
-    uint8_t nRemainingPeriodLength;
-    uint8_t nHighPeriodIsShorter;
+    //uint8_t nRemainingPeriodLength;
+    //uint8_t nHighPeriodIsShorter;
     uint8_t nOnlyHighPeriodLength;
     uint8_t nOnlyRemainingPeriodLength;
+    uint8_t nRemainingHighPeriodLength;
+    uint8_t nRemainingLowPeriodLength;
+    uint8_t n0IsShorterThan1;
    
     nPinCount = (gpioPins[0] != 0) ? 1 : 0 + 
                 (gpioPins[1] != 0) ? 1 : 0 + 
@@ -576,10 +587,10 @@ static void initBitTableForCurrentPins(void)
                (gpioPins[1] != 0) ? 2 : 0 + 
                (gpioPins[2] != 0) ? 4 : 0; // [0-7]
                     
-    nMaxTableEntries = (nPinCount > 2) ? 8 : (nPinCount > 1) ? 4 : (nPinCount > ) ? 2 : 0;
+    nMaxTableEntries = (nPinCount > 2) ? 8 : (nPinCount > 1) ? 4 : (nPinCount > 0) ? 2 : 0;
                         
     // zero fill our structure
-    memset(gpioBitControlEntries, 0, sizeof(gpioBitControlEntries);
+    memset(gpioBitControlEntries, 0, sizeof(gpioBitControlEntries));
     
     // if we have table entries to populate...
     if(nMaxTableEntries > 0) {
@@ -627,10 +638,10 @@ static void initBitTableForCurrentPins(void)
             // calculate masks for early then late clears
             pinsAllLow = ((nTableIdx & 0x01) == 0x01) ? 0 : pinValueIdx0;
             pinsAllLow |= ((nTableIdx & 0x02) == 0x02) ? 0 : pinValueIdx1;
-            pinsAllLow |= ((nTableIdx & 0x02) == 0x04) ? 0 : pinValueIdx2;
+            pinsAllLow |= ((nTableIdx & 0x04) == 0x04) ? 0 : pinValueIdx2;
             pinsAllHigh = ((nTableIdx & 0x01) == 0x01) ? 0 : pinValueIdx0;
             pinsAllHigh |= ((nTableIdx & 0x02) == 0x02) ? 0 : pinValueIdx1;
-            pinsAllHigh |= ((nTableIdx & 0x02) == 0x04) ? 0 : pinValueIdx2;
+            pinsAllHigh |= ((nTableIdx & 0x04) == 0x04) ? 0 : pinValueIdx2;
             // do our shorter clear (0or1 bits)
             gpioBitControlEntries[nTableIdx].word[nWordIdx+1].gpioPinBits = (n0IsShorterThan1) ? pinsAllLow : pinsAllHigh;
             gpioBitControlEntries[nTableIdx].word[nWordIdx+1].gpioOperation = GPIO_CLR;
@@ -643,6 +654,7 @@ static void initBitTableForCurrentPins(void)
             gpioBitControlEntries[nTableIdx].word[nWordIdx+2].entryOccupied = 1;
         }
     }
+    }
 }
 
 // ---------------------
@@ -653,11 +665,11 @@ static void initBitTableForCurrentPins(void)
 
 static void transmitToAllChannelsBitsValued(uint8_t bitsIndex)
 {
-    gpioCrontrolEntry_t *selectedEntry = NULL;
+    gpioCrontrolWord_t *selectedEntry = NULL;
     uint8_t nWordIdx;
     
     if(bitsIndex >= MAX_GPIO_CONTROL_ENTRIES) {
-        printk(KERN_ERROR "LEDfifo: [CODE] transmitToAllChannelsBitsValued(%d) OUT-OF-RANGE bitIndex not [0-%d]\n", bitsIndex, MAX_GPIO_CONTROL_ENTRIES-1);
+        printk(KERN_ERR "LEDfifo: [CODE] transmitToAllChannelsBitsValued(%d) OUT-OF-RANGE bitIndex not [0-%d]\n", bitsIndex, MAX_GPIO_CONTROL_ENTRIES-1);
     }
     else {
         // select a table entry
@@ -675,7 +687,7 @@ static void transmitToAllChannelsBitsValued(uint8_t bitsIndex)
                     s_pGpioRegisters->GPCLR[0] = selectedEntry->gpioPinBits;
                }
                 else {
-                    printk(KERN_ERROR "LEDfifo: [CODE] transmitToAllChannelsBitsValued(%d) INVALID gpioOperation Entry (%d) word[%d]\n", bitsIndex, selectedEntry->gpioOperation, nWordIdx);
+                    printk(KERN_ERR "LEDfifo: [CODE] transmitToAllChannelsBitsValued(%d) INVALID gpioOperation Entry (%d) word[%d]\n", bitsIndex, selectedEntry->gpioOperation, nWordIdx);
                 }
             }
             // lessee if RPi has working ndelay()...
@@ -703,9 +715,9 @@ static void actOnCommand(void)
             // fill screen with requestedColor value (RGB)
             break;
         case NO_CMD:
-            break
+            break;
         default:
-            break
+            break;
     }
 }
 
@@ -751,7 +763,7 @@ void taskletScreenFill(unsigned long data)
     // data is 24-bit RGB value to be written
     uint32_t nPanelBits;
     uint8_t red;
-    utin8_t green;
+    uint8_t green;
     uint8_t blue;
     uint8_t buffer[3];
     uint8_t nLedIdx;
@@ -761,9 +773,9 @@ void taskletScreenFill(unsigned long data)
     uint8_t pPanelByte[3];
    
     
-    red = (data >> 16) & 0x000000ff
-    green = (data >> 8) & 0x000000ff
-    blue = (data >> 0) & 0x000000ff
+    red = (data >> 16) & 0x000000ff;
+    green = (data >> 8) & 0x000000ff;
+    blue = (data >> 0) & 0x000000ff;
     buffer[0] = green;
     buffer[1] = red;
     buffer[2] = blue;
