@@ -79,6 +79,7 @@ MODULE_PARM_DESC(name, "The name to display in /var/log/kern.log");  ///< parame
 
 // forward declarations
 static long LEDfifo_ioctl(struct file *f, unsigned int cmd, unsigned long arg);
+static void init_gpio_access(void);
 static void resetCurrentPins(void);
 static void initCurrentPins(void);
 static void initBitTableForCurrentPins(void);
@@ -480,7 +481,7 @@ struct GpioRegisters {
  
 //struct GpioRegisters *s_pGpioRegisters = (struct GpioRegisters *)__io_address(GPIO_BASE);
 
-struct volatile GpioRegisters *s_pGpioRegisters;
+struct GpioRegisters volatile *s_pGpioRegisters;
 
 //#define BCM2708_PERI_BASE        0x20000000
 	// RPi 4
@@ -507,14 +508,13 @@ struct volatile GpioRegisters *s_pGpioRegisters;
 
 static void init_gpio_access(void)
 {
-    int  mem_fd;
     void *gpio_map;
 
-   // Always use volatile pointer!
    gpio_map = ioremap(GPIO_BASE, GPIO_BLOCK_SIZE);
    
+   // Always use volatile pointer!
    gpio = (volatile unsigned *)gpio_map;
-   s_pGpioRegisters = (struct volatile GpioRegisters *)gpio;
+   s_pGpioRegisters = (struct GpioRegisters volatile *)gpio;
 }
 
 
@@ -574,8 +574,8 @@ static void initCurrentPins(void)
 //
 enum eGpioOperationType { 
     // zero NOT used, on purpose! (zero indicates value not set)
-    GPIO_SET=1, 
-    GPIO_CLR=2 
+    OP_GPIO_SET=1, 
+    OP_GPIO_CLR=2 
 };
 
 typedef struct _gpioCrontrolWord
@@ -664,7 +664,7 @@ static void initBitTableForCurrentPins(void)
                 // do our only set (0 bits -or- 1 bits)
                 nOnlyHighPeriodLength = (nTableIdx == 0) ? periodT0HCount : periodT1HCount;
                 gpioBitControlEntries[nTableIdx].word[nWordIdx].gpioPinBits = pinsAllActive;
-                gpioBitControlEntries[nTableIdx].word[nWordIdx].gpioOperation = GPIO_SET;
+                gpioBitControlEntries[nTableIdx].word[nWordIdx].gpioOperation = OP_GPIO_SET;
                 gpioBitControlEntries[nTableIdx].word[nWordIdx].durationToNext = nOnlyHighPeriodLength;
                 gpioBitControlEntries[nTableIdx].word[nWordIdx].entryOccupied = 1;
                 
@@ -672,14 +672,14 @@ static void initBitTableForCurrentPins(void)
                 // do our only clear (0 bits -or- 1 bits)
                 nOnlyRemainingPeriodLength = periodCount - nOnlyHighPeriodLength;
                 gpioBitControlEntries[nTableIdx].word[nWordIdx+1].gpioPinBits = pinsAllActive;
-                gpioBitControlEntries[nTableIdx].word[nWordIdx+1].gpioOperation = GPIO_CLR;
+                gpioBitControlEntries[nTableIdx].word[nWordIdx+1].gpioOperation = OP_GPIO_CLR;
                 gpioBitControlEntries[nTableIdx].word[nWordIdx+1].durationToNext = nOnlyRemainingPeriodLength;
                 gpioBitControlEntries[nTableIdx].word[nWordIdx+1].entryOccupied = 1;
             }
             else {
                 // do our min-duration set for all active pins               
                 gpioBitControlEntries[nTableIdx].word[nWordIdx].gpioPinBits = pinsAllActive;
-                gpioBitControlEntries[nTableIdx].word[nWordIdx].gpioOperation = GPIO_SET;
+                gpioBitControlEntries[nTableIdx].word[nWordIdx].gpioOperation = OP_GPIO_SET;
                 gpioBitControlEntries[nTableIdx].word[nWordIdx].durationToNext = nMinHighPeriodLength;
                 gpioBitControlEntries[nTableIdx].word[nWordIdx].entryOccupied = 1;
                 
@@ -692,12 +692,12 @@ static void initBitTableForCurrentPins(void)
                 pinsAllHigh |= ((nTableIdx & 0x04) == 0x04) ? 0 : pinValueIdx2;
                 // do our shorter clear (0or1 bits)
                 gpioBitControlEntries[nTableIdx].word[nWordIdx+1].gpioPinBits = (n0IsShorterThan1) ? pinsAllLow : pinsAllHigh;
-                gpioBitControlEntries[nTableIdx].word[nWordIdx+1].gpioOperation = GPIO_CLR;
+                gpioBitControlEntries[nTableIdx].word[nWordIdx+1].gpioOperation = OP_GPIO_CLR;
                 gpioBitControlEntries[nTableIdx].word[nWordIdx+1].durationToNext = nRemainingHighPeriodLength;
                 gpioBitControlEntries[nTableIdx].word[nWordIdx+1].entryOccupied = 1;
                 // do our longer clear (1or0 bits)
                 gpioBitControlEntries[nTableIdx].word[nWordIdx+2].gpioPinBits = (n0IsShorterThan1) ? pinsAllHigh : pinsAllLow;
-                gpioBitControlEntries[nTableIdx].word[nWordIdx+2].gpioOperation = GPIO_CLR;
+                gpioBitControlEntries[nTableIdx].word[nWordIdx+2].gpioOperation = OP_GPIO_CLR;
                 gpioBitControlEntries[nTableIdx].word[nWordIdx+2].durationToNext = nRemainingLowPeriodLength;
                 gpioBitControlEntries[nTableIdx].word[nWordIdx+2].entryOccupied = 1;
             }
@@ -725,10 +725,10 @@ static void dumpPinTable(void)
             printk(KERN_INFO "LEDfifo:   - word %d:\n", nWordIdx);
             selectedWord = &selectedEntry->word[nWordIdx];
             switch(selectedWord->gpioOperation) {
-                case GPIO_SET:
+                case OP_GPIO_SET:
                     opText = "SET";
                     break;
-                case GPIO_CLR:
+                case OP_GPIO_CLR:
                     opText = "CLEAR";
                     break;
                 default:
