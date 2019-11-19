@@ -7,6 +7,11 @@
  * in the /var/log/kern.log file when the module is loaded and removed. The module can accept an
  * argument when it is loaded -- the name, which appears in the kernel log files.
  * @see http://www.derekmolloy.ie/ for a full description and follow-up descriptions.
+ 
+ 
+- History:
+-   Round 1 direct I/O
+-   Round 2 let's awaken mem/map access...
 */
  
 #include <linux/init.h>             // Macros used to mark up functions e.g., __init __exit
@@ -32,6 +37,7 @@
 //#include <mach/platform.h>
 #include <linux/delay.h>
 #include <linux/interrupt.h>    // for tasklets
+#include <linux/gpio.h>    // for gpio access new form
 
 
 #include "LEDfifoConfigureIOCtl.h"
@@ -97,6 +103,8 @@ static struct class *cl; // Global variable for the device class
 
 static struct proc_dir_entry *parent;
 static struct proc_dir_entry *file;
+
+static volatile unsigned int *gpio;
 
 static unsigned char ledType[FIFO_MAX_STR_LEN+1] = DEFAULT_LED_STRTYPE; // +1 for zero term.
 static int gpioPins[FIFO_MAX_PIN_COUNT];    // max 3 gpio pins can be assigned
@@ -368,8 +376,7 @@ static int __init LEDfifoLKM_init(void){
     int ret;
     struct device *dev_ret;
 
-    printk(KERN_INFO "LEDfifo: init(%s) ENTRY\n", name);
-    
+    printk(KERN_INFO "LEDfifo: init(%s) ENTRY\n", name);    
 
     printk(KERN_INFO "LEDfifo: ofcd register");
     if ((ret = alloc_chrdev_region(&firstDevNbr, LED_FIFO_MAJOR, LED_FIFO_NR_DEVS, "ledfifo")) < 0)
@@ -413,6 +420,8 @@ static int __init LEDfifoLKM_init(void){
         remove_proc_entry("driver/ledfifo", NULL);
         return -1;
     }
+    
+    init_gpio_access();
     
     // initialize our pin-set
     initCurrentPins();
@@ -468,10 +477,67 @@ struct GpioRegisters {
  
 //struct GpioRegisters *s_pGpioRegisters = (struct GpioRegisters *)__io_address(GPIO_BASE);
 
+struct volatile GpioRegisters *s_pGpioRegisters;
+
+//#define BCM2708_PERI_BASE        0x20000000
+	// RPi 4
 #define BCM2708_PERI_BASE        0xFE000000
 #define GPIO_BASE                (BCM2708_PERI_BASE + 0x200000) /* GPIO controller */
 
-struct GpioRegisters *s_pGpioRegisters = (struct GpioRegisters *)GPIO_BASE;
+
+#define PAGE_SIZE (4*1024)
+#define BLOCK_SIZE (4*1024)
+
+// GPIO setup macros. Always use INP_GPIO(x) before using OUT_GPIO(x) or SET_GPIO_ALT(x,y)
+#define INP_GPIO(g) *(gpio+((g)/10)) &= ~(7<<(((g)%10)*3))
+#define OUT_GPIO(g) *(gpio+((g)/10)) |=  (1<<(((g)%10)*3))
+#define SET_GPIO_ALT(g,a) *(gpio+(((g)/10))) |= (((a)<=3?(a)+4:(a)==4?3:2)<<(((g)%10)*3))
+
+#define SET_GPIO(g) (*(gpio+7) = 1<<(g))
+#define CLR_GPIO(g) (*(gpio+10) = 1<<(g))
+
+#define GPIO_SET *(gpio+7)  // sets   bits which are 1 ignores bits which are 0
+#define GPIO_CLR *(gpio+10) // clears bits which are 1 ignores bits which are 0
+
+#define GET_GPIO(g) (*(gpio+13)&(1<<g)) // 0 if LOW, (1<<g) if HIGH
+
+#define GPIO_PULL *(gpio+37) // Pull up/pull down
+#define GPIO_PULLCLK0 *(gpio+38) // Pull up/pull down clock
+
+
+static void init_gpio_access(void)
+{
+    int  mem_fd;
+    void *gpio_map;
+
+   /* open /dev/mem */
+   if ((mem_fd = open("/dev/mem", O_RDWR|O_SYNC) ) < 0) {
+      printk(KERN_ERR "LEDfifo: can't open /dev/mem \n");
+      exit(-1);
+   }
+
+   /* mmap GPIO */
+   gpio_map = mmap(
+      NULL,             //Any adddress in our space will do
+      BLOCK_SIZE,       //Map length
+      PROT_READ|PROT_WRITE,// Enable reading & writting to mapped memory
+      MAP_SHARED,       //Shared with other processes
+      mem_fd,           //File to map
+      GPIO_BASE         //Offset to GPIO peripheral
+   );
+
+   close(mem_fd); //No need to keep mem_fd open after mmap
+
+   if (gpio_map == MAP_FAILED) {
+      printk(KERN_ERR "LEDfifo: mmap error %d\n", (int)gpio_map);//errno also set!
+      exit(-1);
+   }
+
+   // Always use volatile pointer!
+   gpio = (volatile unsigned *)gpio_map;
+   s_pGpioRegisters = (struct volatile GpioRegisters *)gpio;
+}
+
 
 // ---------------------
 // Operation NOTE:
@@ -814,7 +880,6 @@ void taskletScreenFill(unsigned long data)
     uint8_t nBitShiftValue;
     uint8_t pPanelByte[3];
    
-    
     red = (data >> 16) & 0x000000ff;
     green = (data >> 8) & 0x000000ff;
     blue = (data >> 0) & 0x000000ff;
