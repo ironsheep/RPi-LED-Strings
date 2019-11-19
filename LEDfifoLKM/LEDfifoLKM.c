@@ -1,4 +1,4 @@
-/**
+nBitShiftValue/**
  * @file    LEDfifoLKM.c
  * @author  Stephen M Moraco
  * @date    15 November 2019
@@ -27,16 +27,19 @@
 #include <linux/errno.h>	        // error codes
 #include <linux/seq_file.h>
 
+// get raspbery PI details
+#include <asm/io.h>
+#include <mach/platform.h>
+#include <linux/delay.h>
+#include <linux/interrupt.h>    // for tasklets
+
+
 #include "LEDfifoConfigureIOCtl.h"
 
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(3,10,0))
-#define STR_PRINTF_RET(len, str, args...) len += sprintf(page + len, str, ## args)
-#elif (LINUX_VERSION_CODE < KERNEL_VERSION(4,3,0))
-#define STR_PRINTF_RET(len, str, args...) len += seq_printf(m, str, ## args)
-#else
-#define STR_PRINTF_RET(len, str, args...) seq_printf(m, str, ## args)
-#endif
 
+// ----------------------------------------------------------------------------
+//  SECTION: LINUX KERNEL MODULE constants & Parameter Def's
+//
 MODULE_LICENSE("GPL");              ///< The license type -- this affects runtime behavior
 MODULE_AUTHOR("Stephen M Moraco");      ///< The author -- visible when you use modinfo
 MODULE_DESCRIPTION("An LED Matrix display GPIO Driver.");  ///< The description -- see modinfo
@@ -45,18 +48,13 @@ MODULE_VERSION("0.1");              ///< The version of the module
 static char *name = "{nameParm}";        ///< An example LKM argument -- default value is "{nameParm}"
 module_param(name, charp, S_IRUGO); ///< Param desc. charp = char ptr, S_IRUGO can be read/not changed
 MODULE_PARM_DESC(name, "The name to display in /var/log/kern.log");  ///< parameter description
- 
+
+
+// ----------------------------------------------------------------------------
+//  SECTION: File-scoped Constants/Macros
+//
 #define LED_FIFO_MAJOR 0   /* dynamic major by default */
 #define LED_FIFO_NR_DEVS 1    /* ledfifo0  (not ledfifo0-ledfifoN) */
-
-
-static dev_t firstDevNbr; // Global variable for the first device number
-static struct cdev c_dev; // Global variable for the character device structure
-static struct class *cl; // Global variable for the device class
-
-static struct proc_dir_entry *parent;
-static struct proc_dir_entry *file;
-
 
 #define DEFAULT_LED_STRTYPE "WS2812B"
 #define DEFAULT_PERIOD_IN_NSEC 50
@@ -66,6 +64,37 @@ static struct proc_dir_entry *file;
 #define DEFAULT_TRESET_COUNT 1000
 #define DEFAULT_LOOP_ENABLE 0
 
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(3,10,0))
+#define STR_PRINTF_RET(len, str, args...) len += sprintf(page + len, str, ## args)
+#elif (LINUX_VERSION_CODE < KERNEL_VERSION(4,3,0))
+#define STR_PRINTF_RET(len, str, args...) len += seq_printf(m, str, ## args)
+#else
+#define STR_PRINTF_RET(len, str, args...) seq_printf(m, str, ## args)
+#endif
+
+// forward declarations
+static void resetCurrentPins(void);
+static void initCurrentPins(void);
+static void initBitTableForCurrentPins(void);
+static void transmitToAllChannelsBitsValued(uint8_t bitsIndex);
+static void textXmitZeros(uint32_t nCount);
+static void textXmitOnes(uint32_t nCount);
+static void actOnCommand(void);
+
+void taskletTestWrites(unsigned long data);
+void taskletScreenFill(unsigned long data);
+void taskletScreenWrite(unsigned long data);
+
+
+// ----------------------------------------------------------------------------
+//  SECTION: File-scoped Global Variables
+//
+static dev_t firstDevNbr; // Global variable for the first device number
+static struct cdev c_dev; // Global variable for the character device structure
+static struct class *cl; // Global variable for the device class
+
+static struct proc_dir_entry *parent;
+static struct proc_dir_entry *file;
 
 static unsigned char ledType[FIFO_MAX_STR_LEN+1] = DEFAULT_LED_STRTYPE; // +1 for zero term.
 static int gpioPins[FIFO_MAX_PIN_COUNT];    // max 3 gpio pins can be assigned
@@ -76,6 +105,18 @@ static int periodT1HCount = DEFAULT_T1H_COUNT;
 static int periodTRESETCount = DEFAULT_TRESET_COUNT;
 static int loopEnabled = DEFAULT_LOOP_ENABLE;
 
+enum _DriverCommands {
+    NO_CMD = 0,
+    DO_FILL_SCREEN,
+};
+static int requestedCommand;
+static int requestedColor;
+
+static struct tasklet_struct tasklet;
+
+// ----------------------------------------------------------------------------
+//  SECTION: file-I/O handlers
+//
 static int LEDfifo_open(struct inode *i, struct file *f)
 {
     printk(KERN_INFO "Driver: open()\n");
@@ -96,6 +137,12 @@ static ssize_t LEDfifo_read(struct file *f, char __user *buf, size_t len, loff_t
     return 0;
 }
 
+static ssize_t LEDfifo_readv(struct file *f, char __user *buf, size_t len, loff_t *off)
+{
+    printk(KERN_INFO "Driver: readv()\n");
+    return 0;
+}
+
 
 static ssize_t LEDfifo_write(struct file *f, const char __user *buf, size_t len,
     loff_t *off)
@@ -104,6 +151,29 @@ static ssize_t LEDfifo_write(struct file *f, const char __user *buf, size_t len,
     return len;
 }
 
+static ssize_t LEDfifo_writev(struct file *f, const char __user *buf, size_t len,
+    loff_t *off)
+{
+    printk(KERN_INFO "Driver: writev()\n");
+    return len;
+}
+
+static struct file_operations LEDfifoLKM_fops =
+{
+    .owner = THIS_MODULE,
+    .open = LEDfifo_open,
+    .read = LEDfifo_read,
+    .write = LEDfifo_write,
+    .readv = LEDfifo_readv,
+    .writev = LEDfifo_writev,
+     .release = LEDfifo_close,
+    .unlocked_ioctl = LEDfifo_ioctl
+};
+
+
+// ----------------------------------------------------------------------------
+//  SECTION: IO Control (IOCTL) handlers
+//
 static long LEDfifo_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 {
     configure_arg_t cfg;
@@ -159,9 +229,7 @@ static long LEDfifo_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
             break;
         case CMD_SET_VARIABLES:
             // copy_from_user(to,from,count)
-            if (copy_from_user(&cfg, (configure_arg_t *)arg,
-                sizeof(configure_arg_t)))
-            {
+            if (copy_from_user(&cfg, (configure_arg_t *)arg, sizeof(configure_arg_t))) {
                 return -EACCES;
             }
             memset(ledType, 0, FIFO_MAX_STR_LEN+1);
@@ -174,7 +242,7 @@ static long LEDfifo_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
             periodT0HCount = cfg.periodT0HCount;
             periodT1HCount = cfg.periodT1HCount;
             periodTRESETCount = cfg.periodTRESETCount;
-           break;
+            break;
         case CMD_RESET_VARIABLES:
             // reconfigure for WS2812B
             memset(ledType, 0, FIFO_MAX_STR_LEN+1);
@@ -187,31 +255,49 @@ static long LEDfifo_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
             periodT0HCount = DEFAULT_T0H_COUNT;
             periodT1HCount = DEFAULT_T1H_COUNT;
             periodTRESETCount = DEFAULT_TRESET_COUNT;
-           break;
-        case CMD_GET_LOOP_ENABLE:
-	    retval = loopEnabled;
-	   break;
+            break;
         case CMD_SET_LOOP_ENABLE:
-	    loopEnabled = arg;
-	   break;
+            loopEnabled = arg;
+            break;
+        case CMD_GET_LOOP_ENABLE:
+            retval = loopEnabled;
+            break;
+        case CMD_TEST_BIT_WRITES:
+            if(arg == 0) {
+                //textXmitZeros(1000);
+                tasklet_init(&tasklet, taskletTestWrites, 0); 
+                tasklet_hi_schedule(tasklet);
+            }
+            else {
+                //textXmitOnes(1000);
+                tasklet_init(&tasklet, taskletTestWrites, 1); 
+                tasklet_hi_schedule(tasklet);
+           }
+            break;
+        case CMD_CLEAR_SCREEN:
+            requestedCommand = DO_FILL_SCREEN;
+            requestedColor = 0x000000;  // black
+            tasklet_init(&tasklet, taskletScreenFill, requestedColor); 
+            tasklet_hi_schedule(tasklet);
+            break;
+        case CMD_SET_SCREEN_COLOR:
+            requestedCommand = DO_FILL_SCREEN;
+            requestedColor = arg;
+            tasklet_init(&tasklet, taskletScreenFill, requestedColor); 
+            tasklet_hi_schedule(tasklet);
+            break;
         default:
             return -EINVAL; // unknown command?  How'd this happen?
+            break;
     }
 
     return retval;
 }
 
 
-static struct file_operations LEDfifoLKM_fops =
-{
-    .owner = THIS_MODULE,
-    .open = LEDfifo_open,
-    .read = LEDfifo_read,
-    .write = LEDfifo_write,
-    .release = LEDfifo_close,
-    .unlocked_ioctl = LEDfifo_ioctl
-};
-
+// ----------------------------------------------------------------------------
+//  SECTION: /proc/ filesystem handlers
+//
 static int config_read(struct seq_file *m, void *v)
 {
     int len = 0;
@@ -224,10 +310,10 @@ static int config_read(struct seq_file *m, void *v)
     for(pinIndex = 0; pinIndex < FIFO_MAX_PIN_COUNT; pinIndex++) {
         if(gpioPins[pinIndex] != 0) {
         	STR_PRINTF_RET(len, " - #%d - GPIO %d\n", pinIndex+1, gpioPins[pinIndex]);
-	} 
-	else {
-        	STR_PRINTF_RET(len, " - #%d - {not set}\n", pinIndex+1);
-	}
+    	} 
+    	else {
+            	STR_PRINTF_RET(len, " - #%d - {not set}\n", pinIndex+1);
+    	}
     }
     //freqInKHz = 1 / (periodDurationNsec * periodCount * 0.000000001);
     STR_PRINTF_RET(len, "Serial Stream: %d nSec Period (%d x %d nSec increments)\n", (periodCount * periodDurationNsec), periodCount,  periodDurationNsec);
@@ -255,6 +341,10 @@ static struct file_operations proc_fops =
     .read = seq_read
 };
 
+
+// ----------------------------------------------------------------------------
+//  SECTION: LINUX KERNEL MODULE init/exit
+//
 /** @brief The LKM initialization function
  *  The static keyword restricts the visibility of the function to within this C file. The __init
  *  macro means that for a built-in driver (not a LKM) the function is only used at initialization
@@ -310,11 +400,17 @@ static int __init LEDfifoLKM_init(void){
         remove_proc_entry("driver/ledfifo", NULL);
         return -1;
     }
+    
+    // initialize our pin-set
+    initCurrentPins();
+    // initialize our xmit bit table
+    initBitTableForCurrentPins();
+    
     printk(KERN_INFO "LEDfifo: init EXIT\n");
 
     return 0;
 }
- 
+
 /** @brief The LKM cleanup function
  *  Similar to the initialization function, it is static. The __exit macro notifies that if this
  *  code is used for a built-in driver (not a LKM) that this function is not required.
@@ -346,4 +442,351 @@ module_init(LEDfifoLKM_init);
 module_exit(LEDfifoLKM_exit);
 
 
+// ----------------------------------------------------------------------------
+//  SECTION: Backend GPIO Handlers
+//
+struct GpioRegisters {
+    uint32_t GPFSEL[6];
+    uint32_t Reserved1;
+    uint32_t GPSET[2];
+    uint32_t Reserved2;
+    uint32_t GPCLR[2];
+};
+ 
+struct GpioRegisters *s_pGpioRegisters = (struct GpioRegisters *)__io_address(GPIO_BASE);
 
+// ---------------------
+// Operation NOTE:
+//  SetGPIOFunction( LedGpioPin, 0b001); // Output
+//  SetGPIOFunction( LedGpioPin, 0); // Configure the pin as input
+//
+static void SetGPIOFunction(int GPIO, int functionCode)
+{
+    int registerIndex = GPIO / 10;
+    int bit = (GPIO % 10) * 3;
+ 
+    unsigned oldValue = s_pGpioRegisters-> GPFSEL[registerIndex];
+    unsigned mask = 0b111 << bit;
+    printk(KERN_INFO "Changing function of GPIO%d from %x to %x\n", 
+           GPIO,
+           (oldValue >> bit) & 0b111,
+           functionCode);
+ 
+    s_pGpioRegisters-> GPFSEL[registerIndex] = 
+        (oldValue & ~mask) | ((functionCode << bit) & mask);
+}
+ 
+static void SetGPIOOutputValue(int GPIO, bool outputValue)
+{
+    if (outputValue)
+        s_pGpioRegisters->GPSET[GPIO / 32] = (1 << (GPIO % 32));
+    else
+        s_pGpioRegisters->GPCLR[GPIO / 32] = (1 << (GPIO % 32));
+}
+
+static void resetCurrentPins(void)
+{
+    uint8_t nPinIndex;
+    for(nPinIndex = 0; nPinIndex < FIFO_MAX_PIN_COUNT; nPinIndex++) {
+        if(gpioPins[nPinIndex] != 0) {
+            SetGPIOFunction(gpioPins[nPinIndex], 0b000);    // input
+        }
+    }
+}
+
+static void initCurrentPins(void)
+{
+    uint8_t nPinIndex;
+    for(nPinIndex = 0; nPinIndex < FIFO_MAX_PIN_COUNT; nPinIndex++) {
+        if(gpioPins[nPinIndex] != 0) {
+            SetGPIOFunction(gpioPins[nPinIndex], 0b001);    // output
+        }
+    }
+}
+
+
+
+// ---------------------
+// DURATION TABLE def's
+//
+enum eGpioOperationType { 
+    // zero NOT used, on purpose! (zero indicates value not set)
+    GPIO_SET=1, 
+    GPIO_CLR=2 
+};
+
+typedef struct _gpioCrontrolWord
+{
+    uint32_t gpioPinBits;   // 1 placed in each bit location
+    uint8_t gpioOperation;  // eGpioOperationType value SET/CLR
+    uint8_t durationToNext;
+    uint8_t entryOccupied;
+    uint8_t unused1;
+} gpioCrontrolWord_t;
+
+#define MAX_GPIO_CONTROL_WORDS 3
+#define MAX_GPIO_CONTROL_ENTRIES 8
+
+typedef struct _gpioCrontrolEntry
+{
+    gpioCrontrolWord_t word[MAX_GPIO_CONTROL_WORDS];   // 1 placed in each bit location
+} gpioCrontrolEntry_t;
+
+static gpioCrontrolEntry_t gpioBitControlEntries[MAX_GPIO_CONTROL_ENTRIES];
+static uint32_t pinsAllActive;
+
+// ---------------------
+// TABLE SETUP CODE
+//
+
+#define PIN_PRESENT(pinIdx) ((gpioPins[pinIdx] != 0) ? 1 : 0)
+#define PIN_VALUE_IF_SELECTED(index, ) ((gpioPins[pinIdx] != 0) ? 1 : 0)
+ 
+    
+static void initBitTableForCurrentPins(void)
+{
+    //
+    //  our table lists on/off times for each bit pattern
+    //   we have 8 table entries, one for each bit pattern:
+    //        0b000, 0b001, 0b010, 0b011, 0b100, 0b101, 0b110, 0b111.
+    //  bit masks are present in the table entry for each set and clear.
+    //  table entries will be 1 set followed by 1 or 2 clears.
+    //
+    uint32_t pinValueIdx0;
+    uint32_t pinValueIdx1;
+    uint32_t pinValueIdx2;
+    uint32_t pinsAllHigh;
+    uint32_t pinsAllLow;
+    uint32_t allSetPins;
+    uint8_t nEntryIdx;
+    uint8_t nWordIdx;
+    uint8_t nPinCount;
+    uint8_t nMaxTableEntries;
+    uint8_t nMinHighPeriodLength;
+    uint8_t nRemainingPeriodLength;
+    uint8_t nHighPeriodIsShorter;
+    uint8_t nOnlyHighPeriodLength;
+    uint8_t nOnlyRemainingPeriodLength;
+   
+    nPinCount = (gpioPins[0] != 0) ? 1 : 0 + 
+                (gpioPins[1] != 0) ? 1 : 0 + 
+                (gpioPins[2] != 0) ? 1 : 0; // [0-3]
+                    
+    nAllPins = (gpioPins[0] != 0) ? 1 : 0 + 
+               (gpioPins[1] != 0) ? 2 : 0 + 
+               (gpioPins[2] != 0) ? 4 : 0; // [0-7]
+                    
+    nMaxTableEntries = (nPinCount > 2) ? 8 : (nPinCount > 1) ? 4 : (nPinCount > ) ? 2 : 0;
+                        
+    // zero fill our structure
+    memset(gpioBitControlEntries, 0, sizeof(gpioBitControlEntries);
+    
+    // if we have table entries to populate...
+    if(nMaxTableEntries > 0) {
+    
+    // set our pins
+    pinValueIdx0 = (gpioPins[0] != 0) ? 1<<gpioPins[0] : 0;
+    pinValueIdx1 = (gpioPins[1] != 0) ? 1<<gpioPins[1] : 0;
+    pinValueIdx2 = (gpioPins[2] != 0) ? 1<<gpioPins[2] : 0;
+        
+    pinsAllActive = pinValueIdx0 | pinValueIdx1 | pinValueIdx2;
+    
+    n0IsShorterThan1 = (periodT0HCount > periodT1HCount);
+        
+    nMinHighPeriodLength = (n0IsShorterThan1) ? periodT0HCount : periodT1HCount;
+    nRemainingHighPeriodLength = (n0IsShorterThan1) ? periodT1HCount - periodT0HCount : periodT0HCount - periodT1HCount;
+    nRemainingLowPeriodLength = periodCount - (nMinHighPeriodLength + nRemainingHighPeriodLength);
+        
+    // set bit on time
+    nWordIdx = 0;
+    for(nTableIdx = 0; nTableIdx < nMaxTableEntries; nTableIdx++) {
+        if(nTableIdx == 0 || nTableIdx == nMaxTableEntries - 1) {
+            // if we have all pins 0 or all pins 1 then...
+            // do our only set (0 bits -or- 1 bits)
+            nOnlyHighPeriodLength = (nTableIdx == 0) ? periodT0HCount : periodT1HCount;
+            gpioBitControlEntries[nTableIdx].word[nWordIdx].gpioPinBits = pinsAllActive;
+            gpioBitControlEntries[nTableIdx].word[nWordIdx].gpioOperation = GPIO_SET;
+            gpioBitControlEntries[nTableIdx].word[nWordIdx].durationToNext = nOnlyHighPeriodLength;
+            gpioBitControlEntries[nTableIdx].word[nWordIdx].entryOccupied = 1;
+            
+            // if we have all pins 0 or all pins 1 then...
+            // do our only clear (0 bits -or- 1 bits)
+            nOnlyRemainingPeriodLength = periodCount - nOnlyHighPeriodLength;
+            gpioBitControlEntries[nTableIdx].word[nWordIdx+1].gpioPinBits = pinsAllActive;
+            gpioBitControlEntries[nTableIdx].word[nWordIdx+1].gpioOperation = GPIO_CLR;
+            gpioBitControlEntries[nTableIdx].word[nWordIdx+1].durationToNext = nOnlyRemainingPeriodLength;
+            gpioBitControlEntries[nTableIdx].word[nWordIdx+1].entryOccupied = 1;
+        }
+        else {
+            // do our min-duration set for all active pins               
+            gpioBitControlEntries[nTableIdx].word[nWordIdx].gpioPinBits = pinsAllActive;
+            gpioBitControlEntries[nTableIdx].word[nWordIdx].gpioOperation = GPIO_SET;
+            gpioBitControlEntries[nTableIdx].word[nWordIdx].durationToNext = nMinHighPeriodLength;
+            gpioBitControlEntries[nTableIdx].word[nWordIdx].entryOccupied = 1;
+            
+            // calculate masks for early then late clears
+            pinsAllLow = ((nTableIdx & 0x01) == 0x01) ? 0 : pinValueIdx0;
+            pinsAllLow |= ((nTableIdx & 0x02) == 0x02) ? 0 : pinValueIdx1;
+            pinsAllLow |= ((nTableIdx & 0x02) == 0x04) ? 0 : pinValueIdx2;
+            pinsAllHigh = ((nTableIdx & 0x01) == 0x01) ? 0 : pinValueIdx0;
+            pinsAllHigh |= ((nTableIdx & 0x02) == 0x02) ? 0 : pinValueIdx1;
+            pinsAllHigh |= ((nTableIdx & 0x02) == 0x04) ? 0 : pinValueIdx2;
+            // do our shorter clear (0or1 bits)
+            gpioBitControlEntries[nTableIdx].word[nWordIdx+1].gpioPinBits = (n0IsShorterThan1) ? pinsAllLow : pinsAllHigh;
+            gpioBitControlEntries[nTableIdx].word[nWordIdx+1].gpioOperation = GPIO_CLR;
+            gpioBitControlEntries[nTableIdx].word[nWordIdx+1].durationToNext = nRemainingHighPeriodLength;
+            gpioBitControlEntries[nTableIdx].word[nWordIdx+1].entryOccupied = 1;
+            // do our longer clear (1or0 bits)
+            gpioBitControlEntries[nTableIdx].word[nWordIdx+2].gpioPinBits = (n0IsShorterThan1) ? pinsAllHigh : pinsAllLow;
+            gpioBitControlEntries[nTableIdx].word[nWordIdx+2].gpioOperation = GPIO_CLR;
+            gpioBitControlEntries[nTableIdx].word[nWordIdx+2].durationToNext = nRemainingLowPeriodLength;
+            gpioBitControlEntries[nTableIdx].word[nWordIdx+2].entryOccupied = 1;
+        }
+    }
+}
+
+// ---------------------
+// GPIO execution code
+//   NOTE: RESTRICTION: All GPIO pins are in 0-31 range!
+//
+//
+
+static void transmitToAllChannelsBitsValued(uint8_t bitsIndex)
+{
+    gpioCrontrolEntry_t *selectedEntry = NULL;
+    uint8_t nWordIdx;
+    
+    if(bitsIndex >= MAX_GPIO_CONTROL_ENTRIES) {
+        printk(KERN_ERROR "LEDfifo: [CODE] transmitToAllChannelsBitsValued(%d) OUT-OF-RANGE bitIndex not [0-%d]\n", bitsIndex, MAX_GPIO_CONTROL_ENTRIES-1);
+    }
+    else {
+        // select a table entry
+        // then do timed set and clear(s) based on entry content
+        selectedEntry = &gpioBitControlEntries[bitsIndex];
+        
+        for(nWordIdx = 0; nWordIdx < MAX_GPIO_CONTROL_WORDS; nWordIdx++) {
+            // is this entry valid?
+            if(selectedEntry->entryOccupied) {
+                // yes, valid, do what it says...
+                if(selectedEntry->gpioOperation == GPIO_SET) {
+                    s_pGpioRegisters->GPSET[0] = selectedEntry->gpioPinBits;
+                }
+                else if(selectedEntry->gpioOperation == GPIO_CLR) {
+                    s_pGpioRegisters->GPCLR[0] = selectedEntry->gpioPinBits;
+               }
+                else {
+                    printk(KERN_ERROR "LEDfifo: [CODE] transmitToAllChannelsBitsValued(%d) INVALID gpioOperation Entry (%d) word[%d]\n", bitsIndex, selectedEntry->gpioOperation, nWordIdx);
+                }
+            }
+            // lessee if RPi has working ndelay()...
+            ndelay(selectedEntry->durationToNext * periodDurationNsec);
+        }
+    }
+}
+
+static void transmitResetAllChannelsBits(void)
+{
+    s_pGpioRegisters->GPCLR[0] = pinsAllActive;
+    // lessee if RPi has working ndelay()...
+    ndelay(periodTRESETCount * periodDurationNsec);
+}
+
+static void actOnCommand(void)
+{
+    // act on globals telling us what needs to be done
+    // globals:
+    //   requestedCommand - what do do
+    //   requestedColor - useful if command requires color
+    //
+    switch(requestedCommand) {
+        case DO_FILL_SCREEN:
+            // fill screen with requestedColor value (RGB)
+            break;
+        case NO_CMD:
+            break
+        default:
+            break
+    }
+}
+
+static void textXmitZeros(uint32_t nCount)
+{
+    int nCounter;
+    if(nCount > 0) {
+        for(nCounter = 0; nCounter < nCount; nCounter++) {
+            transmitToAllChannelsBitsValued(0b000);
+        }
+    }
+}
+
+
+static void textXmitOnes(uint32_t nCount)
+{
+    int nCounter;
+    if(nCount > 0) {
+        for(nCounter = 0; nCounter < nCount; nCounter++) {
+            transmitToAllChannelsBitsValued(0b111);
+        }
+    }
+}
+
+//
+//  our tasklet: write values to LED Matrix
+//    sceduled with: tasklet_schedule(&my_tasklet);    /* mark my_tasklet as pending */
+//    sceduled with: tasklet_hi_schedule(&my_tasklet);    /* mark my_tasklet as pending but run HI Priority */
+//
+void taskletTestWrites(unsigned long data)
+{
+    // data is [0,1] for directing write of 0's or 1's test pattern
+    if(data == 0) {
+        textXmitZeros(1000);
+    }
+    else {
+        textXmitOnes(1000);
+    }
+}
+
+void taskletScreenFill(unsigned long data)
+{
+    // data is 24-bit RGB value to be written
+    uint32_t nPanelBits;
+    uint8_t red;
+    utin8_t green;
+    uint8_t blue;
+    uint8_t buffer[3];
+    uint8_t nLedIdx;
+    uint8_t nColorIdx;
+    uint8_t nPanelIdx;
+    uint8_t nBitShiftValue;
+    uint8_t pPanelByte[3];
+   
+    
+    red = (data >> 16) & 0x000000ff
+    green = (data >> 8) & 0x000000ff
+    blue = (data >> 0) & 0x000000ff
+    buffer[0] = green;
+    buffer[1] = red;
+    buffer[2] = blue;
+    
+    for(nLedIdx = 0; nLedIdx < 256; nLedIdx++) {
+        for(nColorIdx = 0; nColorIdx < 3; nColorIdx++) {
+            pPanelByte[0] = &buffer[nColorIdx];
+            pPanelByte[1] = &buffer[nColorIdx];
+            pPanelByte[2] = &buffer[nColorIdx];
+            for(nBitShiftValue = 7; nBitShiftValue >=0; nBitShiftValue--) {
+                nBitShiftValue = 0;
+                for(nPanelIdx = 0; nPanelIdx < 3; nPanelIdx++) {
+                    nBitShiftValue |= ((pPanelByte[nPanelIdx] >> nBitShiftValue) & 0x01) << nPanelIdx;
+                }
+                transmitToAllChannelsBitsValued(nBitShiftValue);
+            }
+        }
+    }
+    transmitResetAllChannelsBits();
+}
+
+void taskletScreenWrite(unsigned long data)
+{
+    // no data?  just write our single buffer to screen via GPIO?
+}
+ 
