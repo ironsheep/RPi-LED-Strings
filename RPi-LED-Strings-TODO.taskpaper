@@ -1,0 +1,30 @@
+RISKs:
+	- can we do bit timing in kernel?
+	- can we prevent string writes from being interrupted?
+	
+BUGs:
+- (nothing yet)
+
+DRIVER TODOs:
+	- add TEST ioctl commands
+	- hook in tests to send 0'1 or 1's
+		- (maybe test sends bit pattern to send?)
+	- add CLEAR SCREEN ioctl command
+	- add FILL SCREEN w/Color (but device order) ioctl command
+	- implement write (single screen)
+	- inplement writev (multiple screen)
+	- implement writev (multi) with leading command buffer
+		- writev Commands:
+			- loop frame set {n} times [delay {n} frame-times between frames|framesets]
+			- scroll frame set [left|right|up|down] [at {rate}] [{n} times|forever]
+	
+Sample IOCTL Application TODOs:
+	- add screen clear
+	- add fillescreen {color}  NOTE: (device color sequence!!!)
+	
+
+Application TODOs:
+	- awken new applicaiton code
+	- add command processor loop
+	- add command: read commands from file
+	- add command: load screen set from file set (name file containing list of files)

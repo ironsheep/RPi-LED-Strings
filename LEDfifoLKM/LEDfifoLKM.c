@@ -81,6 +81,7 @@ static void transmitToAllChannelsBitsValued(uint8_t bitsIndex);
 static void textXmitZeros(uint32_t nCount);
 static void textXmitOnes(uint32_t nCount);
 static void actOnCommand(void);
+static int dumpPinTable(void);
 
 void taskletTestWrites(unsigned long data);
 void taskletScreenFill(unsigned long data);
@@ -138,12 +139,6 @@ static ssize_t LEDfifo_read(struct file *f, char __user *buf, size_t len, loff_t
     return 0;
 }
 
-static ssize_t LEDfifo_readv(struct file *f, char __user *buf, size_t len, loff_t *off)
-{
-    printk(KERN_INFO "Driver: readv()\n");
-    return 0;
-}
-
 
 static ssize_t LEDfifo_write(struct file *f, const char __user *buf, size_t len,
     loff_t *off)
@@ -152,12 +147,21 @@ static ssize_t LEDfifo_write(struct file *f, const char __user *buf, size_t len,
     return len;
 }
 
+/*
+static ssize_t LEDfifo_readv(struct file *f, char __user *buf, size_t len, loff_t *off)
+{
+    printk(KERN_INFO "Driver: readv()\n");
+    return 0;
+}
+
+
 static ssize_t LEDfifo_writev(struct file *f, const char __user *buf, size_t len,
     loff_t *off)
 {
     printk(KERN_INFO "Driver: writev()\n");
     return len;
 }
+*/
 
 static struct file_operations LEDfifoLKM_fops =
 {
@@ -229,6 +233,9 @@ static long LEDfifo_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
             }
             break;
         case CMD_SET_VARIABLES:
+            // if any prior pins selected reset them to INPUT
+            resetCurrentPins();
+
             // copy_from_user(to,from,count)
             if (copy_from_user(&cfg, (configure_arg_t *)arg, sizeof(configure_arg_t))) {
                 return -EACCES;
@@ -243,6 +250,11 @@ static long LEDfifo_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
             periodT0HCount = cfg.periodT0HCount;
             periodT1HCount = cfg.periodT1HCount;
             periodTRESETCount = cfg.periodTRESETCount;
+            
+            // if we now have pins configure them and load our bit-send table
+            initCurrentPins();
+            initBitTableForCurrentPins();
+
             break;
         case CMD_RESET_VARIABLES:
             // reconfigure for WS2812B
@@ -646,6 +658,44 @@ static void initBitTableForCurrentPins(void)
             }
         }
     }
+    dumpPinTable();
+}
+
+
+static int dumpPinTable(void)
+{
+    gpioCrontrolEntry_t *selectedEntry = NULL;
+    gpioCrontrolWord_t *selectedWord = NULL;
+    int nEntryIdx;
+    int nWordIdx;
+    char *opText;
+    char *validText;
+    
+    printk(KERN_INFO "LEDfifo: dumpPinTable ------------------\n");
+    
+    for(nTableIdx = 0; nTableIdx < MAX_GPIO_CONTROL_ENTRIES; nTableIdx++) {
+        printk(KERN_INFO "LEDfifo: Entry for bits %3b:\n", nTableIdx);
+        selectedEntry = &gpioBitControlEntries[nTableIdx];
+        for(nWordIdx = 0; nWordIdx < MAX_GPIO_CONTROL_WORDS; nWordIdx++) {
+            printk(KERN_INFO "LEDfifo:   - word %d:\n", nWordIdx);
+            selectedWord = &selectedEntry->word[nWordIdx];
+            switch(selectedWord->gpioOperation) {
+                case GPIO_SET:
+                    opText = "SET";
+                    break;
+                case GPIO_CLR:
+                    opText = "CLEAR";
+                    break;
+                default:
+                    opText = "{not-set}";
+                    break;
+            }
+            validText = (selectedWord->entryOccupied == 1) ? "YES" : "no";
+            printk(KERN_INFO "LEDfifo:    -- bits %8X op:[%s] duration:%40d valid:%s\n", selectedWord->gpioPinBits, opText, selectedWord->durationToNext, validText);
+       }
+    }
+    
+    printk(KERN_INFO "LEDfifo: dumpPinTable ------------------\n");
 }
 
 // ---------------------
