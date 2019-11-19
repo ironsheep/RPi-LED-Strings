@@ -669,18 +669,18 @@ static void transmitToAllChannelsBitsValued(uint8_t bitsIndex)
         selectedEntry = &gpioBitControlEntries[bitsIndex];
         
         for(nWordIdx = 0; nWordIdx < MAX_GPIO_CONTROL_WORDS; nWordIdx++) {
-            selectedWord = selectedEntry->word[nWordIdx];
+            selectedWord = &selectedEntry->word[nWordIdx];
             // is this entry valid?
             if(selectedWord->entryOccupied) {
                 // yes, valid, do what it says...
                 if(selectedWord->gpioOperation == GPIO_SET) {
-                    s_pGpioRegisters->GPSET[0] = selectedEntry->gpioPinBits;
+                    s_pGpioRegisters->GPSET[0] = selectedWord->gpioPinBits;
                 }
                 else if(selectedWord->gpioOperation == GPIO_CLR) {
                     s_pGpioRegisters->GPCLR[0] = selectedWord->gpioPinBits;
                }
                 else {
-                    printk(KERN_ERR "LEDfifo: [CODE] transmitToAllChannelsBitsValued(%d) INVALID gpioOperation Entry (%d) word[%d]\n", bitsIndex, selectedEntry->gpioOperation, nWordIdx);
+                    printk(KERN_ERR "LEDfifo: [CODE] transmitToAllChannelsBitsValued(%d) INVALID gpioOperation Entry (%d) word[%d]\n", bitsIndex, selectedWord->gpioOperation, nWordIdx);
                 }
             }
             // lessee if RPi has working ndelay()...
@@ -774,9 +774,9 @@ void taskletScreenFill(unsigned long data)
     
     for(nLedIdx = 0; nLedIdx < 256; nLedIdx++) {
         for(nColorIdx = 0; nColorIdx < 3; nColorIdx++) {
-            pPanelByte[0] = &buffer[nColorIdx];
-            pPanelByte[1] = &buffer[nColorIdx];
-            pPanelByte[2] = &buffer[nColorIdx];
+            pPanelByte[0] = buffer[nColorIdx];
+            pPanelByte[1] = buffer[nColorIdx];
+            pPanelByte[2] = buffer[nColorIdx];
             for(nBitShiftValue = 7; nBitShiftValue >=0; nBitShiftValue--) {
                 nBitShiftValue = 0;
                 for(nPanelIdx = 0; nPanelIdx < 3; nPanelIdx++) {
