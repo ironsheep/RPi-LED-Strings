@@ -81,7 +81,7 @@ static void transmitToAllChannelsBitsValued(uint8_t bitsIndex);
 static void textXmitZeros(uint32_t nCount);
 static void textXmitOnes(uint32_t nCount);
 static void actOnCommand(void);
-static int dumpPinTable(void);
+static void dumpPinTable(void);
 
 void taskletTestWrites(unsigned long data);
 void taskletScreenFill(unsigned long data);
@@ -121,21 +121,21 @@ static struct tasklet_struct tasklet;
 //
 static int LEDfifo_open(struct inode *i, struct file *f)
 {
-    printk(KERN_INFO "Driver: open()\n");
+    printk(KERN_INFO "LEDfifo: open()\n");
     return 0;
 }
 
 
 static int LEDfifo_close(struct inode *i, struct file *f)
 {
-    printk(KERN_INFO "Driver: close()\n");
+    printk(KERN_INFO "LEDfifo: close()\n");
     return 0;
 }
 
 
 static ssize_t LEDfifo_read(struct file *f, char __user *buf, size_t len, loff_t *off)
 {
-    printk(KERN_INFO "Driver: read()\n");
+    printk(KERN_INFO "LEDfifo: read()\n");
     return 0;
 }
 
@@ -143,14 +143,14 @@ static ssize_t LEDfifo_read(struct file *f, char __user *buf, size_t len, loff_t
 static ssize_t LEDfifo_write(struct file *f, const char __user *buf, size_t len,
     loff_t *off)
 {
-    printk(KERN_INFO "Driver: write()\n");
+    printk(KERN_INFO "LEDfifo: write()\n");
     return len;
 }
 
 /*
 static ssize_t LEDfifo_readv(struct file *f, char __user *buf, size_t len, loff_t *off)
 {
-    printk(KERN_INFO "Driver: readv()\n");
+    printk(KERN_INFO "LEDfifo: readv()\n");
     return 0;
 }
 
@@ -158,7 +158,7 @@ static ssize_t LEDfifo_readv(struct file *f, char __user *buf, size_t len, loff_
 static ssize_t LEDfifo_writev(struct file *f, const char __user *buf, size_t len,
     loff_t *off)
 {
-    printk(KERN_INFO "Driver: writev()\n");
+    printk(KERN_INFO "LEDfifo: writev()\n");
     return len;
 }
 */
@@ -186,7 +186,7 @@ static long LEDfifo_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
     int err = 0;
     int pinIndex;
 
-    printk(KERN_INFO "Driver: ioctl()\n");
+    printk(KERN_INFO "LEDfifo: ioctl()\n");
 
     /*
     * extract the type and number bitfields, and don't decode
@@ -662,7 +662,7 @@ static void initBitTableForCurrentPins(void)
 }
 
 
-static int dumpPinTable(void)
+static void dumpPinTable(void)
 {
     gpioCrontrolEntry_t *selectedEntry = NULL;
     gpioCrontrolWord_t *selectedWord = NULL;
@@ -673,9 +673,9 @@ static int dumpPinTable(void)
     
     printk(KERN_INFO "LEDfifo: dumpPinTable ------------------\n");
     
-    for(nTableIdx = 0; nTableIdx < MAX_GPIO_CONTROL_ENTRIES; nTableIdx++) {
-        printk(KERN_INFO "LEDfifo: Entry for bits %3b:\n", nTableIdx);
-        selectedEntry = &gpioBitControlEntries[nTableIdx];
+    for(nEntryIdx = 0; nEntryIdx < MAX_GPIO_CONTROL_ENTRIES; nEntryIdx++) {
+        printk(KERN_INFO "LEDfifo: Entry for bits %x:\n", nEntryIdx);
+        selectedEntry = &gpioBitControlEntries[nEntryIdx];
         for(nWordIdx = 0; nWordIdx < MAX_GPIO_CONTROL_WORDS; nWordIdx++) {
             printk(KERN_INFO "LEDfifo:   - word %d:\n", nWordIdx);
             selectedWord = &selectedEntry->word[nWordIdx];
