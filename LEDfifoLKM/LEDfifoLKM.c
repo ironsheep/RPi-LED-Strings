@@ -563,16 +563,11 @@ static void initBitTableForCurrentPins(void)
     uint32_t pinValueIdx2;
     uint32_t pinsAllHigh;
     uint32_t pinsAllLow;
-    //uint32_t allSetPins;
-    uint8_t nAllPins;
-    //uint8_t nEntryIdx;
     uint8_t nTableIdx;
     uint8_t nWordIdx;
     uint8_t nPinCount;
     uint8_t nMaxTableEntries;
     uint8_t nMinHighPeriodLength;
-    //uint8_t nRemainingPeriodLength;
-    //uint8_t nHighPeriodIsShorter;
     uint8_t nOnlyHighPeriodLength;
     uint8_t nOnlyRemainingPeriodLength;
     uint8_t nRemainingHighPeriodLength;
@@ -583,10 +578,6 @@ static void initBitTableForCurrentPins(void)
                 (gpioPins[1] != 0) ? 1 : 0 + 
                 (gpioPins[2] != 0) ? 1 : 0; // [0-3]
                     
-    nAllPins = (gpioPins[0] != 0) ? 1 : 0 + 
-               (gpioPins[1] != 0) ? 2 : 0 + 
-               (gpioPins[2] != 0) ? 4 : 0; // [0-7]
-                    
     nMaxTableEntries = (nPinCount > 2) ? 8 : (nPinCount > 1) ? 4 : (nPinCount > 0) ? 2 : 0;
                         
     // zero fill our structure
@@ -594,66 +585,66 @@ static void initBitTableForCurrentPins(void)
     
     // if we have table entries to populate...
     if(nMaxTableEntries > 0) {
-    
-    // set our pins
-    pinValueIdx0 = (gpioPins[0] != 0) ? 1<<gpioPins[0] : 0;
-    pinValueIdx1 = (gpioPins[1] != 0) ? 1<<gpioPins[1] : 0;
-    pinValueIdx2 = (gpioPins[2] != 0) ? 1<<gpioPins[2] : 0;
         
-    pinsAllActive = pinValueIdx0 | pinValueIdx1 | pinValueIdx2;
-    
-    n0IsShorterThan1 = (periodT0HCount > periodT1HCount);
-        
-    nMinHighPeriodLength = (n0IsShorterThan1) ? periodT0HCount : periodT1HCount;
-    nRemainingHighPeriodLength = (n0IsShorterThan1) ? periodT1HCount - periodT0HCount : periodT0HCount - periodT1HCount;
-    nRemainingLowPeriodLength = periodCount - (nMinHighPeriodLength + nRemainingHighPeriodLength);
-        
-    // set bit on time
-    nWordIdx = 0;
-    for(nTableIdx = 0; nTableIdx < nMaxTableEntries; nTableIdx++) {
-        if(nTableIdx == 0 || nTableIdx == nMaxTableEntries - 1) {
-            // if we have all pins 0 or all pins 1 then...
-            // do our only set (0 bits -or- 1 bits)
-            nOnlyHighPeriodLength = (nTableIdx == 0) ? periodT0HCount : periodT1HCount;
-            gpioBitControlEntries[nTableIdx].word[nWordIdx].gpioPinBits = pinsAllActive;
-            gpioBitControlEntries[nTableIdx].word[nWordIdx].gpioOperation = GPIO_SET;
-            gpioBitControlEntries[nTableIdx].word[nWordIdx].durationToNext = nOnlyHighPeriodLength;
-            gpioBitControlEntries[nTableIdx].word[nWordIdx].entryOccupied = 1;
+        // set our pins
+        pinValueIdx0 = (gpioPins[0] != 0) ? 1<<gpioPins[0] : 0;
+        pinValueIdx1 = (gpioPins[1] != 0) ? 1<<gpioPins[1] : 0;
+        pinValueIdx2 = (gpioPins[2] != 0) ? 1<<gpioPins[2] : 0;
             
-            // if we have all pins 0 or all pins 1 then...
-            // do our only clear (0 bits -or- 1 bits)
-            nOnlyRemainingPeriodLength = periodCount - nOnlyHighPeriodLength;
-            gpioBitControlEntries[nTableIdx].word[nWordIdx+1].gpioPinBits = pinsAllActive;
-            gpioBitControlEntries[nTableIdx].word[nWordIdx+1].gpioOperation = GPIO_CLR;
-            gpioBitControlEntries[nTableIdx].word[nWordIdx+1].durationToNext = nOnlyRemainingPeriodLength;
-            gpioBitControlEntries[nTableIdx].word[nWordIdx+1].entryOccupied = 1;
-        }
-        else {
-            // do our min-duration set for all active pins               
-            gpioBitControlEntries[nTableIdx].word[nWordIdx].gpioPinBits = pinsAllActive;
-            gpioBitControlEntries[nTableIdx].word[nWordIdx].gpioOperation = GPIO_SET;
-            gpioBitControlEntries[nTableIdx].word[nWordIdx].durationToNext = nMinHighPeriodLength;
-            gpioBitControlEntries[nTableIdx].word[nWordIdx].entryOccupied = 1;
+        pinsAllActive = pinValueIdx0 | pinValueIdx1 | pinValueIdx2;
+        
+        n0IsShorterThan1 = (periodT0HCount > periodT1HCount);
             
-            // calculate masks for early then late clears
-            pinsAllLow = ((nTableIdx & 0x01) == 0x01) ? 0 : pinValueIdx0;
-            pinsAllLow |= ((nTableIdx & 0x02) == 0x02) ? 0 : pinValueIdx1;
-            pinsAllLow |= ((nTableIdx & 0x04) == 0x04) ? 0 : pinValueIdx2;
-            pinsAllHigh = ((nTableIdx & 0x01) == 0x01) ? 0 : pinValueIdx0;
-            pinsAllHigh |= ((nTableIdx & 0x02) == 0x02) ? 0 : pinValueIdx1;
-            pinsAllHigh |= ((nTableIdx & 0x04) == 0x04) ? 0 : pinValueIdx2;
-            // do our shorter clear (0or1 bits)
-            gpioBitControlEntries[nTableIdx].word[nWordIdx+1].gpioPinBits = (n0IsShorterThan1) ? pinsAllLow : pinsAllHigh;
-            gpioBitControlEntries[nTableIdx].word[nWordIdx+1].gpioOperation = GPIO_CLR;
-            gpioBitControlEntries[nTableIdx].word[nWordIdx+1].durationToNext = nRemainingHighPeriodLength;
-            gpioBitControlEntries[nTableIdx].word[nWordIdx+1].entryOccupied = 1;
-            // do our longer clear (1or0 bits)
-            gpioBitControlEntries[nTableIdx].word[nWordIdx+2].gpioPinBits = (n0IsShorterThan1) ? pinsAllHigh : pinsAllLow;
-            gpioBitControlEntries[nTableIdx].word[nWordIdx+2].gpioOperation = GPIO_CLR;
-            gpioBitControlEntries[nTableIdx].word[nWordIdx+2].durationToNext = nRemainingLowPeriodLength;
-            gpioBitControlEntries[nTableIdx].word[nWordIdx+2].entryOccupied = 1;
+        nMinHighPeriodLength = (n0IsShorterThan1) ? periodT0HCount : periodT1HCount;
+        nRemainingHighPeriodLength = (n0IsShorterThan1) ? periodT1HCount - periodT0HCount : periodT0HCount - periodT1HCount;
+        nRemainingLowPeriodLength = periodCount - (nMinHighPeriodLength + nRemainingHighPeriodLength);
+            
+        // set bit on time
+        nWordIdx = 0;
+        for(nTableIdx = 0; nTableIdx < nMaxTableEntries; nTableIdx++) {
+            if(nTableIdx == 0 || nTableIdx == nMaxTableEntries - 1) {
+                // if we have all pins 0 or all pins 1 then...
+                // do our only set (0 bits -or- 1 bits)
+                nOnlyHighPeriodLength = (nTableIdx == 0) ? periodT0HCount : periodT1HCount;
+                gpioBitControlEntries[nTableIdx].word[nWordIdx].gpioPinBits = pinsAllActive;
+                gpioBitControlEntries[nTableIdx].word[nWordIdx].gpioOperation = GPIO_SET;
+                gpioBitControlEntries[nTableIdx].word[nWordIdx].durationToNext = nOnlyHighPeriodLength;
+                gpioBitControlEntries[nTableIdx].word[nWordIdx].entryOccupied = 1;
+                
+                // if we have all pins 0 or all pins 1 then...
+                // do our only clear (0 bits -or- 1 bits)
+                nOnlyRemainingPeriodLength = periodCount - nOnlyHighPeriodLength;
+                gpioBitControlEntries[nTableIdx].word[nWordIdx+1].gpioPinBits = pinsAllActive;
+                gpioBitControlEntries[nTableIdx].word[nWordIdx+1].gpioOperation = GPIO_CLR;
+                gpioBitControlEntries[nTableIdx].word[nWordIdx+1].durationToNext = nOnlyRemainingPeriodLength;
+                gpioBitControlEntries[nTableIdx].word[nWordIdx+1].entryOccupied = 1;
+            }
+            else {
+                // do our min-duration set for all active pins               
+                gpioBitControlEntries[nTableIdx].word[nWordIdx].gpioPinBits = pinsAllActive;
+                gpioBitControlEntries[nTableIdx].word[nWordIdx].gpioOperation = GPIO_SET;
+                gpioBitControlEntries[nTableIdx].word[nWordIdx].durationToNext = nMinHighPeriodLength;
+                gpioBitControlEntries[nTableIdx].word[nWordIdx].entryOccupied = 1;
+                
+                // calculate masks for early then late clears
+                pinsAllLow = ((nTableIdx & 0x01) == 0x01) ? 0 : pinValueIdx0;
+                pinsAllLow |= ((nTableIdx & 0x02) == 0x02) ? 0 : pinValueIdx1;
+                pinsAllLow |= ((nTableIdx & 0x04) == 0x04) ? 0 : pinValueIdx2;
+                pinsAllHigh = ((nTableIdx & 0x01) == 0x01) ? 0 : pinValueIdx0;
+                pinsAllHigh |= ((nTableIdx & 0x02) == 0x02) ? 0 : pinValueIdx1;
+                pinsAllHigh |= ((nTableIdx & 0x04) == 0x04) ? 0 : pinValueIdx2;
+                // do our shorter clear (0or1 bits)
+                gpioBitControlEntries[nTableIdx].word[nWordIdx+1].gpioPinBits = (n0IsShorterThan1) ? pinsAllLow : pinsAllHigh;
+                gpioBitControlEntries[nTableIdx].word[nWordIdx+1].gpioOperation = GPIO_CLR;
+                gpioBitControlEntries[nTableIdx].word[nWordIdx+1].durationToNext = nRemainingHighPeriodLength;
+                gpioBitControlEntries[nTableIdx].word[nWordIdx+1].entryOccupied = 1;
+                // do our longer clear (1or0 bits)
+                gpioBitControlEntries[nTableIdx].word[nWordIdx+2].gpioPinBits = (n0IsShorterThan1) ? pinsAllHigh : pinsAllLow;
+                gpioBitControlEntries[nTableIdx].word[nWordIdx+2].gpioOperation = GPIO_CLR;
+                gpioBitControlEntries[nTableIdx].word[nWordIdx+2].durationToNext = nRemainingLowPeriodLength;
+                gpioBitControlEntries[nTableIdx].word[nWordIdx+2].entryOccupied = 1;
+            }
         }
-    }
     }
 }
 
@@ -665,7 +656,8 @@ static void initBitTableForCurrentPins(void)
 
 static void transmitToAllChannelsBitsValued(uint8_t bitsIndex)
 {
-    gpioCrontrolWord_t *selectedEntry = NULL;
+    gpioCrontrolEntry_t *selectedEntry = NULL;
+    gpioCrontrolWord_t *selectedWord = NULL;
     uint8_t nWordIdx;
     
     if(bitsIndex >= MAX_GPIO_CONTROL_ENTRIES) {
@@ -677,21 +669,22 @@ static void transmitToAllChannelsBitsValued(uint8_t bitsIndex)
         selectedEntry = &gpioBitControlEntries[bitsIndex];
         
         for(nWordIdx = 0; nWordIdx < MAX_GPIO_CONTROL_WORDS; nWordIdx++) {
+            selectedWord = selectedEntry->word[nWordIdx];
             // is this entry valid?
-            if(selectedEntry->entryOccupied) {
+            if(selectedWord->entryOccupied) {
                 // yes, valid, do what it says...
-                if(selectedEntry->gpioOperation == GPIO_SET) {
+                if(selectedWord->gpioOperation == GPIO_SET) {
                     s_pGpioRegisters->GPSET[0] = selectedEntry->gpioPinBits;
                 }
-                else if(selectedEntry->gpioOperation == GPIO_CLR) {
-                    s_pGpioRegisters->GPCLR[0] = selectedEntry->gpioPinBits;
+                else if(selectedWord->gpioOperation == GPIO_CLR) {
+                    s_pGpioRegisters->GPCLR[0] = selectedWord->gpioPinBits;
                }
                 else {
                     printk(KERN_ERR "LEDfifo: [CODE] transmitToAllChannelsBitsValued(%d) INVALID gpioOperation Entry (%d) word[%d]\n", bitsIndex, selectedEntry->gpioOperation, nWordIdx);
                 }
             }
             // lessee if RPi has working ndelay()...
-            ndelay(selectedEntry->durationToNext * periodDurationNsec);
+            ndelay(selectedWord->durationToNext * periodDurationNsec);
         }
     }
 }
@@ -761,7 +754,6 @@ void taskletTestWrites(unsigned long data)
 void taskletScreenFill(unsigned long data)
 {
     // data is 24-bit RGB value to be written
-    uint32_t nPanelBits;
     uint8_t red;
     uint8_t green;
     uint8_t blue;
