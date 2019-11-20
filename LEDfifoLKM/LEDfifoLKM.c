@@ -519,25 +519,49 @@ struct GpioRegisters volatile *s_pGpioRegisters;
 #define GPIO_PULLCLK0 *(gpio+38) // Pull up/pull down clock
 */
 
+#define GPIO_FSEL_REG0 ((uint32_t *)s_pGpioRegisters +  0)
+#define GPIO_FSEL_REG1 ((uint32_t *)s_pGpioRegisters +  1)
+#define GPIO_SET_REG0  ((uint32_t *)s_pGpioRegisters +  7)
+#define GPIO_SET_REG1  ((uint32_t *)s_pGpioRegisters +  8)
+#define GPIO_CLR_REG0  ((uint32_t *)s_pGpioRegisters + 10)
+#define GPIO_CLR_REG1  ((uint32_t *)s_pGpioRegisters + 11)
+
 static void init_gpio_access(void)
 {
     void *gpio_map;
     
-    s_pGpioRegisters = (struct GpioRegisters volatile *)GPIO_BASE;
-    printk(KERN_WARNING "LEDfifo: GPIO Reg Bank @%p\n", s_pGpioRegisters);
-    printk(KERN_WARNING "LEDfifo:      GPFSEL[0] @%p\n", &s_pGpioRegisters->GPFSEL[0]);
-    printk(KERN_WARNING "LEDfifo:      GPSET[0] @%p\n", &s_pGpioRegisters->GPSET[0]);
-    printk(KERN_WARNING "LEDfifo:      GPCLR[0] @%p\n", &s_pGpioRegisters->GPCLR[0]);
+    gpio = (volatile uint32_t *)GPIO_BASE;
+    s_pGpioRegisters = (struct GpioRegisters *)(unsigned long)GPIO_BASE;
+
+    printk(KERN_WARNING "LEDfifo: BCM2708_PERI_BASE=0x%8X\n", BCM2708_PERI_BASE);
+    printk(KERN_WARNING "LEDfifo:         GPIO_BASE=0x%8X\n", GPIO_BASE);
+    printk(KERN_WARNING "LEDfifo: GPIO Reg Bank  @0x%p\n", (void *)s_pGpioRegisters);
+    printk(KERN_WARNING "LEDfifo:      GPFSEL[0] @0x%p\n", &s_pGpioRegisters->GPFSEL[0]);
+    printk(KERN_WARNING "LEDfifo:      GPFSEL[1] @0x%p\n", &s_pGpioRegisters->GPFSEL[1]);
+    printk(KERN_WARNING "LEDfifo:      GPSET[0]  @0x%p\n", &s_pGpioRegisters->GPSET[0]);
+    printk(KERN_WARNING "LEDfifo:      GPSET[1]  @0x%p\n", &s_pGpioRegisters->GPSET[1]);
+    printk(KERN_WARNING "LEDfifo:      GPCLR[0]  @0x%p\n", &s_pGpioRegisters->GPCLR[0]);
+    printk(KERN_WARNING "LEDfifo:      GPCLR[1]  @0x%p\n", &s_pGpioRegisters->GPCLR[1]);
+    printk(KERN_WARNING "LEDfifo: GPIO_FSEL_REG0 @0x%p\n", GPIO_FSEL_REG0);
+    printk(KERN_WARNING "LEDfifo:  GPIO_SET_REG0 @0x%p\n", GPIO_SET_REG0);
+    printk(KERN_WARNING "LEDfifo:  GPIO_CLR_REG0 @0x%p\n", GPIO_CLR_REG0);
     
     gpio_map = ioremap(GPIO_BASE, GPIO_BLOCK_SIZE);
+    printk(KERN_WARNING "LEDfifo:  GPIO MAP      @0x%p\n", gpio_map);
     
     // Always use volatile pointer!
-    gpio = (volatile unsigned *)gpio_map;
-    s_pGpioRegisters = (struct GpioRegisters volatile *)gpio;
-    printk(KERN_WARNING "LEDfifo: GPIO Reg Bank @%p\n", s_pGpioRegisters);
-    printk(KERN_WARNING "LEDfifo:      GPFSEL[0] @%p\n", &s_pGpioRegisters->GPFSEL[0]);
-    printk(KERN_WARNING "LEDfifo:      GPSET[0] @%p\n", &s_pGpioRegisters->GPSET[0]);
-    printk(KERN_WARNING "LEDfifo:      GPCLR[0] @%p\n", &s_pGpioRegisters->GPCLR[0]);
+    gpio = (volatile uint32_t *)gpio_map;
+    s_pGpioRegisters = (struct GpioRegisters *)gpio;
+    printk(KERN_WARNING "LEDfifo:  GPIO Reg Bank @0x%p\n", (void *)s_pGpioRegisters);
+    printk(KERN_WARNING "LEDfifo:      GPFSEL[0] @0x%p\n", &(s_pGpioRegisters->GPFSEL[0]));
+    printk(KERN_WARNING "LEDfifo:      GPFSEL[1] @0x%p\n", &(s_pGpioRegisters->GPFSEL[1]));
+    printk(KERN_WARNING "LEDfifo:      GPSET[0]  @0x%p\n", &(s_pGpioRegisters->GPSET[0]));
+    printk(KERN_WARNING "LEDfifo:      GPSET[1]  @0x%p\n", &s_pGpioRegisters->GPSET[1]);
+    printk(KERN_WARNING "LEDfifo:      GPCLR[0]  @0x%p\n", &s_pGpioRegisters->GPCLR[0]);
+    printk(KERN_WARNING "LEDfifo:      GPCLR[1]  @0x%p\n", &s_pGpioRegisters->GPCLR[1]);
+    printk(KERN_WARNING "LEDfifo: GPIO_FSEL_REG0 @0x%p\n", GPIO_FSEL_REG0);
+    printk(KERN_WARNING "LEDfifo:  GPIO_SET_REG0 @0x%p\n", GPIO_SET_REG0);
+    printk(KERN_WARNING "LEDfifo:  GPIO_CLR_REG0 @0x%p\n", GPIO_CLR_REG0);
 }
 
 
