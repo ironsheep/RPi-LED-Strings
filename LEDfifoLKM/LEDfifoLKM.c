@@ -522,12 +522,22 @@ struct GpioRegisters volatile *s_pGpioRegisters;
 static void init_gpio_access(void)
 {
     void *gpio_map;
-
-   gpio_map = ioremap(GPIO_BASE, GPIO_BLOCK_SIZE);
-   
-   // Always use volatile pointer!
-   gpio = (volatile unsigned *)gpio_map;
-   s_pGpioRegisters = (struct GpioRegisters volatile *)gpio;
+    
+    s_pGpioRegisters = (struct GpioRegisters volatile *)GPIO_BASE;
+    printk(KERN_WARNING "LEDfifo: GPIO Reg Bank @%p\n", s_pGpioRegisters);
+    printk(KERN_WARNING "LEDfifo:      GPFSEL[0] @%p\n", &s_pGpioRegisters->GPFSEL[0]);
+    printk(KERN_WARNING "LEDfifo:      GPSET[0] @%p\n", &s_pGpioRegisters->GPSET[0]);
+    printk(KERN_WARNING "LEDfifo:      GPCLR[0] @%p\n", &s_pGpioRegisters->GPCLR[0]);
+    
+    gpio_map = ioremap(GPIO_BASE, GPIO_BLOCK_SIZE);
+    
+    // Always use volatile pointer!
+    gpio = (volatile unsigned *)gpio_map;
+    s_pGpioRegisters = (struct GpioRegisters volatile *)gpio;
+    printk(KERN_WARNING "LEDfifo: GPIO Reg Bank @%p\n", s_pGpioRegisters);
+    printk(KERN_WARNING "LEDfifo:      GPFSEL[0] @%p\n", &s_pGpioRegisters->GPFSEL[0]);
+    printk(KERN_WARNING "LEDfifo:      GPSET[0] @%p\n", &s_pGpioRegisters->GPSET[0]);
+    printk(KERN_WARNING "LEDfifo:      GPCLR[0] @%p\n", &s_pGpioRegisters->GPCLR[0]);
 }
 
 
@@ -551,7 +561,10 @@ static void SetGPIOFunction(int GPIO, int functionCode)
     s_pGpioRegisters-> GPFSEL[registerIndex] = 
         (oldValue & ~mask) | ((functionCode << bit) & mask);
 }
- 
+
+/*
+**  here as original example
+**
 static void SetGPIOOutputValue(int GPIO, bool outputValue)
 {
     if (outputValue)
@@ -559,6 +572,7 @@ static void SetGPIOOutputValue(int GPIO, bool outputValue)
     else
         s_pGpioRegisters->GPCLR[GPIO / 32] = (1 << (GPIO % 32));
 }
+*/
 
 static void resetCurrentPins(void)
 {
