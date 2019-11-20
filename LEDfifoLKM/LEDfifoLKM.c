@@ -644,11 +644,24 @@ static void initBitTableForCurrentPins(void)
     uint8_t nRemainingLowPeriodLength;
     uint8_t n0IsShorterThan1;
    
-    nPinCount = (gpioPins[0] != 0) ? 1 : 0 + 
-                (gpioPins[1] != 0) ? 1 : 0 + 
-                (gpioPins[2] != 0) ? 1 : 0; // [0-3]
+    nPinCount  = (gpioPins[0] != 0) ? 1 : 0;
+    nPinCount += (gpioPins[1] != 0) ? 1 : 0;
+    nPinCount += (gpioPins[2] != 0) ? 1 : 0; // [0-3]
                     
-    nMaxTableEntries = (nPinCount > 2) ? 8 : (nPinCount > 1) ? 4 : (nPinCount > 0) ? 2 : 0;
+    switch(nPinCount) {
+	case 3:
+            nMaxTableEntries = 8;
+            break;
+	case 2:
+            nMaxTableEntries = 4;
+            break;
+	case 1:
+            nMaxTableEntries = 2;
+            break;
+	default:
+            nMaxTableEntries = 0;
+            break;
+    }
                         
     // zero fill our structure
     memset(gpioBitControlEntries, 0, sizeof(gpioBitControlEntries));
@@ -773,6 +786,7 @@ static void transmitToAllChannelsBitsValued(uint8_t bitsIndex)
     gpioCrontrolWord_t *selectedWord = NULL;
     uint8_t nWordIdx;
     
+    //printk(KERN_INFO "LEDfifo: transmitToAllChannelsBitsValued(%d)\n", bitsIndex);
     if(bitsIndex >= MAX_GPIO_CONTROL_ENTRIES) {
         printk(KERN_ERR "LEDfifo: [CODE] transmitToAllChannelsBitsValued(%d) OUT-OF-RANGE bitIndex not [0-%d]\n", bitsIndex, MAX_GPIO_CONTROL_ENTRIES-1);
     }
@@ -786,10 +800,10 @@ static void transmitToAllChannelsBitsValued(uint8_t bitsIndex)
             // is this entry valid?
             if(selectedWord->entryOccupied) {
                 // yes, valid, do what it says...
-                if(selectedWord->gpioOperation == GPIO_SET) {
+                if(selectedWord->gpioOperation == OP_GPIO_SET) {
                     s_pGpioRegisters->GPSET[0] = selectedWord->gpioPinBits;
                 }
-                else if(selectedWord->gpioOperation == GPIO_CLR) {
+                else if(selectedWord->gpioOperation == OP_GPIO_CLR) {
                     s_pGpioRegisters->GPCLR[0] = selectedWord->gpioPinBits;
                }
                 else {
@@ -831,6 +845,8 @@ void taskletTestWrites(unsigned long data)
 static void textXmitZeros(uint32_t nCount)
 {
     int nCounter;
+
+    printk(KERN_INFO "LEDfifo: textXmitZeros(x %d)\n", nCount);
     if(nCount > 0) {
         for(nCounter = 0; nCounter < nCount; nCounter++) {
             transmitToAllChannelsBitsValued(0b000);
@@ -842,6 +858,8 @@ static void textXmitZeros(uint32_t nCount)
 static void textXmitOnes(uint32_t nCount)
 {
     int nCounter;
+
+    printk(KERN_INFO "LEDfifo: textXmitOnes(x %d)\n", nCount);
     if(nCount > 0) {
         for(nCounter = 0; nCounter < nCount; nCounter++) {
             transmitToAllChannelsBitsValued(0b111);
