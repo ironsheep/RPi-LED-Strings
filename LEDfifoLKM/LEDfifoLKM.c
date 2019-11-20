@@ -825,7 +825,7 @@ static void transmitResetAllChannelsBits(void)
 
 
 // ============================================================================
-//  our tasklet: write values to LED Matrix
+//  our tasklet: write 0's or 1's to our gpio ports for analysis with oscilloscope
 //    sceduled with: tasklet_schedule(&my_tasklet);    /* mark my_tasklet as pending */
 //    sceduled with: tasklet_hi_schedule(&my_tasklet);    /* mark my_tasklet as pending but run HI Priority */
 //
@@ -867,6 +867,9 @@ static void textXmitOnes(uint32_t nCount)
     }
 }
 
+// ============================================================================
+//  our tasklet: write single color to entire LED Matrix
+//
 void taskletScreenFill(unsigned long data)
 {
     // data is 24-bit RGB value to be written
