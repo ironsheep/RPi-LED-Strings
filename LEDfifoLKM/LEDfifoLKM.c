@@ -787,6 +787,7 @@ static void transmitToAllChannelsBitsValued(uint8_t bitsIndex)
     gpioCrontrolWord_t *selectedWord = NULL;
     uint8_t nWordIdx;
     
+    //printk(KERN_INFO "LEDfifo: transmitToAllChannelsBitsValued(%d)\n", bitsIndex);
     if(bitsIndex >= MAX_GPIO_CONTROL_ENTRIES) {
         printk(KERN_ERR "LEDfifo: [CODE] transmitToAllChannelsBitsValued(%d) OUT-OF-RANGE bitIndex not [0-%d]\n", bitsIndex, MAX_GPIO_CONTROL_ENTRIES-1);
     }
@@ -844,6 +845,8 @@ static void actOnCommand(void)
 static void textXmitZeros(uint32_t nCount)
 {
     int nCounter;
+
+    printk(KERN_INFO "LEDfifo: textXmitZeros(x %d)\n", nCount);
     if(nCount > 0) {
         for(nCounter = 0; nCounter < nCount; nCounter++) {
             transmitToAllChannelsBitsValued(0b000);
@@ -855,6 +858,8 @@ static void textXmitZeros(uint32_t nCount)
 static void textXmitOnes(uint32_t nCount)
 {
     int nCounter;
+
+    printk(KERN_INFO "LEDfifo: textXmitOnes(x %d)\n", nCount);
     if(nCount > 0) {
         for(nCounter = 0; nCounter < nCount; nCounter++) {
             transmitToAllChannelsBitsValued(0b111);

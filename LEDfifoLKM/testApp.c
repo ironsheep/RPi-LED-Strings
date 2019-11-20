@@ -32,7 +32,7 @@ int main()
 {
     int fd;
     
-    printf("\nOpening Driver\n");
+    printf("\nOpening Driver Access\n");
     fd = open("/dev/ledfifo0", O_RDWR);
     if(fd < 0) {
         printf("ERROR: Failed to open device file...\n");
@@ -45,7 +45,7 @@ int main()
     
     testBySendingBits(fd, 1);   // send ones for this test
     
-    printf("Closing Driver\n");
+    printf("Closing Driver Access\n");
     close(fd);
 }
 
@@ -90,7 +90,9 @@ void testSetPins(int fd)
         perror("testApp ioctl get");
     }
     else
-    {
+    { 
+        if(deviceValues.gpioPins[0] == 0) {
+
         deviceValues.gpioPins[0] = 17;
         deviceValues.gpioPins[1] = 27;
         deviceValues.gpioPins[2] = 22;
@@ -112,6 +114,10 @@ void testSetPins(int fd)
                 }
             }
         }
+        }
+        else {
+          printf(" - pin set SKIPPED, already set\n");
+	}
     }
 
     printf("-- testSetPins() EXIT\n\n");
