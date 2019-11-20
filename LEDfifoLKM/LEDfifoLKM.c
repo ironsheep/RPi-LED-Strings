@@ -831,7 +831,7 @@ static void transmitResetAllChannelsBits(void)
 //
 void taskletTestWrites(unsigned long data)
 {
-    printk(KERN_INFO "LEDfifo: taskletTestWrites(%d) ENTRY\n", data);
+    printk(KERN_INFO "LEDfifo: taskletTestWrites(%ld) ENTRY\n", data);
     // data is [0,1] for directing write of 0's or 1's test pattern
     if(data == 0) {
         textXmitZeros(1000);
@@ -873,7 +873,6 @@ static void textXmitOnes(uint32_t nCount)
 void taskletScreenFill(unsigned long data)
 {
     // data is 24-bit RGB value to be written
-    printk(KERN_INFO "LEDfifo: taskletScreenFill(%d) ENTRY\n", data);
     uint8_t red;
     uint8_t green;
     uint8_t blue;
@@ -883,6 +882,8 @@ void taskletScreenFill(unsigned long data)
     uint8_t nPanelIdx;
     uint8_t nBitShiftValue;
     uint8_t pPanelByte[3];
+
+    printk(KERN_INFO "LEDfifo: taskletScreenFill(%ld) ENTRY\n", data);
    
     red = (data >> 16) & 0x000000ff;
     green = (data >> 8) & 0x000000ff;
@@ -912,7 +913,7 @@ void taskletScreenFill(unsigned long data)
 void taskletScreenWrite(unsigned long data)
 {
     // no data?!  just write our single buffer to screen via GPIO?
-    printk(KERN_INFO "LEDfifo: taskletScreenWrite(%d) ENTRY\n", data);
+    printk(KERN_INFO "LEDfifo: taskletScreenWrite(%ld) ENTRY\n", data);
     printk(KERN_INFO "LEDfifo: taskletScreenWrite() ENTRY\n");
     
 }
