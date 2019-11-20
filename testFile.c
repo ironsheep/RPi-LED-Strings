@@ -1,1 +1,1 @@
-  file with contents B
+  file with contents C
