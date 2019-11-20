@@ -86,7 +86,6 @@ static void initBitTableForCurrentPins(void);
 static void transmitToAllChannelsBitsValued(uint8_t bitsIndex);
 static void textXmitZeros(uint32_t nCount);
 static void textXmitOnes(uint32_t nCount);
-static void actOnCommand(void);
 static void dumpPinTable(void);
 
 void taskletTestWrites(unsigned long data);
@@ -810,22 +809,23 @@ static void transmitResetAllChannelsBits(void)
     ndelay(periodTRESETCount * periodDurationNsec);
 }
 
-static void actOnCommand(void)
+
+// ============================================================================
+//  our tasklet: write values to LED Matrix
+//    sceduled with: tasklet_schedule(&my_tasklet);    /* mark my_tasklet as pending */
+//    sceduled with: tasklet_hi_schedule(&my_tasklet);    /* mark my_tasklet as pending but run HI Priority */
+//
+void taskletTestWrites(unsigned long data)
 {
-    // act on globals telling us what needs to be done
-    // globals:
-    //   requestedCommand - what do do
-    //   requestedColor - useful if command requires color
-    //
-    switch(requestedCommand) {
-        case DO_FILL_SCREEN:
-            // fill screen with requestedColor value (RGB)
-            break;
-        case NO_CMD:
-            break;
-        default:
-            break;
+    printk(KERN_INFO "LEDfifo: taskletTestWrites(%d) ENTRY\n", data);
+    // data is [0,1] for directing write of 0's or 1's test pattern
+    if(data == 0) {
+        textXmitZeros(1000);
     }
+    else {
+        textXmitOnes(1000);
+    }
+    printk(KERN_INFO "LEDfifo: taskletTestWrites() EXIT\n");
 }
 
 static void textXmitZeros(uint32_t nCount)
@@ -849,25 +849,10 @@ static void textXmitOnes(uint32_t nCount)
     }
 }
 
-//
-//  our tasklet: write values to LED Matrix
-//    sceduled with: tasklet_schedule(&my_tasklet);    /* mark my_tasklet as pending */
-//    sceduled with: tasklet_hi_schedule(&my_tasklet);    /* mark my_tasklet as pending but run HI Priority */
-//
-void taskletTestWrites(unsigned long data)
-{
-    // data is [0,1] for directing write of 0's or 1's test pattern
-    if(data == 0) {
-        textXmitZeros(1000);
-    }
-    else {
-        textXmitOnes(1000);
-    }
-}
-
 void taskletScreenFill(unsigned long data)
 {
     // data is 24-bit RGB value to be written
+    printk(KERN_INFO "LEDfifo: taskletScreenFill(%d) ENTRY\n", data);
     uint8_t red;
     uint8_t green;
     uint8_t blue;
@@ -900,10 +885,14 @@ void taskletScreenFill(unsigned long data)
         }
     }
     transmitResetAllChannelsBits();
+    printk(KERN_INFO "LEDfifo: taskletScreenFill() ENTRY\n");
 }
 
 void taskletScreenWrite(unsigned long data)
 {
-    // no data?  just write our single buffer to screen via GPIO?
+    // no data?!  just write our single buffer to screen via GPIO?
+    printk(KERN_INFO "LEDfifo: taskletScreenWrite(%d) ENTRY\n", data);
+    printk(KERN_INFO "LEDfifo: taskletScreenWrite() ENTRY\n");
+    
 }
  
