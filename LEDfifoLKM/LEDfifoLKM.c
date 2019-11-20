@@ -1,4 +1,4 @@
-/**
+/*
  * @file    LEDfifoLKM.c
  * @author  Stephen M Moraco
  * @date    15 November 2019
@@ -194,7 +194,6 @@ static long LEDfifo_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
     int err = 0;
     int pinIndex;
 
-    printk(KERN_INFO "LEDfifo: ioctl()\n");
 
     /*
     * extract the type and number bitfields, and don't decode
@@ -223,6 +222,7 @@ static long LEDfifo_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
     switch (cmd)
     {
         case CMD_GET_VARIABLES:
+            printk(KERN_INFO "LEDfifo: ioctl() get variables\n");
             memset(cfg.ledType, 0, FIFO_MAX_STR_LEN+1);
             strncpy(cfg.ledType, ledType, FIFO_MAX_STR_LEN);
             for(pinIndex = 0; pinIndex < FIFO_MAX_PIN_COUNT; pinIndex++) {
@@ -241,6 +241,7 @@ static long LEDfifo_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
             }
             break;
         case CMD_SET_VARIABLES:
+            printk(KERN_INFO "LEDfifo: ioctl() set variables\n");
             // if any prior pins selected reset them to INPUT
             resetCurrentPins();
 
@@ -265,6 +266,7 @@ static long LEDfifo_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 
             break;
         case CMD_RESET_VARIABLES:
+            printk(KERN_INFO "LEDfifo: ioctl() - reset variables\n");
             // reconfigure for WS2812B
             memset(ledType, 0, FIFO_MAX_STR_LEN+1);
             strncpy(ledType, DEFAULT_LED_STRTYPE, FIFO_MAX_STR_LEN);
@@ -278,12 +280,15 @@ static long LEDfifo_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
             periodTRESETCount = DEFAULT_TRESET_COUNT;
             break;
         case CMD_SET_LOOP_ENABLE:
+            printk(KERN_INFO "LEDfifo: ioctl() set loop enable=%ld\n", arg);
             loopEnabled = arg;
             break;
         case CMD_GET_LOOP_ENABLE:
+            printk(KERN_INFO "LEDfifo: ioctl() get loop enable: return (%d)\n", loopEnabled);
             retval = loopEnabled;
             break;
         case CMD_TEST_BIT_WRITES:
+            printk(KERN_INFO "LEDfifo: ioctl() test bit writes w/(%ld's)\n", arg);
             if(arg == 0) {
                 //textXmitZeros(1000);
                 tasklet_init(&tasklet, taskletTestWrites, 0); 
@@ -296,18 +301,21 @@ static long LEDfifo_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
            }
             break;
         case CMD_CLEAR_SCREEN:
+            printk(KERN_INFO "LEDfifo: ioctl() clear screen: set screen color 0x%8X\n", 0);
             requestedCommand = DO_FILL_SCREEN;
             requestedColor = 0x000000;  // black
             tasklet_init(&tasklet, taskletScreenFill, requestedColor); 
             tasklet_hi_schedule(&tasklet);
             break;
         case CMD_SET_SCREEN_COLOR:
+            printk(KERN_INFO "LEDfifo: ioctl() set screen color 0x%8lX\n", arg);
             requestedCommand = DO_FILL_SCREEN;
             requestedColor = arg;
             tasklet_init(&tasklet, taskletScreenFill, requestedColor); 
             tasklet_hi_schedule(&tasklet);
             break;
         default:
+            printk(KERN_WARNING "LEDfifo: ioctl() unknown command (%d) !!\n", cmd);
             return -EINVAL; // unknown command?  How'd this happen?
             break;
     }
@@ -530,7 +538,7 @@ static void SetGPIOFunction(int GPIO, int functionCode)
  
     unsigned oldValue = s_pGpioRegisters-> GPFSEL[registerIndex];
     unsigned mask = 0b111 << bit;
-    printk(KERN_INFO "Changing function of GPIO%d from %x to %x\n", 
+    printk(KERN_INFO "LEDfifo: Changing function of GPIO%d from %x to %x\n", 
            GPIO,
            (oldValue >> bit) & 0b111,
            functionCode);
@@ -650,7 +658,7 @@ static void initBitTableForCurrentPins(void)
             
         pinsAllActive = pinValueIdx0 | pinValueIdx1 | pinValueIdx2;
         
-        n0IsShorterThan1 = (periodT0HCount > periodT1HCount);
+        n0IsShorterThan1 = (periodT0HCount < periodT1HCount);
             
         nMinHighPeriodLength = (n0IsShorterThan1) ? periodT0HCount : periodT1HCount;
         nRemainingHighPeriodLength = (n0IsShorterThan1) ? periodT1HCount - periodT0HCount : periodT0HCount - periodT1HCount;
@@ -684,9 +692,9 @@ static void initBitTableForCurrentPins(void)
                 gpioBitControlEntries[nTableIdx].word[nWordIdx].entryOccupied = 1;
                 
                 // calculate masks for early then late clears
-                pinsAllLow = ((nTableIdx & 0x01) == 0x01) ? 0 : pinValueIdx0;
-                pinsAllLow |= ((nTableIdx & 0x02) == 0x02) ? 0 : pinValueIdx1;
-                pinsAllLow |= ((nTableIdx & 0x04) == 0x04) ? 0 : pinValueIdx2;
+                pinsAllLow = ((nTableIdx & 0x01) == 0x00) ? 0 : pinValueIdx0;
+                pinsAllLow |= ((nTableIdx & 0x02) == 0x00) ? 0 : pinValueIdx1;
+                pinsAllLow |= ((nTableIdx & 0x04) == 0x00) ? 0 : pinValueIdx2;
                 pinsAllHigh = ((nTableIdx & 0x01) == 0x01) ? 0 : pinValueIdx0;
                 pinsAllHigh |= ((nTableIdx & 0x02) == 0x02) ? 0 : pinValueIdx1;
                 pinsAllHigh |= ((nTableIdx & 0x04) == 0x04) ? 0 : pinValueIdx2;
@@ -722,7 +730,7 @@ static void dumpPinTable(void)
         printk(KERN_INFO "LEDfifo: Entry for bits %x:\n", nEntryIdx);
         selectedEntry = &gpioBitControlEntries[nEntryIdx];
         for(nWordIdx = 0; nWordIdx < MAX_GPIO_CONTROL_WORDS; nWordIdx++) {
-            printk(KERN_INFO "LEDfifo:   - word %d:\n", nWordIdx);
+            //printk(KERN_INFO "LEDfifo:   - word %d:", nWordIdx);
             selectedWord = &selectedEntry->word[nWordIdx];
             switch(selectedWord->gpioOperation) {
                 case OP_GPIO_SET:
@@ -736,7 +744,12 @@ static void dumpPinTable(void)
                     break;
             }
             validText = (selectedWord->entryOccupied == 1) ? "YES" : "no";
-            printk(KERN_INFO "LEDfifo:    -- bits %8X op:[%s] duration:%40d valid:%s\n", selectedWord->gpioPinBits, opText, selectedWord->durationToNext, validText);
+            if(selectedWord->entryOccupied) {
+                printk(KERN_INFO "LEDfifo:   - word %d -- bits %8X op:[%s] duration:%04d valid:%s\n", nWordIdx, selectedWord->gpioPinBits, opText, selectedWord->durationToNext, validText);
+	    }
+	    else {
+                printk(KERN_INFO "LEDfifo:   - word %d -- empty --\n", nWordIdx);
+            }
        }
     }
     

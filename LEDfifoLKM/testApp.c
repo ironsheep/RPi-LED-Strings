@@ -58,7 +58,7 @@ void get_vars(int fd)
     
     if (ioctl(fd, CMD_GET_VARIABLES, &deviceValues) == -1)
     {
-        perror("query_app ioctl get");
+        perror("testApp ioctl get");
     }
     else
     {
@@ -87,7 +87,7 @@ void testSetPins(int fd)
     printf("-> testSetPins() ENTRY\n");
     if (ioctl(fd, CMD_GET_VARIABLES, &deviceValues) == -1)
     {
-        perror("query_app ioctl get");
+        perror("testApp ioctl get");
     }
     else
     {
@@ -96,12 +96,12 @@ void testSetPins(int fd)
         deviceValues.gpioPins[2] = 22;
         if (ioctl(fd, CMD_SET_VARIABLES, &deviceValues) == -1)
         {
-            perror("query_app ioctl set");
+            perror("testApp ioctl set");
         }
         else {
             if (ioctl(fd, CMD_GET_VARIABLES, &deviceValues) == -1)
             {
-                perror("query_app ioctl get");
+                perror("testApp ioctl get");
             }
             else {
                 if(deviceValues.gpioPins[0] != 0 && deviceValues.gpioPins[1] != 0 && deviceValues.gpioPins[2] != 0) {
@@ -120,13 +120,13 @@ void testSetPins(int fd)
 
 void testBySendingBits(int fd, int value)
 {
-    printf("-> clr_vars() ENTRY\n");
+    printf("-> testBySendingBits() ENTRY\n");
 
     if (ioctl(fd, CMD_TEST_BIT_WRITES, value) == -1)
     {
-        perror("query_app ioctl clr");
+        perror("testApp ioctl clr");
     }
-    printf("-- clr_vars() EXIT\n\n");
+    printf("-- testBySendingBits() EXIT\n\n");
 }
 
 void testSet2815(int fd)
@@ -146,7 +146,7 @@ void testSet2815(int fd)
     deviceValues.periodTRESETCount = 5600;
     if (ioctl(fd, CMD_SET_VARIABLES, &deviceValues) == -1)
     {
-        perror("query_app ioctl set");
+        perror("testApp ioctl set");
     }
     else {
         printf("- TEST PASS\n");
@@ -159,7 +159,7 @@ void clr_vars(int fd)
 
     if (ioctl(fd, CMD_RESET_VARIABLES) == -1)
     {
-        perror("query_app ioctl clr");
+        perror("testApp ioctl clr");
     }
     printf("-- clr_vars() EXIT\n\n");
 }
@@ -175,7 +175,7 @@ void testLOOPingControl(int fd)
     // write alternate value
     if(ioctl(fd, CMD_SET_LOOP_ENABLE, testValue) == -1)
     {
-        perror("query_app ioctl SET LOOP");
+        perror("testApp ioctl SET LOOP");
     }
     
     // check value on readback
