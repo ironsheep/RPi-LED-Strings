@@ -344,9 +344,7 @@ static int config_read(struct seq_file *m, void *v)
             	STR_PRINTF_RET(len, " - #%d - {not set}\n", pinIndex+1);
     	}
     }
-    //freqInKHz = 1 / (periodDurationNsec * periodCount * 0.000000001);
     STR_PRINTF_RET(len, "Serial Stream: %d nSec Period (%d x %d nSec increments)\n", (periodCount * periodDurationNsec), periodCount,  periodDurationNsec);
-    //STR_PRINTF_RET(len, "Serial Stream: %d KHz (%d x %d nSec periods)\n", freqInKHz, periodCount,  periodDurationNsec);
     STR_PRINTF_RET(len, "        Bit0: Hi %d nSec -> Lo %d nSec\n", periodT0HCount * periodDurationNsec, (periodCount - periodT0HCount) * periodDurationNsec);
     STR_PRINTF_RET(len, "        Bit1: Hi %d nSec -> Lo %d nSec\n", periodT1HCount * periodDurationNsec, (periodCount - periodT1HCount) * periodDurationNsec);
     STR_PRINTF_RET(len, "       Reset: Lo %d nSec\n", (periodTRESETCount * periodDurationNsec));
@@ -389,7 +387,6 @@ static int __init LEDfifoLKM_init(void){
     printk(KERN_INFO "LEDfifo: ofcd register");
     if ((ret = alloc_chrdev_region(&firstDevNbr, LED_FIFO_MAJOR, LED_FIFO_NR_DEVS, "ledfifo")) < 0)
     {
-        //printk(KERN_WARNING "LEDfifo: can't get major %d\n", scull_major);
         printk(KERN_WARNING "LEDfifo: can't alloc major\n");
         return ret;
     }
@@ -429,6 +426,7 @@ static int __init LEDfifoLKM_init(void){
         return -1;
     }
     
+    // setup gpio memory map
     init_gpio_access();
     
     // initialize our pin-set
@@ -491,12 +489,20 @@ struct GpioRegisters {
 
 struct GpioRegisters volatile *s_pGpioRegisters;
 
+// older Pi
 //#define BCM2708_PERI_BASE        0x20000000
-	// RPi 4
+
+// RPi 4
 #define BCM2708_PERI_BASE        0xFE000000
-#define GPIO_BASE                (BCM2708_PERI_BASE + 0x200000) /* GPIO controller */
+
+// GPIO controller
+#define GPIO_BASE                (BCM2708_PERI_BASE + 0x200000) 
 #define GPIO_BLOCK_SIZE (4*1024)
 
+/*
+**
+**  Old stuff: here for reference...
+**
 // GPIO setup macros. Always use INP_GPIO(x) before using OUT_GPIO(x) or SET_GPIO_ALT(x,y)
 #define INP_GPIO(g) *(gpio+((g)/10)) &= ~(7<<(((g)%10)*3))
 #define OUT_GPIO(g) *(gpio+((g)/10)) |=  (1<<(((g)%10)*3))
@@ -512,7 +518,7 @@ struct GpioRegisters volatile *s_pGpioRegisters;
 
 #define GPIO_PULL *(gpio+37) // Pull up/pull down
 #define GPIO_PULLCLK0 *(gpio+38) // Pull up/pull down clock
-
+*/
 
 static void init_gpio_access(void)
 {
@@ -626,8 +632,8 @@ static void initBitTableForCurrentPins(void)
     uint32_t pinValueIdx0;
     uint32_t pinValueIdx1;
     uint32_t pinValueIdx2;
-    uint32_t pinsAllHigh;
-    uint32_t pinsAllLow;
+    uint32_t pinsActiveHigh;
+    uint32_t pinsActiveLow;
     uint8_t nTableIdx;
     uint8_t nWordIdx;
     uint8_t nPinCount;
@@ -649,8 +655,9 @@ static void initBitTableForCurrentPins(void)
     memset(gpioBitControlEntries, 0, sizeof(gpioBitControlEntries));
     
     // if we have table entries to populate...
+    printk(KERN_INFO "LEDfifo: initBitTableForCurrentPins() loading %d entries\n", nMaxTableEntries);
     if(nMaxTableEntries > 0) {
-        
+       
         // set our pins
         pinValueIdx0 = (gpioPins[0] != 0) ? 1<<gpioPins[0] : 0;
         pinValueIdx1 = (gpioPins[1] != 0) ? 1<<gpioPins[1] : 0;
@@ -692,19 +699,19 @@ static void initBitTableForCurrentPins(void)
                 gpioBitControlEntries[nTableIdx].word[nWordIdx].entryOccupied = 1;
                 
                 // calculate masks for early then late clears
-                pinsAllLow = ((nTableIdx & 0x01) == 0x00) ? 0 : pinValueIdx0;
-                pinsAllLow |= ((nTableIdx & 0x02) == 0x00) ? 0 : pinValueIdx1;
-                pinsAllLow |= ((nTableIdx & 0x04) == 0x00) ? 0 : pinValueIdx2;
-                pinsAllHigh = ((nTableIdx & 0x01) == 0x01) ? 0 : pinValueIdx0;
-                pinsAllHigh |= ((nTableIdx & 0x02) == 0x02) ? 0 : pinValueIdx1;
-                pinsAllHigh |= ((nTableIdx & 0x04) == 0x04) ? 0 : pinValueIdx2;
+                pinsActiveLow = ((nTableIdx & 0x01) == 0x01) ? 0 : pinValueIdx0;
+                pinsActiveLow |= ((nTableIdx & 0x02) == 0x02) ? 0 : pinValueIdx1;
+                pinsActiveLow |= ((nTableIdx & 0x04) == 0x04) ? 0 : pinValueIdx2;
+                pinsActiveHigh = ((nTableIdx & 0x01) == 0x00) ? 0 : pinValueIdx0;
+                pinsActiveHigh |= ((nTableIdx & 0x02) == 0x00) ? 0 : pinValueIdx1;
+                pinsActiveHigh |= ((nTableIdx & 0x04) == 0x00) ? 0 : pinValueIdx2;
                 // do our shorter clear (0or1 bits)
-                gpioBitControlEntries[nTableIdx].word[nWordIdx+1].gpioPinBits = (n0IsShorterThan1) ? pinsAllLow : pinsAllHigh;
+                gpioBitControlEntries[nTableIdx].word[nWordIdx+1].gpioPinBits = (n0IsShorterThan1) ? pinsActiveLow : pinsActiveHigh;
                 gpioBitControlEntries[nTableIdx].word[nWordIdx+1].gpioOperation = OP_GPIO_CLR;
                 gpioBitControlEntries[nTableIdx].word[nWordIdx+1].durationToNext = nRemainingHighPeriodLength;
                 gpioBitControlEntries[nTableIdx].word[nWordIdx+1].entryOccupied = 1;
                 // do our longer clear (1or0 bits)
-                gpioBitControlEntries[nTableIdx].word[nWordIdx+2].gpioPinBits = (n0IsShorterThan1) ? pinsAllHigh : pinsAllLow;
+                gpioBitControlEntries[nTableIdx].word[nWordIdx+2].gpioPinBits = (n0IsShorterThan1) ? pinsActiveHigh : pinsActiveLow;
                 gpioBitControlEntries[nTableIdx].word[nWordIdx+2].gpioOperation = OP_GPIO_CLR;
                 gpioBitControlEntries[nTableIdx].word[nWordIdx+2].durationToNext = nRemainingLowPeriodLength;
                 gpioBitControlEntries[nTableIdx].word[nWordIdx+2].entryOccupied = 1;
@@ -730,7 +737,6 @@ static void dumpPinTable(void)
         printk(KERN_INFO "LEDfifo: Entry for bits %x:\n", nEntryIdx);
         selectedEntry = &gpioBitControlEntries[nEntryIdx];
         for(nWordIdx = 0; nWordIdx < MAX_GPIO_CONTROL_WORDS; nWordIdx++) {
-            //printk(KERN_INFO "LEDfifo:   - word %d:", nWordIdx);
             selectedWord = &selectedEntry->word[nWordIdx];
             switch(selectedWord->gpioOperation) {
                 case OP_GPIO_SET:
