@@ -129,6 +129,16 @@ void initGPIO(void)
 
    // setup GPIO's as output
    setupOutputPins();
+   
+    printf("- BCM2708_PERI_BASE=0x%8X\n", BCM2708_PERI_BASE);
+    printf("-         GPIO_BASE=0x%8X\n", GPIO_BASE);
+    printf("-    GPIO Reg Bank  @0x%p\n", (void *)gpio);
+    printf("-         GPFSEL[0] @0x%p\n", gpio + 0);
+    printf("-         GPFSEL[1] @0x%p\n", gpio + 1);
+    printf("-         GPSET[0]  @0x%p\n", gpio + 7);
+    printf("-         GPSET[1]  @0x%p\n", gpio + 8);
+    printf("-         GPCLR[0]  @0x%p\n", gpio + 10);
+    printf("-         GPCLR[1]  @0x%p\n", gpio + 11);
 
    printf("- GPIO is setup\n");
 
