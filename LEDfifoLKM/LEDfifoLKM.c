@@ -485,7 +485,7 @@ struct GpioRegisters {
     uint32_t GPSET[2];
     uint32_t Reserved2;
     uint32_t GPCLR[2];
-} __attribute__((packed));
+}; //  __attribute__((packed));
 
 //struct GpioRegisters *s_pGpioRegisters = (struct GpioRegisters *)__io_address(GPIO_BASE);
 
