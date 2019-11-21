@@ -1002,6 +1002,7 @@ void taskletScreenFill(unsigned long data)
     uint8_t nColorIdx;
     uint8_t nPanelIdx;
     uint8_t nBitShiftValue;
+    uint8_t nAllBits;
     uint8_t nPanelByte[3];	// 1 byte buffer for each panel (not 256x3 bytes)
     
     static int s_bScreenFilledOnce = 0;
@@ -1037,12 +1038,12 @@ void taskletScreenFill(unsigned long data)
            // for ea. bit MSBit to LSBit...
             for(nBitShiftValue = 7; nBitShiftValue >=0; nBitShiftValue--) {
                 // mask out the bits and OR them together (so they can all be written at one time)
-                nBitShiftValue = 0;
+                nAllBits = 0;
                 for(nPanelIdx = 0; nPanelIdx < HARDWARE_MAX_PANELS; nPanelIdx++) {
-                    nBitShiftValue |= ((nPanelByte[nPanelIdx] >> nBitShiftValue) & 0x01) << nPanelIdx;
+                    nAllBits |= ((nPanelByte[nPanelIdx] >> nBitShiftValue) & 0x01) << nPanelIdx;
                 }
                 if(!s_bScreenFilledOnce) {
-                    printk(KERN_INFO "LEDfifo: nBitShiftValue 0x%.2X\n", nBitShiftValue);
+                    printk(KERN_INFO "LEDfifo: nAllBits 0x%.2X\n", nAllBits);
                     if(nBitShiftValue == 0 && nColorIdx >= HARDWARE_MAX_COLOR_BYTES_PER_LED - 1) {
                         s_bScreenFilledOnce = 1;
                     }
