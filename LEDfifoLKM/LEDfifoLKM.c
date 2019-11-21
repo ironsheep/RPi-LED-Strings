@@ -83,7 +83,7 @@ static void init_gpio_access(void);
 static void resetCurrentPins(void);
 static void initCurrentPins(void);
 static void initBitTableForCurrentPins(void);
-static void transmitToAllChannelsBitsValued(uint8_t bitsIndex);
+static void xmitBitvaluesToAllChannels(uint8_t bitsIndex);
 static void testXmitZeros(uint32_t nCount);
 static void testXmitOnes(uint32_t nCount);
 static void testXmitBit(uint16_t onDelay, uint16_t offDelay);
@@ -829,15 +829,15 @@ static void dumpPinTable(void)
 //
 //
 
-static void transmitToAllChannelsBitsValued(uint8_t bitsIndex)
+static void xmitBitvaluesToAllChannels(uint8_t bitsIndex)
 {
     gpioCrontrolEntry_t *selectedEntry = NULL;
     gpioCrontrolWord_t *selectedWord = NULL;
     uint8_t nWordIdx;
     
-    //printk(KERN_INFO "LEDfifo: transmitToAllChannelsBitsValued(%d)\n", bitsIndex);
+    //printk(KERN_INFO "LEDfifo: xmitBitvaluesToAllChannels(%d)\n", bitsIndex);
     if(bitsIndex >= MAX_GPIO_CONTROL_ENTRIES) {
-        printk(KERN_ERR "LEDfifo: [CODE] transmitToAllChannelsBitsValued(%d) OUT-OF-RANGE bitIndex not [0-%d]\n", bitsIndex, MAX_GPIO_CONTROL_ENTRIES-1);
+        printk(KERN_ERR "LEDfifo: [CODE] xmitBitvaluesToAllChannels(%d) OUT-OF-RANGE bitIndex not [0-%d]\n", bitsIndex, MAX_GPIO_CONTROL_ENTRIES-1);
     }
     else {
         // select a table entry
@@ -856,7 +856,7 @@ static void transmitToAllChannelsBitsValued(uint8_t bitsIndex)
                     s_pGpioRegisters->GPCLR[0] = selectedWord->gpioPinBits;
                }
                 else {
-                    printk(KERN_ERR "LEDfifo: [CODE] transmitToAllChannelsBitsValued(%d) INVALID gpioOperation Entry (%d) word[%d]\n", bitsIndex, selectedWord->gpioOperation, nWordIdx);
+                    printk(KERN_ERR "LEDfifo: [CODE] xmitBitvaluesToAllChannels(%d) INVALID gpioOperation Entry (%d) word[%d]\n", bitsIndex, selectedWord->gpioOperation, nWordIdx);
                 }
             }
             // lessee if RPi has working ndelay()...
@@ -867,7 +867,7 @@ static void transmitToAllChannelsBitsValued(uint8_t bitsIndex)
     }
 }
 
-static void transmitResetAllChannelsBits(void)
+static void xmitResetToAllChannels(void)
 {
     s_pGpioRegisters->GPCLR[0] = pinsAllActive;
     // lessee if RPi has working ndelay()...
@@ -922,7 +922,7 @@ static void testXmitZeros(uint32_t nCount)
 #ifdef TEST_DIRECT
             testXmitBit(nOnDelay, nOffDelay); 
 #else
-            transmitToAllChannelsBitsValued(0b000); 
+            xmitBitvaluesToAllChannels(0b000); 
 #endif
         } 
     }
@@ -946,7 +946,7 @@ static void testXmitOnes(uint32_t nCount)
 #ifdef TEST_DIRECT
             testXmitBit(nOnDelay, nOffDelay); 
 #else
-            transmitToAllChannelsBitsValued(0b111);
+            xmitBitvaluesToAllChannels(0b111);
 #endif
         }
     }
@@ -984,7 +984,9 @@ void nSecDelay(int nSecDuration)
     for(ctr=0; ctr<delayCount; ctr++) { tst++; }
 }
 
-
+#define HARDWARE_MAX_PANELS 3
+#define HARDWARE_MAX_LEDS_PER_PANEL 256
+#define HARDWARE_MAX_COLOR_BYTES_PER_LED 3
 
 // ============================================================================
 //  our tasklet: write single color to entire LED Matrix
@@ -1001,9 +1003,14 @@ void taskletScreenFill(unsigned long data)
     uint8_t nPanelIdx;
     uint8_t nBitShiftValue;
     uint8_t pPanelByte[3];
+    
+    static int s_bScreenFilledOnce = 0;
 
     printk(KERN_INFO "LEDfifo: taskletScreenFill(0x%08lX) ENTRY\n", data);
-   
+    
+    if(!s_bScreenFilledOnce) {
+        printk(KERN_INFO "LEDfifo: taskletScreenFill(0x%08lX) ENTRY\n", data);
+    }
     red = (data >> 16) & 0x000000ff;
     green = (data >> 8) & 0x000000ff;
     blue = (data >> 0) & 0x000000ff;
@@ -1011,21 +1018,40 @@ void taskletScreenFill(unsigned long data)
     buffer[1] = red;
     buffer[2] = blue;
     
-    for(nLedIdx = 0; nLedIdx < 256; nLedIdx++) {
-        for(nColorIdx = 0; nColorIdx < 3; nColorIdx++) {
+    if(!s_bScreenFilledOnce) {
+        printk(KERN_INFO "LEDfifo: buffered[] = G=0x%.2X R=0x%.2X B=0x%.2X\n", buffer[0], buffer[1], buffer[2]);
+    }
+    
+    // for each LED in a panel
+    for(nLedIdx = 0; nLedIdx < HARDWARE_MAX_LEDS_PER_PANEL; nLedIdx++) {
+        // for each COLOR of an LED (24 bit, 3 bytes)
+        for(nColorIdx = 0; nColorIdx < HARDWARE_MAX_COLOR_BYTES_PER_LED; nColorIdx++) {
             pPanelByte[0] = buffer[nColorIdx];
             pPanelByte[1] = buffer[nColorIdx];
             pPanelByte[2] = buffer[nColorIdx];
+            if(!s_bScreenFilledOnce) {
+                printk(KERN_INFO "LEDfifo: pPanelByte[] = G=0x%.2X R=0x%.2X B=0x%.2X\n", pPanelByte[0], pPanelByte[1], pPanelByte[2]);
+            }
+    
+           // for ea. bit MSBit to LSBit...
             for(nBitShiftValue = 7; nBitShiftValue >=0; nBitShiftValue--) {
+                // mask out the bits and OR them together (so they can all be written at one time)
                 nBitShiftValue = 0;
-                for(nPanelIdx = 0; nPanelIdx < 3; nPanelIdx++) {
+                for(nPanelIdx = 0; nPanelIdx < HARDWARE_MAX_PANELS; nPanelIdx++) {
                     nBitShiftValue |= ((pPanelByte[nPanelIdx] >> nBitShiftValue) & 0x01) << nPanelIdx;
                 }
-                transmitToAllChannelsBitsValued(nBitShiftValue);
+                if(!s_bScreenFilledOnce) {
+                    printk(KERN_INFO "LEDfifo: nBitShiftValue 0x%.2X\n", nBitShiftValue);
+                    if(nBitShiftValue == 0) {
+                        s_bScreenFilledOnce = 1;
+                    }
+                }
+                 // write all bits, ea. to own GPIO pin (but all at the same time)
+                xmitBitvaluesToAllChannels(nBitShiftValue);
             }
         }
     }
-    transmitResetAllChannelsBits();
+    xmitResetToAllChannels();
     printk(KERN_INFO "LEDfifo: taskletScreenFill() ENTRY\n");
 }
 
