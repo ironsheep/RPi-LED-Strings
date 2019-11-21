@@ -999,7 +999,7 @@ void taskletScreenFill(unsigned long data)
     uint8_t blue;
     uint8_t buffer[3];
     uint8_t nLedIdx;
-    uint8_t nColorIdx;
+    uint8_t nColorIdx;jjjjjjkj
     uint8_t nPanelIdx;
     uint8_t nBitShiftValue;
     uint8_t nAllBits;
@@ -1040,8 +1040,7 @@ void taskletScreenFill(unsigned long data)
                 // mask out the bits and OR them together (so they can all be written at one time)
                 nAllBits = 0;
                 for(nPanelIdx = 0; nPanelIdx < HARDWARE_MAX_PANELS; nPanelIdx++) {
-                    nAllBits |= (nPanelByte[nPanelIdx] >> nBitShiftValue) & 0x01;
-		    nAllBits <<= 1;
+                    nAllBits |= ((nPanelByte[nPanelIdx] >> nBitShiftValue) & 0x01) << nPanelIdx;
                 }
                 if(!s_bScreenFilledOnce) {
                     printk(KERN_INFO "LEDfifo: nAllBits 0x%.2X\n", nAllBits);
@@ -1050,7 +1049,7 @@ void taskletScreenFill(unsigned long data)
                     }
                 }
                  // write all bits, ea. to own GPIO pin (but all at the same time)
-                xmitBitvaluesToAllChannels(nBitShiftValue);
+                xmitBitvaluesToAllChannels(nAllBits);
             }
         }
     }
