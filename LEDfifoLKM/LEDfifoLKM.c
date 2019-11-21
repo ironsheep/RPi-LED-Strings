@@ -117,13 +117,6 @@ static int periodT1HCount = DEFAULT_T1H_COUNT;
 static int periodTRESETCount = DEFAULT_TRESET_COUNT;
 static int loopEnabled = DEFAULT_LOOP_ENABLE;
 
-enum _DriverCommands {
-    NO_CMD = 0,
-    DO_FILL_SCREEN,
-};
-static int requestedCommand;
-static int requestedColor;
-
 static struct tasklet_struct tasklet;
 
 // ----------------------------------------------------------------------------
@@ -303,17 +296,13 @@ static long LEDfifo_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
            }
             break;
         case CMD_CLEAR_SCREEN:
-            printk(KERN_INFO "LEDfifo: ioctl() clear screen: set screen color 0x%8X\n", 0);
-            requestedCommand = DO_FILL_SCREEN;
-            requestedColor = 0x000000;  // black
-            tasklet_init(&tasklet, taskletScreenFill, requestedColor); 
+            printk(KERN_INFO "LEDfifo: ioctl() clear screen: set screen color 0x%6X\n", 0);
+            tasklet_init(&tasklet, taskletScreenFill, 0); 
             tasklet_hi_schedule(&tasklet);
             break;
         case CMD_SET_SCREEN_COLOR:
-            printk(KERN_INFO "LEDfifo: ioctl() set screen color 0x%8lX\n", arg);
-            requestedCommand = DO_FILL_SCREEN;
-            requestedColor = arg;
-            tasklet_init(&tasklet, taskletScreenFill, requestedColor); 
+            printk(KERN_INFO "LEDfifo: ioctl() set screen color 0x%6lX\n", arg);
+            tasklet_init(&tasklet, taskletScreenFill, arg); 
             tasklet_hi_schedule(&tasklet);
             break;
         default:
@@ -1013,7 +1002,7 @@ void taskletScreenFill(unsigned long data)
     uint8_t nBitShiftValue;
     uint8_t pPanelByte[3];
 
-    printk(KERN_INFO "LEDfifo: taskletScreenFill(%ld) ENTRY\n", data);
+    printk(KERN_INFO "LEDfifo: taskletScreenFill(0x%08lX) ENTRY\n", data);
    
     red = (data >> 16) & 0x000000ff;
     green = (data >> 8) & 0x000000ff;
