@@ -18,10 +18,12 @@
   <Files>
     <File>ioctlSampleApp.c</File>
     <File>testApp.c</File>
+    <File>ledfifo_unload</File>
     <File>ledfifo_load</File>
     <File>LEDfifoLKM.c</File>
     <File>README.md</File>
     <File>LEDfifoConfigureIOCtl.h</File>
+    <File>chkled</File>
     <File>Makefile</File>
   </Files>
 </PRJ>

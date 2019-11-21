@@ -25,6 +25,7 @@ void testLOOPingControl(int fd);
 void testSetPins(int fd);
 void testSet2815(int fd);
 void testBySendingBits(int fd, int value);
+void testBySendingColor(int fd, int value);
 
 
 // test app
@@ -44,7 +45,11 @@ int main()
     get_vars(fd);
     
     //testBySendingBits(fd, 1);   // send ones for this test
-    testBySendingBits(fd, 0);   // send zeros for this test
+    //testBySendingBits(fd, 0);   // send zeros for this test
+    
+    testBySendingColor(fd, 0xFF0000);   // red
+    //testBySendingColor(fd, 0x00FF00);   // green
+    //testBySendingColor(fd, 0x0000FF);   // blue
     
     printf("Closing Driver Access\n");
     close(fd);
@@ -131,9 +136,20 @@ void testBySendingBits(int fd, int value)
 
     if (ioctl(fd, CMD_TEST_BIT_WRITES, value) == -1)
     {
-        perror("testApp ioctl clr");
+        perror("testApp ioctl set bit to 0/1");
     }
     printf("-- testBySendingBits() EXIT\n\n");
+}
+
+void testBySendingColor(int fd, int value)
+{
+    printf("-> testBySendingColor(0x%.6X) ENTRY\n", value);
+
+    if (ioctl(fd, CMD_SET_SCREEN_COLOR, value) == -1)
+    {
+        perror("testApp ioctl fill w/color");
+    }
+    printf("-- testBySendingColor() EXIT\n\n");
 }
 
 void testSet2815(int fd)
