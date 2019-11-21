@@ -35,7 +35,7 @@
 // get raspbery PI details
 #include <asm/io.h>
 //#include <mach/platform.h>
-#include <linux/delay.h>
+//#include <linux/delay.h>
 #include <linux/interrupt.h>    // for tasklets
 
 
@@ -84,14 +84,17 @@ static void resetCurrentPins(void);
 static void initCurrentPins(void);
 static void initBitTableForCurrentPins(void);
 static void transmitToAllChannelsBitsValued(uint8_t bitsIndex);
-static void textXmitZeros(uint32_t nCount);
-static void textXmitOnes(uint32_t nCount);
+static void testXmitZeros(uint32_t nCount);
+static void testXmitOnes(uint32_t nCount);
+static void testXmitBit(uint16_t onDelay, uint16_t offDelay);
 static void dumpPinTable(void);
 
 void taskletTestWrites(unsigned long data);
 void taskletScreenFill(unsigned long data);
 void taskletScreenWrite(unsigned long data);
 
+void nSecDelay(int nSecDuration);
+#define ndelay nSecDelay
 
 // ----------------------------------------------------------------------------
 //  SECTION: File-scoped Global Variables
@@ -289,12 +292,12 @@ static long LEDfifo_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
         case CMD_TEST_BIT_WRITES:
             printk(KERN_INFO "LEDfifo: ioctl() test bit writes w/(%ld's)\n", arg);
             if(arg == 0) {
-                //textXmitZeros(1000);
+                //testXmitZeros(1000);
                 tasklet_init(&tasklet, taskletTestWrites, 0); 
                 tasklet_hi_schedule(&tasklet);
             }
             else {
-                //textXmitOnes(1000);
+                //testXmitOnes(1000);
                 tasklet_init(&tasklet, taskletTestWrites, 1); 
                 tasklet_hi_schedule(&tasklet);
            }
@@ -519,12 +522,22 @@ struct GpioRegisters volatile *s_pGpioRegisters;
 #define GPIO_PULLCLK0 *(gpio+38) // Pull up/pull down clock
 */
 
-#define GPIO_FSEL_REG0 ((uint32_t *)s_pGpioRegisters +  0)
-#define GPIO_FSEL_REG1 ((uint32_t *)s_pGpioRegisters +  1)
-#define GPIO_SET_REG0  ((uint32_t *)s_pGpioRegisters +  7)
-#define GPIO_SET_REG1  ((uint32_t *)s_pGpioRegisters +  8)
-#define GPIO_CLR_REG0  ((uint32_t *)s_pGpioRegisters + 10)
-#define GPIO_CLR_REG1  ((uint32_t *)s_pGpioRegisters + 11)
+#define GPIO_FSEL_REG0 (&gpio[0])
+#define GPIO_FSEL_REG1 (&gpio[1])
+#define GPIO_SET_REG0  (&gpio[7])
+#define GPIO_SET_REG1  (&gpio[8])
+#define GPIO_CLR_REG0  (&gpio[10])
+#define GPIO_CLR_REG1  (&gpio[11])
+
+// -OR-
+
+#define GPREG_FSEL0 0
+#define GPREG_FSEL1 1
+#define GPREG_SET0  7
+#define GPREG_SET1  8
+#define GPREG_CLR0 10
+#define GPREG_CLR1 10
+#define GPIO_ADDR(reg) (&gpio[reg])
 
 static void init_gpio_access(void)
 {
@@ -535,33 +548,36 @@ static void init_gpio_access(void)
 
     printk(KERN_WARNING "LEDfifo: BCM2708_PERI_BASE=0x%8X\n", BCM2708_PERI_BASE);
     printk(KERN_WARNING "LEDfifo:         GPIO_BASE=0x%8X\n", GPIO_BASE);
-    printk(KERN_WARNING "LEDfifo: GPIO Reg Bank  @0x%p\n", (void *)s_pGpioRegisters);
-    printk(KERN_WARNING "LEDfifo:      GPFSEL[0] @0x%p\n", &s_pGpioRegisters->GPFSEL[0]);
-    printk(KERN_WARNING "LEDfifo:      GPFSEL[1] @0x%p\n", &s_pGpioRegisters->GPFSEL[1]);
-    printk(KERN_WARNING "LEDfifo:      GPSET[0]  @0x%p\n", &s_pGpioRegisters->GPSET[0]);
-    printk(KERN_WARNING "LEDfifo:      GPSET[1]  @0x%p\n", &s_pGpioRegisters->GPSET[1]);
-    printk(KERN_WARNING "LEDfifo:      GPCLR[0]  @0x%p\n", &s_pGpioRegisters->GPCLR[0]);
-    printk(KERN_WARNING "LEDfifo:      GPCLR[1]  @0x%p\n", &s_pGpioRegisters->GPCLR[1]);
-    printk(KERN_WARNING "LEDfifo: GPIO_FSEL_REG0 @0x%p\n", GPIO_FSEL_REG0);
-    printk(KERN_WARNING "LEDfifo:  GPIO_SET_REG0 @0x%p\n", GPIO_SET_REG0);
-    printk(KERN_WARNING "LEDfifo:  GPIO_CLR_REG0 @0x%p\n", GPIO_CLR_REG0);
+    printk(KERN_WARNING "LEDfifo: GPIO Reg Bank  0x%p\n", (void *)s_pGpioRegisters);
+    printk(KERN_WARNING "LEDfifo:      GPFSEL[0] 0x%p\n", &s_pGpioRegisters->GPFSEL[0]);
+    printk(KERN_WARNING "LEDfifo:      GPFSEL[1] 0x%p\n", &s_pGpioRegisters->GPFSEL[1]);
+    printk(KERN_WARNING "LEDfifo:      GPSET[0]  0x%p\n", &s_pGpioRegisters->GPSET[0]);
+    printk(KERN_WARNING "LEDfifo:      GPSET[1]  0x%p\n", &s_pGpioRegisters->GPSET[1]);
+    printk(KERN_WARNING "LEDfifo:      GPCLR[0]  0x%p\n", &s_pGpioRegisters->GPCLR[0]);
+    printk(KERN_WARNING "LEDfifo:      GPCLR[1]  0x%p\n", &s_pGpioRegisters->GPCLR[1]);
+    printk(KERN_WARNING "LEDfifo: GPIO_FSEL_REG0 0x%p\n", GPIO_FSEL_REG0);
+    printk(KERN_WARNING "LEDfifo:  GPIO_SET_REG0 0x%p\n", GPIO_SET_REG0);
+    printk(KERN_WARNING "LEDfifo:  GPIO_CLR_REG0 0x%p\n", GPIO_CLR_REG0);
     
     gpio_map = ioremap(GPIO_BASE, GPIO_BLOCK_SIZE);
-    printk(KERN_WARNING "LEDfifo:  GPIO MAP      @0x%p\n", gpio_map);
+    printk(KERN_WARNING "LEDfifo:  GPIO MAP      0x%p\n", gpio_map);
     
     // Always use volatile pointer!
     gpio = (volatile uint32_t *)gpio_map;
     s_pGpioRegisters = (struct GpioRegisters *)gpio;
-    printk(KERN_WARNING "LEDfifo:  GPIO Reg Bank @0x%p\n", (void *)s_pGpioRegisters);
-    printk(KERN_WARNING "LEDfifo:      GPFSEL[0] @0x%p\n", &(s_pGpioRegisters->GPFSEL[0]));
-    printk(KERN_WARNING "LEDfifo:      GPFSEL[1] @0x%p\n", &(s_pGpioRegisters->GPFSEL[1]));
-    printk(KERN_WARNING "LEDfifo:      GPSET[0]  @0x%p\n", &(s_pGpioRegisters->GPSET[0]));
-    printk(KERN_WARNING "LEDfifo:      GPSET[1]  @0x%p\n", &s_pGpioRegisters->GPSET[1]);
-    printk(KERN_WARNING "LEDfifo:      GPCLR[0]  @0x%p\n", &s_pGpioRegisters->GPCLR[0]);
-    printk(KERN_WARNING "LEDfifo:      GPCLR[1]  @0x%p\n", &s_pGpioRegisters->GPCLR[1]);
-    printk(KERN_WARNING "LEDfifo: GPIO_FSEL_REG0 @0x%p\n", GPIO_FSEL_REG0);
-    printk(KERN_WARNING "LEDfifo:  GPIO_SET_REG0 @0x%p\n", GPIO_SET_REG0);
-    printk(KERN_WARNING "LEDfifo:  GPIO_CLR_REG0 @0x%p\n", GPIO_CLR_REG0);
+    printk(KERN_WARNING "LEDfifo:  GPIO Reg Bank 0x%p\n", (void *)s_pGpioRegisters);
+    printk(KERN_WARNING "LEDfifo:      GPFSEL[0] 0x%p\n", &(s_pGpioRegisters->GPFSEL[0]));
+    printk(KERN_WARNING "LEDfifo:      GPFSEL[1] 0x%p\n", &(s_pGpioRegisters->GPFSEL[1]));
+    printk(KERN_WARNING "LEDfifo:      GPSET[0]  0x%p\n", &(s_pGpioRegisters->GPSET[0]));
+    printk(KERN_WARNING "LEDfifo:      GPSET[1]  0x%p\n", &s_pGpioRegisters->GPSET[1]);
+    printk(KERN_WARNING "LEDfifo:      GPCLR[0]  0x%p\n", &s_pGpioRegisters->GPCLR[0]);
+    printk(KERN_WARNING "LEDfifo:      GPCLR[1]  0x%p\n", &s_pGpioRegisters->GPCLR[1]);
+    printk(KERN_WARNING "LEDfifo: GPIO_FSEL_REG0 0x%p\n", GPIO_FSEL_REG0);
+    printk(KERN_WARNING "LEDfifo:  GPIO_SET_REG0 0x%p\n", GPIO_SET_REG0);
+    printk(KERN_WARNING "LEDfifo:  GPIO_CLR_REG0 0x%p\n", GPIO_CLR_REG0);
+    printk(KERN_WARNING "LEDfifo: GPIO_ADDR(GPREG_FSEL0)  0x%p\n", GPIO_ADDR(GPREG_FSEL0));
+    printk(KERN_WARNING "LEDfifo: GPIO_ADDR(GPREG_SET0)  0x%p\n", GPIO_ADDR(GPREG_SET0));
+    printk(KERN_WARNING "LEDfifo: GPIO_ADDR(GPREG_CLR0)  0x%p\n", GPIO_ADDR(GPREG_CLR0));
 }
 
 
@@ -849,7 +865,7 @@ static void transmitToAllChannelsBitsValued(uint8_t bitsIndex)
                 }
             }
             // lessee if RPi has working ndelay()...
-            ndelay(selectedWord->durationToNext * periodDurationNsec);
+            ndelay(selectedWord->durationToNext * periodDurationNsec / 2);
         }
     }
 }
@@ -858,7 +874,7 @@ static void transmitResetAllChannelsBits(void)
 {
     s_pGpioRegisters->GPCLR[0] = pinsAllActive;
     // lessee if RPi has working ndelay()...
-    ndelay(periodTRESETCount * periodDurationNsec);
+    ndelay(periodTRESETCount * periodDurationNsec / 2);
 }
 
 
@@ -872,38 +888,85 @@ void taskletTestWrites(unsigned long data)
     printk(KERN_INFO "LEDfifo: taskletTestWrites(%ld) ENTRY\n", data);
     // data is [0,1] for directing write of 0's or 1's test pattern
     if(data == 0) {
-        textXmitZeros(1000);
+        testXmitZeros(1000);
     }
     else {
-        textXmitOnes(1000);
+        testXmitOnes(1000);
     }
     printk(KERN_INFO "LEDfifo: taskletTestWrites() EXIT\n");
 }
 
-static void textXmitZeros(uint32_t nCount)
+static uint16_t	countScaled(uint16_t nPeriod)
+{
+	uint16_t desiredValue = (nPeriod * periodDurationNsec);
+	return desiredValue;
+}
+
+static void testXmitZeros(uint32_t nCount)
 {
     int nCounter;
+    int nOnDelay;
+    int nOffDelay;
 
-    printk(KERN_INFO "LEDfifo: textXmitZeros(x %d)\n", nCount);
+    nOnDelay = countScaled(periodT0HCount);
+    nOffDelay = countScaled(periodCount - periodT0HCount);
+
+    printk(KERN_INFO "LEDfifo: testXmitZeros(x %d)\n", nCount);
     if(nCount > 0) {
         for(nCounter = 0; nCounter < nCount; nCounter++) {
-            transmitToAllChannelsBitsValued(0b000);
-        }
+            //transmitToAllChannelsBitsValued(0b000); 
+            testXmitBit(nOnDelay, nOffDelay); 
+        } 
     }
 }
 
 
-static void textXmitOnes(uint32_t nCount)
+static void testXmitOnes(uint32_t nCount)
 {
     int nCounter;
+    int nOnDelay;
+    int nOffDelay;
 
-    printk(KERN_INFO "LEDfifo: textXmitOnes(x %d)\n", nCount);
+    nOnDelay = countScaled(periodT1HCount);
+    nOffDelay = countScaled(periodCount - periodT1HCount);
+
+    printk(KERN_INFO "LEDfifo: testXmitOnes(x %d)\n", nCount);
     if(nCount > 0) {
         for(nCounter = 0; nCounter < nCount; nCounter++) {
-            transmitToAllChannelsBitsValued(0b111);
+            //transmitToAllChannelsBitsValued(0b111);
+            testXmitBit(nOnDelay, nOffDelay); 
         }
     }
 }
+
+#define TEST_GPIO_PIN 17
+
+static void testXmitBit(uint16_t onDelay, uint16_t offDelay)
+{
+	static int s_bFirstTime = 0;
+
+	if(s_bFirstTime == 0) {
+		s_bFirstTime++;
+                printk(KERN_INFO "LEDfifo: testXmitBiti(on %d nSec, off %d nSec)\n", onDelay, offDelay);
+        }
+
+	s_pGpioRegisters->GPSET[0] = 1 << TEST_GPIO_PIN;
+ 	nSecDelay(onDelay);
+
+	s_pGpioRegisters->GPCLR[0] = 1 << TEST_GPIO_PIN;
+ 	nSecDelay(offDelay);
+}
+
+void nSecDelay(int nSecDuration)
+{
+    volatile int ctr;
+    volatile int tst;
+    int delayCount = ((nSecDuration << 3) + (nSecDuration << 1)) / 166; // div by 16.6
+    //int delayCount = nSecDuration / 17;
+    for(ctr=0; ctr<delayCount; ctr++) { tst++; }
+}
+
+
 
 // ============================================================================
 //  our tasklet: write single color to entire LED Matrix

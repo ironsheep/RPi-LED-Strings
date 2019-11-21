@@ -43,7 +43,8 @@ int main()
     testSetPins(fd);
     get_vars(fd);
     
-    testBySendingBits(fd, 1);   // send ones for this test
+    //testBySendingBits(fd, 1);   // send ones for this test
+    testBySendingBits(fd, 0);   // send zeros for this test
     
     printf("Closing Driver Access\n");
     close(fd);
@@ -126,7 +127,7 @@ void testSetPins(int fd)
 
 void testBySendingBits(int fd, int value)
 {
-    printf("-> testBySendingBits() ENTRY\n");
+    printf("-> testBySendingBits(%d) ENTRY\n", value);
 
     if (ioctl(fd, CMD_TEST_BIT_WRITES, value) == -1)
     {
