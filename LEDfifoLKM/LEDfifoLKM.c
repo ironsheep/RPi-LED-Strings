@@ -1040,7 +1040,8 @@ void taskletScreenFill(unsigned long data)
                 // mask out the bits and OR them together (so they can all be written at one time)
                 nAllBits = 0;
                 for(nPanelIdx = 0; nPanelIdx < HARDWARE_MAX_PANELS; nPanelIdx++) {
-                    nAllBits |= ((nPanelByte[nPanelIdx] >> nBitShiftValue) & 0x01) << nPanelIdx;
+                    nAllBits |= (nPanelByte[nPanelIdx] >> nBitShiftValue) & 0x01;
+		    nAllBits <<= 1;
                 }
                 if(!s_bScreenFilledOnce) {
                     printk(KERN_INFO "LEDfifo: nAllBits 0x%.2X\n", nAllBits);
