@@ -1005,12 +1005,13 @@ void taskletScreenFill(unsigned long data)
     uint8_t nAllBits;
     uint8_t nPanelByte[3];	// 1 byte buffer for each panel (not 256x3 bytes)
     
-    static int s_bScreenFilledOnce = 0;
+    static int s_bScreenFilledOnce = 50;
 
     printk(KERN_INFO "LEDfifo: taskletScreenFill(0x%08lX) ENTRY\n", data);
     
-    if(!s_bScreenFilledOnce) {
+    if(!s_bScreenFilledOnce > 0) {
         printk(KERN_INFO "LEDfifo: taskletScreenFill(0x%08lX) ENTRY\n", data);
+        s_bScreenFilledOnce--;
     }
     red = (data >> 16) & 0x000000ff;
     green = (data >> 8) & 0x000000ff;
@@ -1019,8 +1020,9 @@ void taskletScreenFill(unsigned long data)
     buffer[1] = red;
     buffer[2] = blue;
     
-    if(!s_bScreenFilledOnce) {
+    if(!s_bScreenFilledOnce > 0) {
         printk(KERN_INFO "LEDfifo: buffered[] = G=0x%.2X R=0x%.2X B=0x%.2X\n", buffer[0], buffer[1], buffer[2]);
+        s_bScreenFilledOnce--;
     }
     
     // for each LED in a panel
@@ -1031,8 +1033,9 @@ void taskletScreenFill(unsigned long data)
             nPanelByte[0] = buffer[nColorIdx];
             nPanelByte[1] = buffer[nColorIdx];
             nPanelByte[2] = buffer[nColorIdx];
-            if(!s_bScreenFilledOnce) {
+            if(s_bScreenFilledOnce > 0) {
                 printk(KERN_INFO "LEDfifo: buffer[%d] -> nPanelByte[] = G=0x%.2X R=0x%.2X B=0x%.2X\n", nColorIdx, nPanelByte[0], nPanelByte[1], nPanelByte[2]);
+                s_bScreenFilledOnce--;
             }
     
            // for ea. bit MSBit to LSBit...
@@ -1042,11 +1045,9 @@ void taskletScreenFill(unsigned long data)
                 for(nPanelIdx = 0; nPanelIdx < HARDWARE_MAX_PANELS; nPanelIdx++) {
                     nAllBits |= ((nPanelByte[nPanelIdx] >> nBitShiftValue) & 0x01) << nPanelIdx;
                 }
-                if(!s_bScreenFilledOnce) {
+                if(s_bScreenFilledOnce > 0) {
                     printk(KERN_INFO "LEDfifo: nAllBits 0x%.2X\n", nAllBits);
-                    if(nBitShiftValue == 0 && nColorIdx >= HARDWARE_MAX_COLOR_BYTES_PER_LED - 1) {
-                        s_bScreenFilledOnce = 1;
-                    }
+                    s_bScreenFilledOnce--;
                 }
                  // write all bits, ea. to own GPIO pin (but all at the same time)
                 xmitBitvaluesToAllChannels(nAllBits);
