@@ -1005,11 +1005,11 @@ void taskletScreenFill(unsigned long data)
     uint8_t nAllBits;
     uint8_t nPanelByte[3];	// 1 byte buffer for each panel (not 256x3 bytes)
     
-    static int s_bScreenFilledOnce = 50;
+    static int s_bScreenFilledOnce = 40;
 
     printk(KERN_INFO "LEDfifo: taskletScreenFill(0x%08lX) ENTRY\n", data);
     
-    if(!s_bScreenFilledOnce > 0) {
+    if(s_bScreenFilledOnce > 0) {
         printk(KERN_INFO "LEDfifo: taskletScreenFill(0x%08lX) ENTRY\n", data);
         s_bScreenFilledOnce--;
     }
@@ -1020,7 +1020,7 @@ void taskletScreenFill(unsigned long data)
     buffer[1] = red;
     buffer[2] = blue;
     
-    if(!s_bScreenFilledOnce > 0) {
+    if(s_bScreenFilledOnce > 0) {
         printk(KERN_INFO "LEDfifo: buffered[] = G=0x%.2X R=0x%.2X B=0x%.2X\n", buffer[0], buffer[1], buffer[2]);
         s_bScreenFilledOnce--;
     }
