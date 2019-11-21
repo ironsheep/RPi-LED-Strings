@@ -1002,7 +1002,7 @@ void taskletScreenFill(unsigned long data)
     uint8_t nColorIdx;
     uint8_t nPanelIdx;
     uint8_t nBitShiftValue;
-    uint8_t nPanelByte[3];	// 1 byte buffer for each panel
+    uint8_t nPanelByte[3];	// 1 byte buffer for each panel (not 256x3 bytes)
     
     static int s_bScreenFilledOnce = 0;
 
@@ -1026,11 +1026,12 @@ void taskletScreenFill(unsigned long data)
     for(nLedIdx = 0; nLedIdx < HARDWARE_MAX_LEDS_PER_PANEL; nLedIdx++) {
         // for each COLOR of an LED (24 bit, 3 bytes)
         for(nColorIdx = 0; nColorIdx < HARDWARE_MAX_COLOR_BYTES_PER_LED; nColorIdx++) {
+            // grab single byte of color and set it for all panels
             nPanelByte[0] = buffer[nColorIdx];
             nPanelByte[1] = buffer[nColorIdx];
             nPanelByte[2] = buffer[nColorIdx];
             if(!s_bScreenFilledOnce) {
-                printk(KERN_INFO "LEDfifo: nPanelByte[] = G=0x%.2X R=0x%.2X B=0x%.2X\n", nPanelByte[0], nPanelByte[1], nPanelByte[2]);
+                printk(KERN_INFO "LEDfifo: buffer[%d] -> nPanelByte[] = G=0x%.2X R=0x%.2X B=0x%.2X\n", nColorIdx, nPanelByte[0], nPanelByte[1], nPanelByte[2]);
             }
     
            // for ea. bit MSBit to LSBit...
@@ -1042,7 +1043,7 @@ void taskletScreenFill(unsigned long data)
                 }
                 if(!s_bScreenFilledOnce) {
                     printk(KERN_INFO "LEDfifo: nBitShiftValue 0x%.2X\n", nBitShiftValue);
-                    if(nBitShiftValue == 0) {
+                    if(nBitShiftValue == 0 && nColorIdx >= HARDWARE_MAX_COLOR_BYTES_PER_LED - 1) {
                         s_bScreenFilledOnce = 1;
                     }
                 }
