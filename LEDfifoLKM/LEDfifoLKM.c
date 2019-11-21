@@ -999,7 +999,7 @@ void taskletScreenFill(unsigned long data)
     uint8_t blue;
     uint8_t buffer[3];
     uint8_t nLedIdx;
-    uint8_t nColorIdx;jjjjjjkj
+    uint8_t nColorIdx;
     uint8_t nPanelIdx;
     uint8_t nBitShiftValue;
     uint8_t nAllBits;
