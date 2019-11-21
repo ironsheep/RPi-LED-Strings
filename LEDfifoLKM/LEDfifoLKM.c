@@ -655,10 +655,9 @@ enum eGpioOperationType {
 typedef struct _gpioCrontrolWord
 {
     uint32_t gpioPinBits;   // 1 placed in each bit location
+    uint16_t durationToNext;
     uint8_t gpioOperation;  // eGpioOperationType value SET/CLR
-    uint8_t durationToNext;
     uint8_t entryOccupied;
-    uint8_t unused1;
 } gpioCrontrolWord_t;
 
 #define MAX_GPIO_CONTROL_WORDS 3
@@ -986,8 +985,13 @@ void nSecDelay(int nSecDuration)
 {
     volatile int ctr;
     volatile int tst;
-    int delayCount = ((nSecDuration << 3) + (nSecDuration << 1)) / 166; // div by 16.6
+
     //int delayCount = nSecDuration / 17;
+#ifdef TEST_DIRECT
+    int delayCount = ((nSecDuration << 3) + (nSecDuration << 1)) / 166; // div by 16.6
+#else
+    int delayCount = ((nSecDuration << 3) + (nSecDuration << 1)) / 170; // div by 17.0
+#endif
     for(ctr=0; ctr<delayCount; ctr++) { tst++; }
 }
 
