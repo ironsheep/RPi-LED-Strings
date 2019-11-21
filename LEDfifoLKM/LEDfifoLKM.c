@@ -753,7 +753,7 @@ static void initBitTableForCurrentPins(void)
                 nOnlyHighPeriodLength = (nTableIdx == 0) ? periodT0HCount : periodT1HCount;
                 gpioBitControlEntries[nTableIdx].word[nWordIdx].gpioPinBits = pinsAllActive;
                 gpioBitControlEntries[nTableIdx].word[nWordIdx].gpioOperation = OP_GPIO_SET;
-                gpioBitControlEntries[nTableIdx].word[nWordIdx].durationToNext = nOnlyHighPeriodLength;
+                gpioBitControlEntries[nTableIdx].word[nWordIdx].durationToNext = nOnlyHighPeriodLength * periodDurationNsec;
                 gpioBitControlEntries[nTableIdx].word[nWordIdx].entryOccupied = 1;
                 
                 // if we have all pins 0 or all pins 1 then...
@@ -761,14 +761,14 @@ static void initBitTableForCurrentPins(void)
                 nOnlyRemainingPeriodLength = periodCount - nOnlyHighPeriodLength;
                 gpioBitControlEntries[nTableIdx].word[nWordIdx+1].gpioPinBits = pinsAllActive;
                 gpioBitControlEntries[nTableIdx].word[nWordIdx+1].gpioOperation = OP_GPIO_CLR;
-                gpioBitControlEntries[nTableIdx].word[nWordIdx+1].durationToNext = nOnlyRemainingPeriodLength;
+                gpioBitControlEntries[nTableIdx].word[nWordIdx+1].durationToNext = nOnlyRemainingPeriodLength * periodDurationNsec;
                 gpioBitControlEntries[nTableIdx].word[nWordIdx+1].entryOccupied = 1;
             }
             else {
                 // do our min-duration set for all active pins               
                 gpioBitControlEntries[nTableIdx].word[nWordIdx].gpioPinBits = pinsAllActive;
                 gpioBitControlEntries[nTableIdx].word[nWordIdx].gpioOperation = OP_GPIO_SET;
-                gpioBitControlEntries[nTableIdx].word[nWordIdx].durationToNext = nMinHighPeriodLength;
+                gpioBitControlEntries[nTableIdx].word[nWordIdx].durationToNext = nMinHighPeriodLength * periodDurationNsec;
                 gpioBitControlEntries[nTableIdx].word[nWordIdx].entryOccupied = 1;
                 
                 // calculate masks for early then late clears
@@ -781,12 +781,12 @@ static void initBitTableForCurrentPins(void)
                 // do our shorter clear (0or1 bits)
                 gpioBitControlEntries[nTableIdx].word[nWordIdx+1].gpioPinBits = (n0IsShorterThan1) ? pinsActiveLow : pinsActiveHigh;
                 gpioBitControlEntries[nTableIdx].word[nWordIdx+1].gpioOperation = OP_GPIO_CLR;
-                gpioBitControlEntries[nTableIdx].word[nWordIdx+1].durationToNext = nRemainingHighPeriodLength;
+                gpioBitControlEntries[nTableIdx].word[nWordIdx+1].durationToNext = nRemainingHighPeriodLength * periodDurationNsec;
                 gpioBitControlEntries[nTableIdx].word[nWordIdx+1].entryOccupied = 1;
                 // do our longer clear (1or0 bits)
                 gpioBitControlEntries[nTableIdx].word[nWordIdx+2].gpioPinBits = (n0IsShorterThan1) ? pinsActiveHigh : pinsActiveLow;
                 gpioBitControlEntries[nTableIdx].word[nWordIdx+2].gpioOperation = OP_GPIO_CLR;
-                gpioBitControlEntries[nTableIdx].word[nWordIdx+2].durationToNext = nRemainingLowPeriodLength;
+                gpioBitControlEntries[nTableIdx].word[nWordIdx+2].durationToNext = nRemainingLowPeriodLength * periodDurationNsec;
                 gpioBitControlEntries[nTableIdx].word[nWordIdx+2].entryOccupied = 1;
             }
         }
@@ -872,7 +872,9 @@ static void transmitToAllChannelsBitsValued(uint8_t bitsIndex)
                 }
             }
             // lessee if RPi has working ndelay()...
-            ndelay(selectedWord->durationToNext * periodDurationNsec / 2);
+            //ndelay(selectedWord->durationToNext * periodDurationNsec / 2);
+            // yeah, no.  Let's use ours...
+            nSecDelay(selectedWord->durationToNext);
         }
     }
 }
@@ -903,26 +905,37 @@ void taskletTestWrites(unsigned long data)
     printk(KERN_INFO "LEDfifo: taskletTestWrites() EXIT\n");
 }
 
+// uncomment the following to NOT use our table of values for bit generation
+//#define TEST_DIRECT
+
+#ifdef TEST_DIRECT
 static uint16_t	countScaled(uint16_t nPeriod)
 {
-	uint16_t desiredValue = (nPeriod * periodDurationNsec);
+    uint16_t desiredValue = 0;
+	desiredValue = (nPeriod * periodDurationNsec);
 	return desiredValue;
 }
+#endif
 
 static void testXmitZeros(uint32_t nCount)
 {
     int nCounter;
+#ifdef TEST_DIRECT
     int nOnDelay;
     int nOffDelay;
 
     nOnDelay = countScaled(periodT0HCount);
     nOffDelay = countScaled(periodCount - periodT0HCount);
+#endif
 
     printk(KERN_INFO "LEDfifo: testXmitZeros(x %d)\n", nCount);
     if(nCount > 0) {
         for(nCounter = 0; nCounter < nCount; nCounter++) {
-            //transmitToAllChannelsBitsValued(0b000); 
+#ifdef TEST_DIRECT
             testXmitBit(nOnDelay, nOffDelay); 
+#else
+            transmitToAllChannelsBitsValued(0b000); 
+#endif
         } 
     }
 }
@@ -931,17 +944,22 @@ static void testXmitZeros(uint32_t nCount)
 static void testXmitOnes(uint32_t nCount)
 {
     int nCounter;
+#ifdef TEST_DIRECT
     int nOnDelay;
     int nOffDelay;
 
     nOnDelay = countScaled(periodT1HCount);
     nOffDelay = countScaled(periodCount - periodT1HCount);
+#endif
 
     printk(KERN_INFO "LEDfifo: testXmitOnes(x %d)\n", nCount);
     if(nCount > 0) {
         for(nCounter = 0; nCounter < nCount; nCounter++) {
-            //transmitToAllChannelsBitsValued(0b111);
+#ifdef TEST_DIRECT
             testXmitBit(nOnDelay, nOffDelay); 
+#else
+            transmitToAllChannelsBitsValued(0b111);
+#endif
         }
     }
 }
