@@ -988,12 +988,34 @@ void nSecDelay(int nSecDuration)
 #define HARDWARE_MAX_LEDS_PER_PANEL 256
 #define HARDWARE_MAX_COLOR_BYTES_PER_LED 3
 
+// debug counting of writes
+#define MAX_COUNT_ENTRIES 8
+static int nValueCountsAr[MAX_COUNT_ENTRIES];
+
+static void clearCounts(void) 
+{
+	int countIdx;
+	for(countIdx = 0; countIdx<MAX_COUNT_ENTRIES; countIdx++) {
+		nValueCountsAr[countIdx] = 0;
+	}
+}
+
+static void showCounts(void) 
+{
+	int countIdx;
+        printk(KERN_INFO "LEDfifo: ----- bit-values sent----\n");
+	for(countIdx = 0; countIdx<MAX_COUNT_ENTRIES; countIdx++) {
+        	printk(KERN_INFO "LEDfifo: value(0x%02Xi) %d x\n", countIdx, nValueCountsAr[countIdx]);
+	}
+}
+
 // ============================================================================
 //  our tasklet: write single color to entire LED Matrix
 //
 void taskletScreenFill(unsigned long data)
 {
     // data is 24-bit RGB value to be written
+    uint16_t nBytesWritten;
     uint8_t red;
     uint8_t green;
     uint8_t blue;
@@ -1020,6 +1042,8 @@ void taskletScreenFill(unsigned long data)
     buffer[1] = red;
     buffer[2] = blue;
     
+    clearCounts();
+    nBytesWritten = 0;
     if(s_bScreenFilledOnce > 0) {
         printk(KERN_INFO "LEDfifo: buffered[] = G=0x%.2X R=0x%.2X B=0x%.2X\n", buffer[0], buffer[1], buffer[2]);
         s_bScreenFilledOnce--;
@@ -1038,7 +1062,8 @@ void taskletScreenFill(unsigned long data)
                 s_bScreenFilledOnce--;
             }
     
-           // for ea. bit MSBit to LSBit...
+	    nBytesWritten++;
+            // for ea. bit MSBit to LSBit...
             for(nBitShiftValue = 7; nBitShiftValue >=0; nBitShiftValue--) {
                 // mask out the bits and OR them together (so they can all be written at one time)
                 nAllBits = 0;
@@ -1046,16 +1071,19 @@ void taskletScreenFill(unsigned long data)
                     nAllBits |= ((nPanelByte[nPanelIdx] >> nBitShiftValue) & 0x01) << nPanelIdx;
                 }
                 if(s_bScreenFilledOnce > 0) {
-                    printk(KERN_INFO "LEDfifo: nAllBits 0x%.2X\n", nAllBits);
+                    //printk(KERN_INFO "LEDfifo: nAllBits 0x%.2X\n", nAllBits);
                     s_bScreenFilledOnce--;
                 }
+		nValueCountsAr[nAllBits]++;	// count this send
                  // write all bits, ea. to own GPIO pin (but all at the same time)
                 xmitBitvaluesToAllChannels(nAllBits);
             }
         }
     }
     xmitResetToAllChannels();
-    printk(KERN_INFO "LEDfifo: taskletScreenFill() ENTRY\n");
+    printk(KERN_INFO "LEDfifo: %d bytes written\n", nBytesWritten);
+    showCounts();
+    printk(KERN_INFO "LEDfifo: taskletScreenFill() EXIT\n");
 }
 
 void taskletScreenWrite(unsigned long data)
