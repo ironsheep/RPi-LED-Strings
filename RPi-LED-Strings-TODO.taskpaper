@@ -1,30 +1,35 @@
 RISKs:
-	- can we do bit timing in kernel?
-	- can we prevent string writes from being interrupted?
+	- can we do bit timing in kernel? - sort of, still soft loops!!! but more accurate
+	- can we prevent string writes from being interrupted?  - looking...
 	
 BUGs:
 - (nothing yet)
 
 DRIVER TODOs:
-	- add TEST ioctl commands
-	- hook in tests to send 0'1 or 1's
-		- (maybe test sends bit pattern to send?)
-	- add CLEAR SCREEN ioctl command
-	- add FILL SCREEN w/Color (but device order) ioctl command
+	- add TEST ioctl commands @done(2019-11-21)
+	- hook in tests to send 0'1 or 1's @done(2019-11-21)
+		- (maybe test sends bit pattern to send?) @done(2019-11-21)
+		- shake out test bit write commands @done(2019-11-21)
+	- add FILL SCREEN w/Color (but device order) ioctl command @done(2019-11-21)
+		- add CLEAR SCREEN ioctl command (fill with black) @done(2019-11-21)
+		- shake out screen fill commands
 	- implement write (single screen)
+			- shake out screen write command
+			
+Hrmf, NOT POSSIBLE:
 	- inplement writev (multiple screen)
 	- implement writev (multi) with leading command buffer
 		- writev Commands:
 			- loop frame set {n} times [delay {n} frame-times between frames|framesets]
 			- scroll frame set [left|right|up|down] [at {rate}] [{n} times|forever]
-	
+
 Sample IOCTL Application TODOs:
-	- add screen clear
-	- add fillescreen {color}  NOTE: (device color sequence!!!)
+	- add screen clear @done(2019-11-21)
+	- add fillescreen {color}  NOTE: (device color sequence!!!) @done(2019-11-21)
 	
 
 Application TODOs:
-	- awken new applicaiton code
+	- awken new application code
 	- add command processor loop
 	- add command: read commands from file
 	- add command: load screen set from file set (name file containing list of files)

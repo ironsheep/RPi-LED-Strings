@@ -1003,7 +1003,7 @@ static void clearCounts(void)
 static void showCounts(void) 
 {
 	int countIdx;
-        printk(KERN_INFO "LEDfifo: ----- bit-values sent----\n");
+    printk(KERN_INFO "LEDfifo: ----- bit-values sent----\n");
 	for(countIdx = 0; countIdx<MAX_COUNT_ENTRIES; countIdx++) {
         	printk(KERN_INFO "LEDfifo: value(0x%02Xi) %d x\n", countIdx, nValueCountsAr[countIdx]);
 	}
@@ -1062,7 +1062,7 @@ void taskletScreenFill(unsigned long data)
                 s_bScreenFilledOnce--;
             }
     
-	    nBytesWritten++;
+            nBytesWritten++;
             // for ea. bit MSBit to LSBit...
             for(nBitShiftValue = 7; nBitShiftValue >=0; nBitShiftValue--) {
                 // mask out the bits and OR them together (so they can all be written at one time)
@@ -1074,13 +1074,13 @@ void taskletScreenFill(unsigned long data)
                     //printk(KERN_INFO "LEDfifo: nAllBits 0x%.2X\n", nAllBits);
                     s_bScreenFilledOnce--;
                 }
-		nValueCountsAr[nAllBits]++;	// count this send
-                 // write all bits, ea. to own GPIO pin (but all at the same time)
+        		nValueCountsAr[nAllBits]++;	// count this send
+                // write all bits, ea. to own GPIO pin (but all at the same time)
                 xmitBitvaluesToAllChannels(nAllBits);
             }
         }
     }
-    xmitResetToAllChannels();
+    //xmitResetToAllChannels();  <-- maybe this is the problem?
     printk(KERN_INFO "LEDfifo: %d bytes written\n", nBytesWritten);
     showCounts();
     printk(KERN_INFO "LEDfifo: taskletScreenFill() EXIT\n");
