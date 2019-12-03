@@ -83,7 +83,7 @@ static void init_gpio_access(void);
 static void resetCurrentPins(void);
 static void initCurrentPins(void);
 static void initBitTableForCurrentPins(void);
-static void xmitBitvaluesToAllChannels(uint8_t bitsIndex);
+static void xmitBitValuesToAllChannels(uint8_t bitsIndex);
 static void testXmitZeros(uint32_t nCount);
 static void testXmitOnes(uint32_t nCount);
 static void testXmitBit(uint16_t onDelay, uint16_t offDelay);
@@ -823,23 +823,46 @@ static void dumpPinTable(void)
     printk(KERN_INFO "LEDfifo: dumpPinTable ------------------\n");
 }
 
+// debug counting of writes
+#define MAX_COUNT_ENTRIES 8
+static int nValueCountsAr[MAX_COUNT_ENTRIES];
+
+static void clearCounts(void) 
+{
+	int countIdx;
+	for(countIdx = 0; countIdx<MAX_COUNT_ENTRIES; countIdx++) {
+		nValueCountsAr[countIdx] = 0;
+	}
+}
+
+static void showCounts(void) 
+{
+	int countIdx;
+    printk(KERN_INFO "LEDfifo: ----- bit-values sent----\n");
+	for(countIdx = 0; countIdx<MAX_COUNT_ENTRIES; countIdx++) {
+        	printk(KERN_INFO "LEDfifo: value(0x%02Xi) %d x\n", countIdx, nValueCountsAr[countIdx]);
+	}
+}
+
+// ============================================================================
 // ---------------------
 // GPIO execution code
 //   NOTE: RESTRICTION: All GPIO pins are in 0-31 range!
 //
 //
 
-static void xmitBitvaluesToAllChannels(uint8_t bitsIndex)
+static void xmitBitValuesToAllChannels(uint8_t bitsIndex)
 {
     gpioCrontrolEntry_t *selectedEntry = NULL;
     gpioCrontrolWord_t *selectedWord = NULL;
     uint8_t nWordIdx;
     
-    //printk(KERN_INFO "LEDfifo: xmitBitvaluesToAllChannels(%d)\n", bitsIndex);
+    //printk(KERN_INFO "LEDfifo: xmitBitValuesToAllChannels(%d)\n", bitsIndex);
     if(bitsIndex >= MAX_GPIO_CONTROL_ENTRIES) {
-        printk(KERN_ERR "LEDfifo: [CODE] xmitBitvaluesToAllChannels(%d) OUT-OF-RANGE bitIndex not [0-%d]\n", bitsIndex, MAX_GPIO_CONTROL_ENTRIES-1);
+        printk(KERN_ERR "LEDfifo: [CODE] xmitBitValuesToAllChannels(%d) OUT-OF-RANGE bitIndex not [0-%d]\n", bitsIndex, MAX_GPIO_CONTROL_ENTRIES-1);
     }
     else {
+        nValueCountsAr[bitsIndex]++;	// count this send
         // select a table entry
         // then do timed set and clear(s) based on entry content
         selectedEntry = &gpioBitControlEntries[bitsIndex];
@@ -856,7 +879,7 @@ static void xmitBitvaluesToAllChannels(uint8_t bitsIndex)
                     s_pGpioRegisters->GPCLR[0] = selectedWord->gpioPinBits;
                }
                 else {
-                    printk(KERN_ERR "LEDfifo: [CODE] xmitBitvaluesToAllChannels(%d) INVALID gpioOperation Entry (%d) word[%d]\n", bitsIndex, selectedWord->gpioOperation, nWordIdx);
+                    printk(KERN_ERR "LEDfifo: [CODE] xmitBitValuesToAllChannels(%d) INVALID gpioOperation Entry (%d) word[%d]\n", bitsIndex, selectedWord->gpioOperation, nWordIdx);
                 }
             }
             // lessee if RPi has working ndelay()...
@@ -869,9 +892,10 @@ static void xmitBitvaluesToAllChannels(uint8_t bitsIndex)
 
 static void xmitResetToAllChannels(void)
 {
+    printk(KERN_INFO "LEDfifo: xmitResetToAllChannels()\n");
     s_pGpioRegisters->GPCLR[0] = pinsAllActive;
     // lessee if RPi has working ndelay()...
-    ndelay(periodTRESETCount * periodDurationNsec / 2);
+    ndelay((periodTRESETCount * periodDurationNsec) / 2);
 }
 
 
@@ -922,7 +946,7 @@ static void testXmitZeros(uint32_t nCount)
 #ifdef TEST_DIRECT
             testXmitBit(nOnDelay, nOffDelay); 
 #else
-            xmitBitvaluesToAllChannels(0b000); 
+            xmitBitValuesToAllChannels(0b000); 
 #endif
         } 
     }
@@ -946,7 +970,7 @@ static void testXmitOnes(uint32_t nCount)
 #ifdef TEST_DIRECT
             testXmitBit(nOnDelay, nOffDelay); 
 #else
-            xmitBitvaluesToAllChannels(0b111);
+            xmitBitValuesToAllChannels(0b111);
 #endif
         }
     }
@@ -988,43 +1012,21 @@ void nSecDelay(int nSecDuration)
 #define HARDWARE_MAX_LEDS_PER_PANEL 256
 #define HARDWARE_MAX_COLOR_BYTES_PER_LED 3
 
-// debug counting of writes
-#define MAX_COUNT_ENTRIES 8
-static int nValueCountsAr[MAX_COUNT_ENTRIES];
-
-static void clearCounts(void) 
-{
-	int countIdx;
-	for(countIdx = 0; countIdx<MAX_COUNT_ENTRIES; countIdx++) {
-		nValueCountsAr[countIdx] = 0;
-	}
-}
-
-static void showCounts(void) 
-{
-	int countIdx;
-    printk(KERN_INFO "LEDfifo: ----- bit-values sent----\n");
-	for(countIdx = 0; countIdx<MAX_COUNT_ENTRIES; countIdx++) {
-        	printk(KERN_INFO "LEDfifo: value(0x%02Xi) %d x\n", countIdx, nValueCountsAr[countIdx]);
-	}
-}
-
-// ============================================================================
 //  our tasklet: write single color to entire LED Matrix
 //
 void taskletScreenFill(unsigned long data)
 {
     // data is 24-bit RGB value to be written
+    uint32_t nAllBits;
     uint16_t nBytesWritten;
     uint16_t nLedIdx;
     uint8_t red;
     uint8_t green;
     uint8_t blue;
-    uint8_t buffer[3];
     uint8_t nColorIdx;
     uint8_t nPanelIdx;
     uint8_t nBitShiftValue;
-    uint8_t nAllBits;
+    uint8_t buffer[3];
     uint8_t nPanelByte[3];	// 1 byte buffer for each panel (not 256x3 bytes)
     
     static int s_bScreenFilledOnce = 40;
@@ -1062,7 +1064,6 @@ void taskletScreenFill(unsigned long data)
                 s_bScreenFilledOnce--;
             }
     
-            nBytesWritten++;
             // for ea. bit MSBit to LSBit...
             for(nBitShiftValue = 7; nBitShiftValue >=0; nBitShiftValue--) {
                 // mask out the bits and OR them together (so they can all be written at one time)
@@ -1071,13 +1072,14 @@ void taskletScreenFill(unsigned long data)
                     nAllBits |= ((nPanelByte[nPanelIdx] >> nBitShiftValue) & 0x01) << nPanelIdx;
                 }
                 if(s_bScreenFilledOnce > 0) {
-                    //printk(KERN_INFO "LEDfifo: nAllBits 0x%.2X\n", nAllBits);
-                    //s_bScreenFilledOnce--;
+                    printk(KERN_INFO "LEDfifo: nAllBits 0x%.2X\n", nAllBits);
+                    s_bScreenFilledOnce--;
                 }
-        		nValueCountsAr[nAllBits]++;	// count this send
                 // write all bits, ea. to own GPIO pin (but all at the same time)
-                xmitBitvaluesToAllChannels(nAllBits);
+                xmitBitValuesToAllChannels(nAllBits);
             }
+	    // count this a 1 byte written - will be three per LED!
+            nBytesWritten++;
         }
     }
     //xmitResetToAllChannels();  <-- maybe this is the problem?
