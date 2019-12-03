@@ -52,6 +52,7 @@ int main()
     //testBySendingColor(fd, 0x0000FF);   // blue
     
     printf("Closing Driver Access\n");
+    sleep(30);	// delay for 30 seconds...
     close(fd);
 }
 

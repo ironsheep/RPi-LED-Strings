@@ -1016,11 +1016,11 @@ void taskletScreenFill(unsigned long data)
 {
     // data is 24-bit RGB value to be written
     uint16_t nBytesWritten;
+    uint16_t nLedIdx;
     uint8_t red;
     uint8_t green;
     uint8_t blue;
     uint8_t buffer[3];
-    uint8_t nLedIdx;
     uint8_t nColorIdx;
     uint8_t nPanelIdx;
     uint8_t nBitShiftValue;
@@ -1029,7 +1029,7 @@ void taskletScreenFill(unsigned long data)
     
     static int s_bScreenFilledOnce = 40;
 
-    printk(KERN_INFO "LEDfifo: taskletScreenFill(0x%08lX) ENTRY\n", data);
+    //printk(KERN_INFO "LEDfifo: taskletScreenFill(0x%08lX) ENTRY\n", data);
     
     if(s_bScreenFilledOnce > 0) {
         printk(KERN_INFO "LEDfifo: taskletScreenFill(0x%08lX) ENTRY\n", data);
@@ -1072,7 +1072,7 @@ void taskletScreenFill(unsigned long data)
                 }
                 if(s_bScreenFilledOnce > 0) {
                     //printk(KERN_INFO "LEDfifo: nAllBits 0x%.2X\n", nAllBits);
-                    s_bScreenFilledOnce--;
+                    //s_bScreenFilledOnce--;
                 }
         		nValueCountsAr[nAllBits]++;	// count this send
                 // write all bits, ea. to own GPIO pin (but all at the same time)
