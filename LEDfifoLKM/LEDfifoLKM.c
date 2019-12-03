@@ -790,8 +790,8 @@ static void hexDump(const char message[], const char *addr, const int len) {
     const unsigned char *pc = (const unsigned char*)addr;
 
     // Output description if given.
-    if (desc != NULL)
-        printk(KERN_INFO "%s:\n", desc);
+    if (message != NULL)
+        printk(KERN_INFO "%s:\n", message);
 
     if (len == 0) {
         printk(KERN_INFO "  ZERO LENGTH\n");
@@ -893,8 +893,9 @@ static void showCounts(void)
 	int countIdx;
     printk(KERN_INFO "LEDfifo: ----- bit-values sent----\n");
 	for(countIdx = 0; countIdx<MAX_COUNT_ENTRIES; countIdx++) {
-        	printk(KERN_INFO "LEDfifo: value(0x%02Xi) %d x\n", countIdx, nValueCountsAr[countIdx]);
+        	printk(KERN_INFO "LEDfifo: value(0x%02X) %d x\n", countIdx, nValueCountsAr[countIdx]);
 	}
+    printk(KERN_INFO "LEDfifo: -------------------------\n");
 }
 
 // ============================================================================
@@ -1105,7 +1106,14 @@ void taskletScreenFill(unsigned long data)
         printk(KERN_INFO "LEDfifo: buffered[] = G=0x%.2X R=0x%.2X B=0x%.2X\n", buffer[0], buffer[1], buffer[2]);
         s_bScreenFilledOnce--;
     }
-    
+
+//#define DURATION_TEST
+#ifdef DURATION_TEST
+    for(nLedIdx = 0; nLedIdx < HARDWARE_MAX_LEDS_PER_PANEL * HARDWARE_MAX_COLOR_BYTES_PER_LED * HARDWARE_MAX_PANELS * 8; nLedIdx++) {
+        xmitBitValuesToAllChannels(0x05);
+    }
+
+#else
     // for each LED in a panel
     for(nLedIdx = 0; nLedIdx < HARDWARE_MAX_LEDS_PER_PANEL; nLedIdx++) {
         // for each COLOR of an LED (24 bit, 3 bytes)
@@ -1147,7 +1155,11 @@ void taskletScreenFill(unsigned long data)
             nBytesWritten++;
         }
     }
+
+#endif
+
     //xmitResetToAllChannels();  <-- maybe this is the problem?
+    printk(KERN_INFO "LEDfifo: -------------------------\n");
     printk(KERN_INFO "LEDfifo: %d bytes written\n", nBytesWritten);
     showCounts();
     printk(KERN_INFO "LEDfifo: taskletScreenFill() EXIT\n");
