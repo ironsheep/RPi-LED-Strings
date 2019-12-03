@@ -87,7 +87,9 @@ static void xmitBitValuesToAllChannels(uint8_t bitsIndex);
 static void testXmitZeros(uint32_t nCount);
 static void testXmitOnes(uint32_t nCount);
 static void testXmitBit(uint16_t onDelay, uint16_t offDelay);
+
 static void dumpPinTable(void);
+static void hexDump(const char message[], const char *addr, const int len);
 
 void taskletTestWrites(unsigned long data);
 void taskletScreenFill(unsigned long data);
@@ -782,6 +784,57 @@ static void initBitTableForCurrentPins(void)
     dumpPinTable();
 }
 
+static void hexDump(const char message[], const char *addr, const int len) {
+    int i;
+    unsigned char buff[17];
+    const unsigned char *pc = (const unsigned char*)addr;
+
+    // Output description if given.
+    if (desc != NULL)
+        printk(KERN_INFO "%s:\n", desc);
+
+    if (len == 0) {
+        printk(KERN_INFO "  ZERO LENGTH\n");
+        return;
+    }
+    if (len < 0) {
+        printk(KERN_INFO "  NEGATIVE LENGTH: %i\n",len);
+        return;
+    }
+
+    // Process every byte in the data.
+    for (i = 0; i < len; i++) {
+        // Multiple of 16 means new line (with line offset).
+
+        if ((i % 16) == 0) {
+            // Just don't print ASCII for the zeroth line.
+            if (i != 0)
+                printk(KERN_INFO "  %s\n", buff);
+
+            // Output the offset.
+            printk(KERN_INFO "  %04x ", i);
+        }
+
+        // Now the hex code for the specific character.
+        printk(KERN_INFO " %02x", pc[i]);
+
+        // And store a printable ASCII character for later.
+        if ((pc[i] < 0x20) || (pc[i] > 0x7e))
+            buff[i % 16] = '.';
+        else
+            buff[i % 16] = pc[i];
+        buff[(i % 16) + 1] = '\0';
+    }
+
+    // Pad out last line if not exactly 16 characters.
+    while ((i % 16) != 0) {
+        printk(KERN_INFO "   ");
+        i++;
+    }
+
+    // And print the final ASCII bit.
+    printk(KERN_INFO "  %s\n", buff);
+}
 
 static void dumpPinTable(void)
 {
@@ -1017,7 +1070,6 @@ void nSecDelay(int nSecDuration)
 void taskletScreenFill(unsigned long data)
 {
     // data is 24-bit RGB value to be written
-    uint32_t nAllBits;
     uint16_t nBytesWritten;
     uint16_t nLedIdx;
     uint8_t red;
@@ -1026,8 +1078,11 @@ void taskletScreenFill(unsigned long data)
     uint8_t nColorIdx;
     uint8_t nPanelIdx;
     uint8_t nBitShiftValue;
+    uint8_t nAllBits;
+    uint8_t nAllBitsIdx;
     uint8_t buffer[3];
     uint8_t nPanelByte[3];	// 1 byte buffer for each panel (not 256x3 bytes)
+    uint8_t nSendValues[8];	// 1 byte for each bit of the three panel bytes
     
     static int s_bScreenFilledOnce = 40;
 
@@ -1065,18 +1120,28 @@ void taskletScreenFill(unsigned long data)
             }
     
             // for ea. bit MSBit to LSBit...
+            nAllBitsIdx = 0;
             for(nBitShiftValue = 7; nBitShiftValue >=0; nBitShiftValue--) {
                 // mask out the bits and OR them together (so they can all be written at one time)
                 nAllBits = 0;
                 for(nPanelIdx = 0; nPanelIdx < HARDWARE_MAX_PANELS; nPanelIdx++) {
                     nAllBits |= ((nPanelByte[nPanelIdx] >> nBitShiftValue) & 0x01) << nPanelIdx;
                 }
-                if(s_bScreenFilledOnce > 0) {
-                    printk(KERN_INFO "LEDfifo: nAllBits 0x%.2X\n", nAllBits);
-                    s_bScreenFilledOnce--;
-                }
+                //if(s_bScreenFilledOnce > 0) {
+                //    printk(KERN_INFO "LEDfifo: nAllBits 0x%.2X\n", nAllBits);
+                //    s_bScreenFilledOnce--;
+                //}
+                nSendValues[nAllBitsIdx++] = nAllBits;
+            }
+            
+            if(s_bScreenFilledOnce > 0) {
+                hexDump("8-bytes of ls-3-bits to write to panels", &nSendValues[0], sizeof(nSendValues));
+                s_bScreenFilledOnce--;
+            }
+           
+            for(nAllBitsIdx = 0; nAllBitsIdx < 8; nAllBitsIdx++) {
                 // write all bits, ea. to own GPIO pin (but all at the same time)
-                xmitBitValuesToAllChannels(nAllBits);
+                xmitBitValuesToAllChannels(nSendValues[nAllBitsIdx]);
             }
 	    // count this a 1 byte written - will be three per LED!
             nBytesWritten++;
