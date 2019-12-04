@@ -298,12 +298,12 @@ static long LEDfifo_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
            }
             break;
         case CMD_CLEAR_SCREEN:
-            printk(KERN_INFO "LEDfifo: ioctl() clear screen: set screen color 0x%6X\n", 0);
+            printk(KERN_INFO "LEDfifo: ioctl() clear screen: set screen color 0x%06X\n", 0);
             tasklet_init(&tasklet, taskletScreenFill, 0); 
             tasklet_hi_schedule(&tasklet);
             break;
         case CMD_SET_SCREEN_COLOR:
-            printk(KERN_INFO "LEDfifo: ioctl() set screen color 0x%6lX\n", arg);
+            printk(KERN_INFO "LEDfifo: ioctl() set screen color 0x%06lX\n", arg);
             tasklet_init(&tasklet, taskletScreenFill, arg); 
             tasklet_hi_schedule(&tasklet);
             break;

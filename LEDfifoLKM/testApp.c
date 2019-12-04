@@ -47,9 +47,10 @@ int main()
     //testBySendingBits(fd, 1);   // send ones for this test
     //testBySendingBits(fd, 0);   // send zeros for this test
     
-    testBySendingColor(fd, 0xFF0000);   // red
+    //testBySendingColor(fd, 0xFF0000);   // red
     //testBySendingColor(fd, 0x00FF00);   // green
     //testBySendingColor(fd, 0x0000FF);   // blue
+    testBySendingColor(fd, 0xFFFFFF);   // white
     
     printf("- holding...\n");
     sleep(10);	// delay for 10 seconds...
