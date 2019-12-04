@@ -1066,13 +1066,40 @@ void nSecDelay(int nSecDuration)
 #define HARDWARE_MAX_LEDS_PER_PANEL 256
 #define HARDWARE_MAX_COLOR_BYTES_PER_LED 3
 
+
+#ifndef AUTOMATIC
+
+static uint8_t buffer[3];
+static uint8_t nPanelByte[3];	// 1 byte buffer for each panel (not 256x3 bytes)
+static uint8_t nSendValues[8];	// 1 byte for each bit of the three panel bytes
+
+static uint16_t nBytesWritten;
+static uint16_t nLedIdx;
+
+static uint8_t red;
+static uint8_t green;
+static uint8_t blue;
+static uint8_t nColorIdx;
+static uint8_t nPanelIdx;
+static uint8_t nBitShiftValue;
+static uint8_t nAllBits;
+static uint8_t nAllBitsIdx;
+
+#endif
+
 //  our tasklet: write single color to entire LED Matrix
 //
 void taskletScreenFill(unsigned long data)
 {
     // data is 24-bit RGB value to be written
+#ifdef AUTOMATIC
+    uint8_t buffer[3];
+    uint8_t nPanelByte[3];	// 1 byte buffer for each panel (not 256x3 bytes)
+    uint8_t nSendValues[8];	// 1 byte for each bit of the three panel bytes
+    
     uint16_t nBytesWritten;
     uint16_t nLedIdx;
+    
     uint8_t red;
     uint8_t green;
     uint8_t blue;
@@ -1081,9 +1108,7 @@ void taskletScreenFill(unsigned long data)
     uint8_t nBitShiftValue;
     uint8_t nAllBits;
     uint8_t nAllBitsIdx;
-    uint8_t buffer[3];
-    uint8_t nPanelByte[3];	// 1 byte buffer for each panel (not 256x3 bytes)
-    uint8_t nSendValues[8];	// 1 byte for each bit of the three panel bytes
+#endif
     
     static int s_bScreenFilledOnce = 40;
 
@@ -1109,6 +1134,8 @@ void taskletScreenFill(unsigned long data)
 
 //#define DURATION_TEST
 #ifdef DURATION_TEST
+
+    // this is quick test to see if we can spend this much time in driver.  ANSWER -> YES!!
     for(nLedIdx = 0; nLedIdx < HARDWARE_MAX_LEDS_PER_PANEL * HARDWARE_MAX_COLOR_BYTES_PER_LED * HARDWARE_MAX_PANELS * 8; nLedIdx++) {
         xmitBitValuesToAllChannels(0x05);
     }
@@ -1122,6 +1149,7 @@ void taskletScreenFill(unsigned long data)
             nPanelByte[0] = buffer[nColorIdx];
             nPanelByte[1] = buffer[nColorIdx];
             nPanelByte[2] = buffer[nColorIdx];
+            
             if(s_bScreenFilledOnce > 0) {
                 printk(KERN_INFO "LEDfifo: buffer[%d] -> nPanelByte[] = G=0x%.2X R=0x%.2X B=0x%.2X\n", nColorIdx, nPanelByte[0], nPanelByte[1], nPanelByte[2]);
                 s_bScreenFilledOnce--;
