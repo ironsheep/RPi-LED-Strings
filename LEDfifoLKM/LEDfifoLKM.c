@@ -1112,12 +1112,12 @@ void taskletScreenFill(unsigned long data)
     
     static int s_bScreenFilledOnce = 40;
 
-    //printk(KERN_INFO "LEDfifo: taskletScreenFill(0x%08lX) ENTRY\n", data);
+    printk(KERN_INFO "LEDfifo: taskletScreenFill(0x%08lX) ENTRY\n", data);
     
-    if(s_bScreenFilledOnce > 0) {
-        printk(KERN_INFO "LEDfifo: taskletScreenFill(0x%08lX) ENTRY\n", data);
-        s_bScreenFilledOnce--;
-    }
+    //if(s_bScreenFilledOnce > 0) {
+    //    printk(KERN_INFO "LEDfifo: taskletScreenFill(0x%08lX) ENTRY\n", data);
+    //    s_bScreenFilledOnce--;
+    //}
     red = (data >> 16) & 0x000000ff;
     green = (data >> 8) & 0x000000ff;
     blue = (data >> 0) & 0x000000ff;
@@ -1127,10 +1127,10 @@ void taskletScreenFill(unsigned long data)
     
     clearCounts();
     nBytesWritten = 0;
-    if(s_bScreenFilledOnce > 0) {
-        printk(KERN_INFO "LEDfifo: buffered[] = G=0x%.2X R=0x%.2X B=0x%.2X\n", buffer[0], buffer[1], buffer[2]);
-        s_bScreenFilledOnce--;
-    }
+    //if(s_bScreenFilledOnce > 0) {
+    //    printk(KERN_INFO "LEDfifo: buffered[] = G=0x%.2X R=0x%.2X B=0x%.2X\n", buffer[0], buffer[1], buffer[2]);
+    //    s_bScreenFilledOnce--;
+    //}
 
 //#define DURATION_TEST
 #ifdef DURATION_TEST
@@ -1150,10 +1150,10 @@ void taskletScreenFill(unsigned long data)
             nPanelByte[1] = buffer[nColorIdx];
             nPanelByte[2] = buffer[nColorIdx];
             
-            if(s_bScreenFilledOnce > 0) {
-                printk(KERN_INFO "LEDfifo: buffer[%d] -> nPanelByte[] = G=0x%.2X R=0x%.2X B=0x%.2X\n", nColorIdx, nPanelByte[0], nPanelByte[1], nPanelByte[2]);
-                s_bScreenFilledOnce--;
-            }
+            //if(s_bScreenFilledOnce > 0) {
+            //    printk(KERN_INFO "LEDfifo: buffer[%d] -> nPanelByte[] = G=0x%.2X R=0x%.2X B=0x%.2X\n", nColorIdx, nPanelByte[0], nPanelByte[1], nPanelByte[2]);
+            //    s_bScreenFilledOnce--;
+            //}
     
             // for ea. bit MSBit to LSBit...
             nAllBitsIdx = 0;
@@ -1170,16 +1170,16 @@ void taskletScreenFill(unsigned long data)
                 nSendValues[nAllBitsIdx++] = nAllBits;
             }
             
-            if(s_bScreenFilledOnce > 0) {
-                hexDump("8-bytes of ls-3-bits to write to panels", &nSendValues[0], sizeof(nSendValues));
-                s_bScreenFilledOnce--;
-            }
+            //if(s_bScreenFilledOnce > 0) {
+            //    hexDump("8-bytes of ls-3-bits to write to panels", &nSendValues[0], sizeof(nSendValues));
+            //    s_bScreenFilledOnce--;
+            //}
            
             for(nAllBitsIdx = 0; nAllBitsIdx < 8; nAllBitsIdx++) {
                 // write all bits, ea. to own GPIO pin (but all at the same time)
                 xmitBitValuesToAllChannels(nSendValues[nAllBitsIdx]);
             }
-	    // count this a 1 byte written - will be three per LED!
+    	    // count this a 1 byte written - will be three per LED!
             nBytesWritten++;
         }
     }
