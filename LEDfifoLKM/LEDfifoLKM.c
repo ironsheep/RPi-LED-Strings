@@ -1067,35 +1067,13 @@ void nSecDelay(int nSecDuration)
 #define HARDWARE_MAX_COLOR_BYTES_PER_LED 3
 
 
-#ifndef AUTOMATIC
-
-static uint8_t buffer[3];
-static uint8_t nPanelByte[3];	// 1 byte buffer for each panel (not 256x3 bytes)
-static uint8_t nSendValues[8];	// 1 byte for each bit of the three panel bytes
-
-static uint16_t nBytesWritten;
-static uint16_t nLedIdx;
-
-static uint8_t red;
-static uint8_t green;
-static uint8_t blue;
-static uint8_t nColorIdx;
-static uint8_t nPanelIdx;
-static uint8_t nBitShiftValue;
-static uint8_t nAllBits;
-static uint8_t nAllBitsIdx;
-
-#endif
-
 //  our tasklet: write single color to entire LED Matrix
 //
 void taskletScreenFill(unsigned long data)
 {
     // data is 24-bit RGB value to be written
-#ifdef AUTOMATIC
-    uint8_t buffer[3];
+    uint8_t buffer[3];      // our 3 isolated colors
     uint8_t nPanelByte[3];	// 1 byte buffer for each panel (not 256x3 bytes)
-    uint8_t nSendValues[8];	// 1 byte for each bit of the three panel bytes
     
     uint16_t nBytesWritten;
     uint16_t nLedIdx;
@@ -1103,44 +1081,27 @@ void taskletScreenFill(unsigned long data)
     uint8_t red;
     uint8_t green;
     uint8_t blue;
-    uint8_t nColorIdx;
-    uint8_t nPanelIdx;
-    uint8_t nBitShiftValue;
+    uint8_t nColorIdx;  // [0-2]
+    uint8_t nPanelIdx;  // [0-2]
+    uint8_t nBitShiftCount;  // [0-7]
     uint8_t nAllBits;
-    uint8_t nAllBitsIdx;
-#endif
     
-    static int s_bScreenFilledOnce = 40;
-
+    clearCounts();
+    nBytesWritten = 0;
+    
     printk(KERN_INFO "LEDfifo: taskletScreenFill(0x%08lX) ENTRY\n", data);
     
-    //if(s_bScreenFilledOnce > 0) {
-    //    printk(KERN_INFO "LEDfifo: taskletScreenFill(0x%08lX) ENTRY\n", data);
-    //    s_bScreenFilledOnce--;
-    //}
     red = (data >> 16) & 0x000000ff;
     green = (data >> 8) & 0x000000ff;
     blue = (data >> 0) & 0x000000ff;
+    
+    // in memory the colors for the LED String are ordered as GRB!!!!
+    // for this form, taskletScreenFill(), we simply have a 3-byte buffer we use for all LEDs on all Panels
+    
     buffer[0] = green;
     buffer[1] = red;
     buffer[2] = blue;
     
-    clearCounts();
-    nBytesWritten = 0;
-    //if(s_bScreenFilledOnce > 0) {
-    //    printk(KERN_INFO "LEDfifo: buffered[] = G=0x%.2X R=0x%.2X B=0x%.2X\n", buffer[0], buffer[1], buffer[2]);
-    //    s_bScreenFilledOnce--;
-    //}
-
-//#define DURATION_TEST
-#ifdef DURATION_TEST
-
-    // this is quick test to see if we can spend this much time in driver.  ANSWER -> YES!!
-    for(nLedIdx = 0; nLedIdx < HARDWARE_MAX_LEDS_PER_PANEL * HARDWARE_MAX_COLOR_BYTES_PER_LED * HARDWARE_MAX_PANELS * 8; nLedIdx++) {
-        xmitBitValuesToAllChannels(0x05);
-    }
-
-#else
     // for each LED in a panel
     for(nLedIdx = 0; nLedIdx < HARDWARE_MAX_LEDS_PER_PANEL; nLedIdx++) {
         // for each COLOR of an LED (24 bit, 3 bytes)
@@ -1150,41 +1111,20 @@ void taskletScreenFill(unsigned long data)
             nPanelByte[1] = buffer[nColorIdx];
             nPanelByte[2] = buffer[nColorIdx];
             
-            //if(s_bScreenFilledOnce > 0) {
-            //    printk(KERN_INFO "LEDfifo: buffer[%d] -> nPanelByte[] = G=0x%.2X R=0x%.2X B=0x%.2X\n", nColorIdx, nPanelByte[0], nPanelByte[1], nPanelByte[2]);
-            //    s_bScreenFilledOnce--;
-            //}
-    
-            // for ea. bit MSBit to LSBit...
-            nAllBitsIdx = 0;
-            for(nBitShiftValue = 7; nBitShiftValue >=0; nBitShiftValue--) {
+            // for ea. bit MSBit to LSBit... [OR-in each of the three panel bits 0b00000321] then write all 3 gpio pins
+            for(nBitShiftCount = 0; nBitShiftCount < 8; nBitShiftCount++) {
                 // mask out the bits and OR them together (so they can all be written at one time)
                 nAllBits = 0;
                 for(nPanelIdx = 0; nPanelIdx < HARDWARE_MAX_PANELS; nPanelIdx++) {
-                    nAllBits |= ((nPanelByte[nPanelIdx] >> nBitShiftValue) & 0x01) << nPanelIdx;
+                    nAllBits |= ((nPanelByte[nPanelIdx] >> (7 - nBitShiftCount)) & 0x01) << nPanelIdx;
                 }
-                //if(s_bScreenFilledOnce > 0) {
-                //    printk(KERN_INFO "LEDfifo: nAllBits 0x%.2X\n", nAllBits);
-                //    s_bScreenFilledOnce--;
-                //}
-                nSendValues[nAllBitsIdx++] = nAllBits;
+                xmitBitValuesToAllChannels(nAllBits);
             }
             
-            //if(s_bScreenFilledOnce > 0) {
-            //    hexDump("8-bytes of ls-3-bits to write to panels", &nSendValues[0], sizeof(nSendValues));
-            //    s_bScreenFilledOnce--;
-            //}
-           
-            for(nAllBitsIdx = 0; nAllBitsIdx < 8; nAllBitsIdx++) {
-                // write all bits, ea. to own GPIO pin (but all at the same time)
-                xmitBitValuesToAllChannels(nSendValues[nAllBitsIdx]);
-            }
     	    // count this a 1 byte written - will be three per LED!
             nBytesWritten++;
         }
     }
-
-#endif
 
     //xmitResetToAllChannels();  <-- maybe this is the problem?
     printk(KERN_INFO "LEDfifo: -------------------------\n");
