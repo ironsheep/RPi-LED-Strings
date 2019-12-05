@@ -31,6 +31,7 @@
 #include <linux/slab.h>		        // kmalloc()
 #include <linux/errno.h>	        // error codes
 #include <linux/seq_file.h>
+#include <linux/spinlock.h>
 
 // get raspbery PI details
 #include <asm/io.h>
@@ -713,6 +714,9 @@ static void initBitTableForCurrentPins(void)
             nMaxTableEntries = 0;
             break;
     }
+
+#define CODE_LENGTH_IN_PERIODS 0
+#define CODE_CORRECTION_LITERAL 0 
                         
     // zero fill our structure
     memset(gpioBitControlEntries, 0, sizeof(gpioBitControlEntries));
@@ -732,7 +736,7 @@ static void initBitTableForCurrentPins(void)
             
         nMinHighPeriodLength = (n0IsShorterThan1) ? periodT0HCount : periodT1HCount;
         nRemainingHighPeriodLength = (n0IsShorterThan1) ? periodT1HCount - periodT0HCount : periodT0HCount - periodT1HCount;
-        nRemainingLowPeriodLength = periodCount - (nMinHighPeriodLength + nRemainingHighPeriodLength);
+        nRemainingLowPeriodLength = periodCount - (nMinHighPeriodLength + nRemainingHighPeriodLength + CODE_LENGTH_IN_PERIODS);
             
         // set bit on time
         nWordIdx = 0;
@@ -748,10 +752,11 @@ static void initBitTableForCurrentPins(void)
                 
                 // if we have all pins 0 or all pins 1 then...
                 // do our only clear (0 bits -or- 1 bits)
-                nOnlyRemainingPeriodLength = periodCount - nOnlyHighPeriodLength;
+                nOnlyRemainingPeriodLength = periodCount - nOnlyHighPeriodLength - CODE_LENGTH_IN_PERIODS;
                 gpioBitControlEntries[nTableIdx].word[nWordIdx+1].gpioPinBits = pinsAllActive;
                 gpioBitControlEntries[nTableIdx].word[nWordIdx+1].gpioOperation = OP_GPIO_CLR;
-                gpioBitControlEntries[nTableIdx].word[nWordIdx+1].durationToNext = nOnlyRemainingPeriodLength * periodDurationNsec;
+		// this is our last time value (reduce this amount to account for CPU time to next byte)
+                gpioBitControlEntries[nTableIdx].word[nWordIdx+1].durationToNext = (nOnlyRemainingPeriodLength * periodDurationNsec) - CODE_CORRECTION_LITERAL;
                 gpioBitControlEntries[nTableIdx].word[nWordIdx+1].entryOccupied = 1;
             }
             else {
@@ -776,7 +781,8 @@ static void initBitTableForCurrentPins(void)
                 // do our longer clear (1or0 bits)
                 gpioBitControlEntries[nTableIdx].word[nWordIdx+2].gpioPinBits = (n0IsShorterThan1) ? pinsActiveHigh : pinsActiveLow;
                 gpioBitControlEntries[nTableIdx].word[nWordIdx+2].gpioOperation = OP_GPIO_CLR;
-                gpioBitControlEntries[nTableIdx].word[nWordIdx+2].durationToNext = nRemainingLowPeriodLength * periodDurationNsec;
+		// this is our last time value (reduce this amount to account for CPU time to next byte)
+                gpioBitControlEntries[nTableIdx].word[nWordIdx+2].durationToNext = (nRemainingLowPeriodLength * periodDurationNsec) - CODE_CORRECTION_LITERAL;
                 gpioBitControlEntries[nTableIdx].word[nWordIdx+2].entryOccupied = 1;
             }
         }
@@ -910,12 +916,22 @@ static void xmitBitValuesToAllChannels(uint8_t bitsIndex)
     gpioCrontrolEntry_t *selectedEntry = NULL;
     gpioCrontrolWord_t *selectedWord = NULL;
     uint8_t nWordIdx;
+    // spinlock_t mr_lock = SPIN_LOCK_UNLOCKED;
+    // DEFINE_SPINLOCK(mr_lock);
+    // unsigned long flags;
     
     //printk(KERN_INFO "LEDfifo: xmitBitValuesToAllChannels(%d)\n", bitsIndex);
     if(bitsIndex >= MAX_GPIO_CONTROL_ENTRIES) {
         printk(KERN_ERR "LEDfifo: [CODE] xmitBitValuesToAllChannels(%d) OUT-OF-RANGE bitIndex not [0-%d]\n", bitsIndex, MAX_GPIO_CONTROL_ENTRIES-1);
     }
     else {
+
+	// ============= BEGIN CRITICAL SECTION ==================
+	//
+	// let's prevent interrupts for this one LED write
+	//spin_lock_irqsave(&mr_lock, flags);
+	// spin_lock_irq(&mr_lock); // shorter version?
+
         nValueCountsAr[bitsIndex]++;	// count this send
         // select a table entry
         // then do timed set and clear(s) based on entry content
@@ -941,6 +957,11 @@ static void xmitBitValuesToAllChannels(uint8_t bitsIndex)
             // yeah, no.  Let's use ours...
             nSecDelay(selectedWord->durationToNext);
         }
+	// and then allow interrupts once again...
+	//spin_unlock_irqrestore(&mr_lock, flags);
+	// spin_unlock_irq(&mr_lock); // shorter version?
+	//
+	// ============== END CRITICAL SECTION ===================
     }
 }
 
@@ -960,14 +981,31 @@ static void xmitResetToAllChannels(void)
 //
 void taskletTestWrites(unsigned long data)
 {
+    // spinlock_t mr_lock = SPIN_LOCK_UNLOCKED;
+    DEFINE_SPINLOCK(mr_lock);
+    unsigned long flags;
+
     printk(KERN_INFO "LEDfifo: taskletTestWrites(%ld) ENTRY\n", data);
+
+	// ============= BEGIN CRITICAL SECTION ==================
+	//
+	// let's prevent interrupts for this one LED write
+	spin_lock_irqsave(&mr_lock, flags);
+	// spin_lock_irq(&mr_lock); // shorter version?
+
     // data is [0,1] for directing write of 0's or 1's test pattern
     if(data == 0) {
-        testXmitZeros(1000);
+        testXmitZeros(1008);	// 1008 is 24 bits * 42 (42 LEDs)
     }
     else {
-        testXmitOnes(1000);
+        testXmitOnes(1008);
     }
+    
+	// and then allow interrupts once again...
+	spin_unlock_irqrestore(&mr_lock, flags);
+	// spin_unlock_irq(&mr_lock); // shorter version?
+	//
+	// ============== END CRITICAL SECTION ===================
     printk(KERN_INFO "LEDfifo: taskletTestWrites() EXIT\n");
 }
 
@@ -1058,6 +1096,7 @@ void nSecDelay(int nSecDuration)
     int delayCount = ((nSecDuration << 3) + (nSecDuration << 1)) / 166; // div by 16.6
 #else
     int delayCount = ((nSecDuration << 3) + (nSecDuration << 1)) / 170; // div by 17.0
+    //int delayCount = ((nSecDuration << 3) + (nSecDuration << 1)) / 162; // div by 16.2
 #endif
     for(ctr=0; ctr<delayCount; ctr++) { tst++; }
 }
