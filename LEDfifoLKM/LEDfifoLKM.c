@@ -981,7 +981,6 @@ static void xmitResetToAllChannels(void)
 //
 void taskletTestWrites(unsigned long data)
 {
-    // spinlock_t mr_lock = SPIN_LOCK_UNLOCKED;
     DEFINE_SPINLOCK(mr_lock);
     unsigned long flags;
 
@@ -991,7 +990,6 @@ void taskletTestWrites(unsigned long data)
 	//
 	// let's prevent interrupts for this one LED write
 	spin_lock_irqsave(&mr_lock, flags);
-	// spin_lock_irq(&mr_lock); // shorter version?
 
     // data is [0,1] for directing write of 0's or 1's test pattern
     if(data == 0) {
@@ -1003,43 +1001,21 @@ void taskletTestWrites(unsigned long data)
     
 	// and then allow interrupts once again...
 	spin_unlock_irqrestore(&mr_lock, flags);
-	// spin_unlock_irq(&mr_lock); // shorter version?
 	//
 	// ============== END CRITICAL SECTION ===================
+	
     printk(KERN_INFO "LEDfifo: taskletTestWrites() EXIT\n");
 }
 
-// uncomment the following to NOT use our table of values for bit generation
-//#define TEST_DIRECT
-
-#ifdef TEST_DIRECT
-static uint16_t	countScaled(uint16_t nPeriod)
-{
-    uint16_t desiredValue = 0;
-	desiredValue = (nPeriod * periodDurationNsec);
-	return desiredValue;
-}
-#endif
 
 static void testXmitZeros(uint32_t nCount)
 {
     int nCounter;
-#ifdef TEST_DIRECT
-    int nOnDelay;
-    int nOffDelay;
-
-    nOnDelay = countScaled(periodT0HCount);
-    nOffDelay = countScaled(periodCount - periodT0HCount);
-#endif
 
     printk(KERN_INFO "LEDfifo: testXmitZeros(x %d)\n", nCount);
     if(nCount > 0) {
         for(nCounter = 0; nCounter < nCount; nCounter++) {
-#ifdef TEST_DIRECT
-            testXmitBit(nOnDelay, nOffDelay); 
-#else
             xmitBitValuesToAllChannels(0b000); 
-#endif
         } 
     }
 }
@@ -1048,22 +1024,11 @@ static void testXmitZeros(uint32_t nCount)
 static void testXmitOnes(uint32_t nCount)
 {
     int nCounter;
-#ifdef TEST_DIRECT
-    int nOnDelay;
-    int nOffDelay;
-
-    nOnDelay = countScaled(periodT1HCount);
-    nOffDelay = countScaled(periodCount - periodT1HCount);
-#endif
 
     printk(KERN_INFO "LEDfifo: testXmitOnes(x %d)\n", nCount);
     if(nCount > 0) {
         for(nCounter = 0; nCounter < nCount; nCounter++) {
-#ifdef TEST_DIRECT
-            testXmitBit(nOnDelay, nOffDelay); 
-#else
             xmitBitValuesToAllChannels(0b111);
-#endif
         }
     }
 }
@@ -1075,9 +1040,9 @@ static void testXmitBit(uint16_t onDelay, uint16_t offDelay)
 	static int s_bFirstTime = 0;
 
 	if(s_bFirstTime == 0) {
-		s_bFirstTime++;
-                printk(KERN_INFO "LEDfifo: testXmitBiti(on %d nSec, off %d nSec)\n", onDelay, offDelay);
-        }
+        s_bFirstTime++;
+        printk(KERN_INFO "LEDfifo: testXmitBiti(on %d nSec, off %d nSec)\n", onDelay, offDelay);
+    }
 
 	s_pGpioRegisters->GPSET[0] = 1 << TEST_GPIO_PIN;
  	nSecDelay(onDelay);
@@ -1091,13 +1056,8 @@ void nSecDelay(int nSecDuration)
     volatile int ctr;
     volatile int tst;
 
-    //int delayCount = nSecDuration / 17;
-#ifdef TEST_DIRECT
-    int delayCount = ((nSecDuration << 3) + (nSecDuration << 1)) / 166; // div by 16.6
-#else
     int delayCount = ((nSecDuration << 3) + (nSecDuration << 1)) / 170; // div by 17.0
-    //int delayCount = ((nSecDuration << 3) + (nSecDuration << 1)) / 162; // div by 16.2
-#endif
+    
     for(ctr=0; ctr<delayCount; ctr++) { tst++; }
 }
 
@@ -1125,9 +1085,13 @@ void taskletScreenFill(unsigned long data)
     uint8_t nBitShiftCount;  // [0-7]
     uint8_t nAllBits;
     
+    DEFINE_SPINLOCK(mr_lock);
+    unsigned long flags;
+
     clearCounts();
     nBytesWritten = 0;
     
+   
     printk(KERN_INFO "LEDfifo: taskletScreenFill(0x%08lX) ENTRY\n", data);
     
     red = (data >> 16) & 0x000000ff;
@@ -1141,7 +1105,12 @@ void taskletScreenFill(unsigned long data)
     buffer[1] = red;
     buffer[2] = blue;
     
-    // for each LED in a panel
+	// ============= BEGIN CRITICAL SECTION ==================
+	//
+	// let's prevent interrupts for this one LED write
+	spin_lock_irqsave(&mr_lock, flags);
+
+   // for each LED in a panel
     for(nLedIdx = 0; nLedIdx < HARDWARE_MAX_LEDS_PER_PANEL; nLedIdx++) {
         // for each COLOR of an LED (24 bit, 3 bytes)
         for(nColorIdx = 0; nColorIdx < HARDWARE_MAX_COLOR_BYTES_PER_LED; nColorIdx++) {
@@ -1165,7 +1134,13 @@ void taskletScreenFill(unsigned long data)
         }
     }
 
-    //xmitResetToAllChannels();  <-- maybe this is the problem?
+	// and then allow interrupts once again...
+	spin_unlock_irqrestore(&mr_lock, flags);
+	//
+	// ============== END CRITICAL SECTION ===================
+	
+    xmitResetToAllChannels();
+    
     printk(KERN_INFO "LEDfifo: -------------------------\n");
     printk(KERN_INFO "LEDfifo: %d bytes written\n", nBytesWritten);
     showCounts();
