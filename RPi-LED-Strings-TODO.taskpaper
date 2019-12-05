@@ -1,6 +1,9 @@
 RISKs:
-	- can we do bit timing in kernel? - sort of, still soft loops!!! but more accurate
-	- can we prevent string writes from being interrupted?  - looking...
+	- can we do bit timing in kernel? - @done(2019-12-05)
+		- sort of, still soft loops!!! but more accurate @done(2019-12-05)
+		- needs to be better, more within margin of device
+	- can we prevent string writes from being interrupted?  @done(2019-12-05)
+		- yes, done @done(2019-12-05)
 	
 BUGs:
 - (nothing yet)
@@ -33,3 +36,14 @@ Application TODOs:
 	- add command processor loop
 	- add command: read commands from file
 	- add command: load screen set from file set (name file containing list of files)
+	
+Commands:
+	- buffers {numberOfBuffers} - allocate N buffers
+	- buffer {bufferNumber} - select buffer for next actions
+	- clear {selectedBuffers} - where selected is [N, N-M, all]
+	- fill {selectedBuffers} {color} - where selected is [N, N-M, all] and color is [red, 0xffffff, all]
+	- border {width} {color}
+	- clock {clockType} {color} - where type is [digital, binary] and color is [red, 0xffffff]
+	- write {selectedBuffers} - where selected is [N, N-M, all]
+	- buffers free - release all buffers
+	- square {boarderWidth} {height} {color}
