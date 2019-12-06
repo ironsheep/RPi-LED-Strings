@@ -1,4 +1,4 @@
-/* system-dependent definitions for led_test_001
+/* system-dependent definitions for matrix
 
    Written for GNU fileutils.
    Adapted for autoproject by James R. Van Zandt.
@@ -148,6 +148,7 @@ off_t lseek ();
 
 #ifdef HAVE_UTIME_H
 #include <utime.h>
+#define HAVE_STRUCT_UTIMBUF
 #endif
 
 /* Some systems (even some that do have <utime.h>) don't declare this
