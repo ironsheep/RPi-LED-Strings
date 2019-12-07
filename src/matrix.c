@@ -22,6 +22,10 @@
 #include <stdio.h>
 #include <sys/types.h>
 #include <argp.h>
+#include <string.h>     // for strxxx()
+
+#include "debug.h"
+#include "matrixDriver.h"
 
 static error_t parse_opt (int key, char *arg, struct argp_state *state);
 static void show_version (FILE *stream, struct argp_state *state);
@@ -35,11 +39,12 @@ enum {
 /* Option flags and variables.  These are initialized in parse_opt.  */
 
 int want_quiet;			/* --quiet, --silent */
-int want_verbose;		/* --verbose */
 int want_dry_run;		/* --dry-run */
 
 static struct argp_option options[] =
 {
+  { "debug",       'd',           NULL,            0,
+    N_("Print DEBUG information"), 0 },
   { "quiet",       'q',           NULL,            0,
     N_("Inhibit usual output"), 0 },
   { "silent",      0,             NULL,            OPTION_ALIAS,
@@ -62,36 +67,56 @@ static struct argp argp =
   NULL, NULL, NULL
 };
 
-int
-main (int argc, char **argv)
+int main (int argc, char **argv)
 {
-	textdomain(PACKAGE);
-	argp_parse(&argp, argc, argv, 0, NULL, NULL);
+    int fd;
+    int status;
+    
+    textdomain(PACKAGE);
+    
+    // save off our appname
+    strcpy(pAppName, &argv[0]);
+    
+    argp_parse(&argp, argc, argv, 0, NULL, NULL);
+    
+    // FIXME: UNDONE only open device if we need it!
+    if(!openMatrix()) {
+        errorMessage("Failed to connect to driver: LEDfifoLKM Loaded?");
+        exit(-1);
+    }
 
 	/* TODO: do the work */
 	processCommands();
+	
+    if(!closeMatrix()) {
+        errorMessage("Failed to disconnect from LEDfifoLKM driver!");
+        exit(-1);
+    }
 
 	exit (0);
 }
 
 /* Parse a single option.  */
-static error_t
-parse_opt (int key, char *arg, struct argp_state *state)
+static error_t parse_opt (int key, char *arg, struct argp_state *state)
 {
   switch (key)
     {
     case ARGP_KEY_INIT:
       /* Set up default values.  */
       want_quiet = 0;
-      want_verbose = 0;
+      bVerboseEnabled = 0;
       want_dry_run = 0;
+      bDebugEnabled = 0;
       break;
 
+    case 'd':			/* --debug */
+      bDebugEnabled = 1;
+      break;
     case 'q':			/* --quiet, --silent */
       want_quiet = 1;
       break;
     case 'v':			/* --verbose */
-      want_verbose = 1;
+      bVerboseEnabled = 1;
       break;
     case DRYRUN_KEY:		/* --dry-run */
       want_dry_run = 1;
@@ -109,8 +134,7 @@ parse_opt (int key, char *arg, struct argp_state *state)
 }
 
 /* Show the version number and copyright information.  */
-static void
-show_version (FILE *stream, struct argp_state *state)
+static void show_version (FILE *stream, struct argp_state *state)
 {
   (void) state;
   /* Print in small parts whose localizations can hopefully be copied

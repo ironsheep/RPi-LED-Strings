@@ -1,4 +1,4 @@
-/* system-dependent definitions for led_test_001
+/* system-dependent definitions for matrix
 
    Written for GNU fileutils.
    Adapted for autoproject by James R. Van Zandt.

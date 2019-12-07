@@ -19,13 +19,12 @@
 
 */
 
-#ifndef LED_SCREEN_H
-#define LED_SCREEN_H
+#ifndef MATRIX_DRIVER_H
+#define MATRIX_DRIVER_H
 
-// public routine declarations
+void openMatrix(void);
+void closeMatrix(void);
+void showBuffer(uint8_t *buffer, size_t bufferLen);
 
-// initialize our display
-void initScreen(void);
-void clearScreen(void);
 
-#endif /* LED_SCREEN_H */
+#endif /* MATRIX_DRIVER_H */

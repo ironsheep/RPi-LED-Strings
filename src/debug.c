@@ -1,4 +1,101 @@
-#include <stdio.h>
+/* 
+   matrix - interactive LED Matrix console
+
+   Copyright (C) 2019 Stephen M Moraco
+
+   This program is free software; you can redistribute it and/or modify
+   it under the terms of the GNU General Public License as published by
+   the Free Software Foundation; either version 2, or (at your option)
+   any later version.
+
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+
+   You should have received a copy of the GNU General Public License
+   along with this program; if not, write to the Free Software Foundation,
+   Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.  
+
+*/
+#include <stdarg.h>
+
+#include "debug.h"
+
+int bDebugEnabled;		/* --debug */
+int bVerboseEnabled;		/* --verbose */
+
+const char *pAppName = "{appName?}";
+
+extern const char *pAppName;
+
+// conditional message forms
+
+// =============================================================================
+//  Simple message printing functions
+//
+void debugMessage(const char *format, ...)
+{
+	va_list argp;
+	
+	if(bDebugEnabled) {
+    	va_start(argp, fmt);
+    	printf("%s(DBG): ", pAppName);
+    	vprintf(format, argp);
+    	printf("\n");
+    	va_end(argp);
+    }
+}
+
+void verboseMessage(const char *format, ...)
+{
+	va_list argp;
+	
+	if(bDebugEnabled) {
+    	va_start(argp, fmt);
+    	printf("%s:Verbose- ", pAppName);
+    	vprintf(format, argp);
+    	printf("\n");
+    	va_end(argp);
+    }
+}
+
+void infoMessage(const char *format, ...)
+{
+	va_list argp;
+	
+	va_start(argp, fmt);
+	printf("%s:INFO- ", pAppName);
+	vprintf(format, argp);
+	printf("\n");
+	va_end(argp);
+}
+
+void warningMessage(const char *format, ...)
+{
+	va_list argp;
+	
+	va_start(argp, fmt);
+	printf("%s:WARNING- ", pAppName);
+	vprintf(format, argp);
+	printf("\n");
+	va_end(argp);
+}
+
+void errorMessage(const char *format, ...)
+{
+	va_list argp;
+	
+	va_start(argp, fmt);
+	fprintf(stderr, "%s:ERROR- ", pAppName);
+	vfprintf(stderr, format, argp);
+	fprintf(stderr, "\n");
+	va_end(argp);
+}
+
+//
+// =============================================================================
+
 
 void hexDump (const char *desc, const void *addr, const int len) {
     int i;

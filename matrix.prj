@@ -27,6 +27,7 @@
     <File>src/piSystem.h</File>
     <File>LICENSE</File>
     <File>src/frameBuffer.c</File>
+    <File>src/matrixDriver.c</File>
     <File>NEWS</File>
     <File>src/ledScreen.h</File>
     <File>src/xmalloc.h</File>
@@ -41,6 +42,7 @@
     <File>src/config.h.in</File>
     <File>src/xmalloc.c</File>
     <File>ChangeLog</File>
+    <File>src/matrixDriver.h</File>
     <File>src/commandProcessor.h</File>
     <File>src/piSystem.c</File>
   </Files>

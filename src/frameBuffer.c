@@ -1,5 +1,5 @@
 /* 
-   led_test_001 - testbed for GPIO and WS2812B String
+   matrix - interactive LED Matrix console
 
    Copyright (C) 2019 Stephen M Moraco
 
