@@ -20,12 +20,27 @@
 */
 
 #include <stdio.h>
-#include <sys/types.h>
 #include <argp.h>
 #include <string.h>     // for strxxx()
 
 #include "debug.h"
 #include "matrixDriver.h"
+
+#include <sys/types.h> // this must be before system.h
+#include "system.h"
+
+#include "commandProcessor.h"
+
+#define EXIT_FAILURE 1
+
+#if ENABLE_NLS
+# include <libintl.h>
+# define _(Text) gettext (Text)
+#else
+# define textdomain(Domain)
+# define _(Text) Text
+#endif
+#define N_(Text) Text
 
 static error_t parse_opt (int key, char *arg, struct argp_state *state);
 static void show_version (FILE *stream, struct argp_state *state);

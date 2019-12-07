@@ -22,3 +22,6 @@
 #include <stdio.h> 
 
 #include "commandProcessor.h"
+
+void processCommands(void) {
+}
