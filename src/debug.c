@@ -39,7 +39,7 @@ void debugMessage(const char *format, ...)
 	va_list argp;
 	
 	if(bDebugEnabled) {
-    	va_start(argp, fmt);
+    	va_start(argp, format);
     	printf("%s(DBG): ", pAppName);
     	vprintf(format, argp);
     	printf("\n");
@@ -52,7 +52,7 @@ void verboseMessage(const char *format, ...)
 	va_list argp;
 	
 	if(bDebugEnabled) {
-    	va_start(argp, fmt);
+    	va_start(argp, format);
     	printf("%s:Verbose- ", pAppName);
     	vprintf(format, argp);
     	printf("\n");
@@ -64,7 +64,7 @@ void infoMessage(const char *format, ...)
 {
 	va_list argp;
 	
-	va_start(argp, fmt);
+	va_start(argp, format);
 	printf("%s:INFO- ", pAppName);
 	vprintf(format, argp);
 	printf("\n");
@@ -75,7 +75,7 @@ void warningMessage(const char *format, ...)
 {
 	va_list argp;
 	
-	va_start(argp, fmt);
+	va_start(argp, format);
 	printf("%s:WARNING- ", pAppName);
 	vprintf(format, argp);
 	printf("\n");
@@ -86,7 +86,7 @@ void errorMessage(const char *format, ...)
 {
 	va_list argp;
 	
-	va_start(argp, fmt);
+	va_start(argp, format);
 	fprintf(stderr, "%s:ERROR- ", pAppName);
 	vfprintf(stderr, format, argp);
 	fprintf(stderr, "\n");

@@ -24,7 +24,7 @@
 #include <unistd.h>     // for close()
 #include <string.h>     // for strxxx()
 
-#include "LEDfifoConfigureIOCtl.h"
+#include <LEDfifoLKM/LEDfifoConfigureIOCtl.h>
 
 #include "matrixDriver.h"
 #include "debug.h"
@@ -40,7 +40,7 @@ void testSetPins(int fd);
 
 static int s_fdDriver;
 
-static int s_nPinsAr = { 17, 27, 22 };
+static int s_nPinsAr[3] = { 17, 27, 22 };
 
 int openMatrix(void)
 {
@@ -53,7 +53,7 @@ int openMatrix(void)
     }
     else {
         // configure for WS2812B
-        resetToWS2812bValues();
+        resetToWS2812bValues(s_fdDriver);
         
         // and set our pins
         setPins(s_fdDriver, &s_nPinsAr[0], sizeof(s_nPinsAr));
@@ -66,6 +66,7 @@ int openMatrix(void)
 
 int closeMatrix(void)
 {
+    int status;
     int errorValue = 0;
     
     debugMessage("Driver Disconnect");

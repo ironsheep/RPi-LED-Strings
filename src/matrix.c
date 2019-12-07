@@ -90,7 +90,7 @@ int main (int argc, char **argv)
     textdomain(PACKAGE);
     
     // save off our appname
-    strcpy(pAppName, &argv[0]);
+    strcpy((char *)pAppName, (const char *)&argv[0]);
     
     argp_parse(&argp, argc, argv, 0, NULL, NULL);
     

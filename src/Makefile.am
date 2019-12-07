@@ -1,8 +1,8 @@
 bin_PROGRAMS = matrix
 
-AM_CXXFLAGS = $(INTI_CFLAGS)
+AM_CPPFLAGS = $(INTI_CFLAGS) $(MATRIXDRIVER_CPPFLAGS)
 
-matrix_SOURCES = matrix.c commandProcessor.c  debug.c  frameBuffer.c  imageLoader.c  xmalloc.c 
+matrix_SOURCES = matrix.c commandProcessor.c  debug.c  frameBuffer.c  imageLoader.c  xmalloc.c matrixDriver.c
 
 #matrix_OBS := 
 

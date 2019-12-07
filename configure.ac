@@ -17,6 +17,10 @@ AC_SUBST(ISODATE)
 AC_SUBST(INTI_CFLAGS)
 AC_SUBST(INTI_LIBS)
 
+dnl Add parent above src/ dir so we can get to driver includes <LEDfifoLKM/*.h>
+MATRIXDRIVER_CPPFLAGS="-I.."
+AC_SUBST(MATRIXDRIVER_CPPFLAGS)
+
 AC_CANONICAL_HOST
 
 dnl Checks for programs.

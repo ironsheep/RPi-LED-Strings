@@ -22,8 +22,10 @@
 #ifndef MATRIX_DRIVER_H
 #define MATRIX_DRIVER_H
 
-void openMatrix(void);
-void closeMatrix(void);
+#include <stdint.h>
+
+int openMatrix(void);
+int closeMatrix(void);
 void showBuffer(uint8_t *buffer, size_t bufferLen);
 
 
