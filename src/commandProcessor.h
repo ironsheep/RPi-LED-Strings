@@ -22,7 +22,7 @@
 #ifndef COMMAND_PROCESSOR_H
 #define COMMAND_PROCESSOR_H
 
-void processCommands(void);
+void processCommands(int argc, const char *argv[]);
 
 
 #endif /* COMMAND_PROCESSOR_H */

@@ -56,6 +56,7 @@ enum {
 
 int want_quiet;			/* --quiet, --silent */
 int want_dry_run;		/* --dry-run */
+char *fileName;		/* final argument: filename when provided */
 
 static struct argp_option options[] =
 {
@@ -83,15 +84,18 @@ static struct argp argp =
   NULL, NULL, NULL
 };
 
+static const char *parameters[2] = { "help", NULL };
+
 int main (int argc, char **argv)
 {
     int fd;
     int status;
     int argCt;
+    int paramCt;
 
     printf("- main() ENTRY\n");
 
-    printf("- argc=(%d)\n");
+    printf("- argc=(%d)\n", argc);
     for(int argCt=0; argCt<argc; argCt++) {
 	printf("- arg[%d] = [%s]\n", argCt, argv[argCt]);
     }
@@ -122,8 +126,16 @@ int main (int argc, char **argv)
     }
     printf("- process commands\n");
 
-	/* TODO: do the work */
-	processCommands();
+    	paramCt = 0;
+	if(fileName != NULL) {
+		parameters[0] = "load";
+		parameters[1] = fileName;
+		paramCt = 2;
+	}
+        
+ 	
+	processCommands( paramCt, parameters );
+
     printf("- close driver\n");
 	
     if(!closeMatrix()) {
@@ -162,8 +174,18 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
       break;
 
     case ARGP_KEY_ARG:		/* [FILE]... */
-      /* TODO: Do something with ARG, or remove this case and make
-         main give argp_parse a non-NULL fifth argument.  */
+      if(state->arg_num > 1) {
+	      //  Too many Arguments
+	      argp_usage(state);
+      }
+      fileName = arg;
+      break;
+
+    case ARGP_KEY_END:
+      //if(state->arg_num < 2) {
+	      //  NOT Enough Arguments
+	      //argp_usage(state);
+      //}
       break;
 
     default:
