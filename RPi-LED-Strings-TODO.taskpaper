@@ -41,9 +41,19 @@ Commands:
 	- buffers {numberOfBuffers} - allocate N buffers
 	- buffer {bufferNumber} - select buffer for next actions
 	- clear {selectedBuffers} - where selected is [N, N-M, all]
-	- fill {selectedBuffers} {color} - where selected is [N, N-M, all] and color is [red, 0xffffff, all]
-	- border {width} {color}
-	- clock {clockType} {color} - where type is [digital, binary] and color is [red, 0xffffff]
-	- write {selectedBuffers} - where selected is [N, N-M, all]
-	- buffers free - release all buffers
-	- square {boarderWidth} {height} {color}
+	- fill {selectedBuffers} {fillColor} - where selected is [N, N-M, all] and color is [red, 0xffffff, all]
+	- border {width} {borderColor}
+	- clock {clockType} {faceColor} - where type is [digital, binary] and color is [red, 0xffffff]
+	- write {selectedBuffers} {loopYN} {rate} - where selected is [N, N-M, all]
+	- freebuffers - release all buffers
+	- square {boarderWidth} {height} {borderColor} {fillColor}
+	- circle {boarderWidth} {radius}  {borderColor} {fillColor}
+	- triangle  {boarderWidth} {baseWidth-odd!}  {borderColor} {fillColor}
+	- copy {srcBufferNumber} {destBufferNumber} {shiftUpDownPix} {shiftLeftRightPix}
+	- defaultfill {fillColor}
+	- defaultline {lineColor}
+	- moveto x,y
+	- lineto x,y
+	- loadbmpfile {bmpFileName} 
+	- loadscreensfile {screenSetFileName} {initialBufferNumber} - sets NbrScreensLoaded, ensures sufficient buffers allocated
+	- 
