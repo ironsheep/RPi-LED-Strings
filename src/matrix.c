@@ -22,6 +22,7 @@
 #include <stdio.h>
 #include <argp.h>
 #include <string.h>     // for strxxx()
+#include <libgen.h>     // for basename(), dirname()
 
 #include "debug.h"
 #include "matrixDriver.h"
@@ -86,27 +87,50 @@ int main (int argc, char **argv)
 {
     int fd;
     int status;
+    int argCt;
+
+    printf("- main() ENTRY\n");
+
+    printf("- argc=(%d)\n");
+    for(int argCt=0; argCt<argc; argCt++) {
+	printf("- arg[%d] = [%s]\n", argCt, argv[argCt]);
+    }
     
     textdomain(PACKAGE);
+
+
+    printf("- copy app name\n");
+    
     
     // save off our appname
-    strcpy((char *)pAppName, (const char *)&argv[0]);
+    char *tmpStr = strdup((const char *)basename(argv[0]));
+    if(tmpStr != NULL) {
+	pAppName = tmpStr;
+    }
+
+    printf("- parse args\n");
     
     argp_parse(&argp, argc, argv, 0, NULL, NULL);
+
+    printf("- open driver\n");
+    
     
     // FIXME: UNDONE only open device if we need it!
     if(!openMatrix()) {
         errorMessage("Failed to connect to driver: LEDfifoLKM Loaded?");
         exit(-1);
     }
+    printf("- process commands\n");
 
 	/* TODO: do the work */
 	processCommands();
+    printf("- close driver\n");
 	
     if(!closeMatrix()) {
         errorMessage("Failed to disconnect from LEDfifoLKM driver!");
         exit(-1);
     }
+    printf("- main() EXIT\n");
 
 	exit (0);
 }
@@ -154,7 +178,7 @@ static void show_version (FILE *stream, struct argp_state *state)
   (void) state;
   /* Print in small parts whose localizations can hopefully be copied
      from other programs.  */
-  fputs(PACKAGE" "VERSION"\n", stream);
+  fputs(PACKAGE" v"VERSION"\n", stream);
   fprintf(stream, _("Written by %s.\n\n"), "Stephen M Moraco");
   fprintf(stream, _("Copyright (C) %s %s\n"), "2019", "Stephen M Moraco");
   fputs(_("\
