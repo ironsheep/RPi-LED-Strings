@@ -22,6 +22,7 @@
 #include <stdio.h> 
 #include <stdlib.h> // realloc()
 #include <string.h> // strtok()
+#include <ctype.h> // tolower()
 
 #include "commandProcessor.h"
 
@@ -62,6 +63,7 @@ void processCommands(int argc, const char *argv[])
 }
 
 // forward declarations for command functions
+int stricmp(char const *a, char const *b);
 int commandHelp(int argc, const char *argv[]);
 int commandQuit(int argc, const char *argv[]);
 int commandLoadBmpFile(int argc, const char *argv[]);
@@ -70,7 +72,7 @@ struct _commandEntry {
     char *name;
     char *description;
     int   paramCount;
-    int (*pCommandFunction)(int argc, char *argv[]);
+    int (*pCommandFunction)(int argc, const char *argv[]);
 } commands[] = {
     { "buffers",     "buffers {numberOfBuffers} - allocate N buffers", 1 },
     { "buffer",      "buffer {bufferNumber} - select buffer for next actions", 1 },
@@ -119,21 +121,25 @@ int perform(int argc, const char *argv[])
             break;
         }
     }
-    if(cmdFoundIdx != CMD_NOT_FOUND) {
+    if(cmdFoundIdx != CMD_NOT_FOUND && commands[cmdIdx].pCommandFunction != NULL) {
         // execute the related command function
         execStatus = (*commands[cmdIdx].pCommandFunction)(argc, argv);
+    }
+    if(cmdFoundIdx != CMD_NOT_FOUND && commands[cmdIdx].pCommandFunction == NULL) {
+        printf("** Command [%s] NOT YET IMPLEMENTED\n", argv[0]);
     }
     else {
         // show that we don't know this command
         printf("** Unknown Command [%s]\n", argv[0]);
-        printf("   (enter 'helpcommands' to show full list of commands\n\n");
+        printf("   (enter 'helpcommands' to show full list of commands)\n\n");
     }
     return execStatus;
 }
 
 int commandHelp(int argc, const char *argv[])
 {
-    printf("\n--- Available Comamnds ---\n");
+	int cmdIdx;
+    printf("\n--- Available Commands ---\n");
     for(cmdIdx = 0; cmdIdx < commandCount; cmdIdx++) {
         printf("  %s\n", commands[cmdIdx].description);
     }
@@ -147,6 +153,16 @@ int commandQuit(int argc, const char *argv[])
     return CMD_RET_EXIT;
 }
 
+// missing functions REF: https://stackoverflow.com/questions/5820810/case-insensitive-string-comp-in-c
+
+int stricmp(char const *a, char const *b)
+{
+    for (;; a++, b++) {
+        int d = tolower((unsigned char)*a) - tolower((unsigned char)*b);
+        if (d != 0 || !*a)
+            return d;
+    }
+}
 
 // REF borrowing from: https://brennan.io/2015/01/16/write-a-shell-in-c
 //
