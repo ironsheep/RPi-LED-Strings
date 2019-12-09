@@ -62,9 +62,9 @@ void processCommands(int argc, const char *argv[])
 }
 
 // forward declarations for command functions
-int commandHelp(int argc, char *argv[]);
-int commandQuit(int argc, char *argv[]);
-int commandLoadBmpFile(int argc, char *argv[]);
+int commandHelp(int argc, const char *argv[]);
+int commandQuit(int argc, const char *argv[]);
+int commandLoadBmpFile(int argc, const char *argv[]);
 
 struct _commandEntry {
     char *name;
@@ -131,7 +131,7 @@ int perform(int argc, const char *argv[])
     return execStatus;
 }
 
-int commandHelp(int argc, char *argv[])
+int commandHelp(int argc, const char *argv[])
 {
     printf("\n--- Available Comamnds ---\n");
     for(cmdIdx = 0; cmdIdx < commandCount; cmdIdx++) {
@@ -141,7 +141,7 @@ int commandHelp(int argc, char *argv[])
     return CMD_RET_SUCCESS;   // no errors
 }
 
-int commandQuit(int argc, char *argv[])
+int commandQuit(int argc, const char *argv[])
 {
     // returning zero causes command interpreter to exit
     return CMD_RET_EXIT;
