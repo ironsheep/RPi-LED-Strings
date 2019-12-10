@@ -25,6 +25,8 @@
 #include <ctype.h> // tolower()
 
 #include "commandProcessor.h"
+#include "debug.h"
+#include "imageLoader.h"
 
 char *lsh_read_line(void);
 const char **lsh_split_line(char *line, int *tokenCtOut);
@@ -48,6 +50,8 @@ void processCommands(int argc, const char *argv[])
     // if argc > 0 then do commands and return
     // else  go "interactive"!
     if(argc > 0) {
+        // perform single command
+        perform(argc, argv);
     }
     else {
         do {
@@ -89,7 +93,7 @@ struct _commandEntry {
     { "default",     "default [fill|line] {color}", 2 },
     { "moveto",      "moveto x y - move (pen) to X, Y", 2 },
     { "lineto",      "lineto x y - draw line from curr X,Y to new X,Y", 2 },
-    { "loadbmpfile", "loadbmpfile {bmpFileName} - load 24-bit bitmap into current buffer", 1 },
+    { "loadbmpfile", "loadbmpfile {bmpFileName} - load 24-bit bitmap into current buffer", 1, &commandLoadBmpFile },
     { "loadscreensfile", "loadscreensfile {screenSetFileName} - sets NbrScreensLoaded, ensures sufficient buffers allocated, starting from current buffer", 1 },
     { "helpcommands", "helpcommands - display list of available commands", 0, &commandHelp },
     { "quit",         "quit - exit command processor", 0, &commandQuit },
@@ -100,14 +104,18 @@ static int commandCount = sizeof(commands) / sizeof(struct _commandEntry);
 #define CMD_NOT_FOUND (-1)
 #define CMD_RET_SUCCESS 1
 #define CMD_RET_UNKNOWN_CMD 2
+#define CMD_RET_BAD_PARMS 3
 #define CMD_RET_EXIT 0
+
+static int s_nCurrentCmdIdx = CMD_NOT_FOUND;
 
 
 int perform(int argc, const char *argv[])
 {
     int cmdIdx;
-    int cmdFoundIdx = CMD_NOT_FOUND;
-   int execStatus = CMD_RET_UNKNOWN_CMD;  // unknown command
+    int execStatus = CMD_RET_UNKNOWN_CMD;  // unknown command
+    
+    s_nCurrentCmdIdx = CMD_NOT_FOUND;
    
     // process a single command with options
     printf("- perform() argc=(%d)\n", argc);
@@ -117,15 +125,22 @@ int perform(int argc, const char *argv[])
     
     for(cmdIdx = 0; cmdIdx < commandCount; cmdIdx++) {
         if(stricmp(argv[0], commands[cmdIdx].name) == 0) {
-            cmdFoundIdx = cmdIdx;
+            s_nCurrentCmdIdx = cmdIdx;
             break;
         }
     }
-    if(cmdFoundIdx != CMD_NOT_FOUND && commands[cmdIdx].pCommandFunction != NULL) {
-        // execute the related command function
-        execStatus = (*commands[cmdIdx].pCommandFunction)(argc, argv);
+    if(s_nCurrentCmdIdx != CMD_NOT_FOUND && commands[cmdIdx].pCommandFunction != NULL) {
+        // execute the related command function, if we have correct number of params
+        if(argc == commands[cmdIdx].paramCount + 1) {
+            execStatus = (*commands[cmdIdx].pCommandFunction)(argc, argv);
+        }
+        else {
+             printf("  --> Invalid Parameter Count for [%s] %d vs %d\n", argc - 1, commands[cmdIdx].paramCount);
+             printf("  USAGE: %s\n\n", commands[cmdIdx].description);
+             execStatus = CMD_RET_BAD_PARMS;
+        }
     }
-    if(cmdFoundIdx != CMD_NOT_FOUND && commands[cmdIdx].pCommandFunction == NULL) {
+    if(s_nCurrentCmdIdx != CMD_NOT_FOUND && commands[cmdIdx].pCommandFunction == NULL) {
         // show that this command is not yet implemented
         printf("** Command [%s] NOT YET IMPLEMENTED\n", argv[0]);
     }
@@ -135,6 +150,35 @@ int perform(int argc, const char *argv[])
         printf("   (enter 'helpcommands' to show full list of commands)\n\n");
     }
     return execStatus;
+}
+
+// ----------------------------------------------------------------------------
+//  COMMAND Functions
+//
+int commandLoadBmpFile(int argc, const char *argv[])
+{
+    int bValueCommand = 1;
+    
+    // IMPLEMENT:
+    //   loadbmpfile {bmpFileName} - load 24-bit bitmap into current buffer
+    if(stricmp(argv[0], commands[s_nCurrentCmdIdx].name) != 0) {
+        printf("ERROR[CODE]: bad call commandLoadBmpFile with command [%s]\n", argv[0]);
+        bValueCommand = 0;
+    }
+    else if(argc != 2) {
+        printf("ERROR[CODE]: bad call - param count err for command [%s]\n", argv[0]);
+        bValueCommand = 0;
+    }
+    else {
+        const char *fileSpec = argv[1];
+        if(fileExists(fileSpec)) {
+            int imageSize;
+            struct _BMPColorValue *bitBuffer = loadImageFromFile(fileSpec, *imageSize);
+        }
+
+    }
+    
+    return CMD_RET_SUCCESS;   // no errors
 }
 
 int commandHelp(int argc, const char *argv[])
@@ -154,8 +198,10 @@ int commandQuit(int argc, const char *argv[])
     return CMD_RET_EXIT;
 }
 
-// missing functions REF: https://stackoverflow.com/questions/5820810/case-insensitive-string-comp-in-c
-
+// ----------------------------------------------------------------------------
+//  Missing Functions
+//
+// REF: https://stackoverflow.com/questions/5820810/case-insensitive-string-comp-in-c
 int stricmp(char const *a, char const *b)
 {
     for (;; a++, b++) {
@@ -165,6 +211,7 @@ int stricmp(char const *a, char const *b)
     }
 }
 
+//
 // REF borrowing from: https://brennan.io/2015/01/16/write-a-shell-in-c
 //
 

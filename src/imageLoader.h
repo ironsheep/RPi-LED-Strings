@@ -29,7 +29,9 @@ struct _BMPColorValue {
 } __attribute__((packed));      // WARNING this MUST be PACKED!!!
 
 
-void loadTestImage(void);
+//void loadTestImage(void);
+int fileExists(const char *fileSpec);
+struct _BMPColorValue *loadImageFromFile(const char *fileSpec);
 
 int getImageSizeInBytes(void);
 struct _BMPColorValue *getBufferBaseAddress(void);

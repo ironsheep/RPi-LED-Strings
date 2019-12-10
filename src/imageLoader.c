@@ -58,7 +58,7 @@ static int nColumns;
 static int nImageSizeInBytes;
 
 // forward declarations
-void show8x8cornersatRC(const char *title, int nRow, int nColumn);
+
 
 int getImageSizeInBytes(void)
 {
@@ -96,21 +96,41 @@ void showPixelAtRC(uint8_t nRow, uint8_t nColumn)
 	printf("- RC=%d,%d @ %p is RGB=(%2x,%2x,%2x)\n", nRow, nColumn, pRGBvalue, pRGBvalue->red, pRGBvalue->green, pRGBvalue->blue);
 }
 
+int fileExists(const char *fileSpec)
+{
+    int foundStatus = 1; // found
+    
+	struct stat st;
+	if(stat(sTestFileName, &st) != 0) {
+	    perror("stat() ERROR: ");
+	    foundStatus = 0; // not found
+	}
+	char *statYN = (foundStatus) ? "YES" : "no";
+    debugMessage("fileExists(%s) -> %s", fileSpec, statYN);
+    
+    return foundStatus;
+}
+
 void loadTestImage(void) 
 {
+    loadImageFromFile(sTestFileName);
+}
+
+struct _BMPColorValue *loadImageFromFile(const char *fileSpec, int *lengthOut) 
+{
 	struct stat st;
-	stat(sTestFileName, &st);
-	printf("- File %s is %d bytes\n", sTestFileName, st.st_size);
+	stat(fileSpec, &st);
+	debugMessage("File %s is %d bytes", fileSpec, st.st_size);
 
 	int counter;
 	FILE *fpTestFile;
 	struct _BMPHeader bmpHeaderData;
-	printf("- File Header size=%u\n", sizeof(struct _BMPHeader));
+	debugMessage("File Header size=%u", sizeof(struct _BMPHeader));
 	
-	fpTestFile = fopen(sTestFileName,"rb");
+	fpTestFile = fopen(fileSpec,"rb");
 	if(!fpTestFile)
 	{
-		printf("\nERROR: Unable to open file!\n\n");
+		perror("ERROR: failed to open file: ");
 		return;
 	}
 	fread(&bmpHeaderData, sizeof(struct _BMPHeader), 1, fpTestFile);
@@ -122,9 +142,9 @@ void loadTestImage(void)
 	nImageSizeInBytes = nImageBytesNeeded;
 	int nRowPadByteCount = (bmpHeaderData.height_px * 3) % 4;
 
-	printf("File %s: sz=%u, IMAGE h/w=(%d,%d) size=%u bytesNeeded=%d rowPad=%d\n", sTestFileName, bmpHeaderData.size, bmpHeaderData.height_px, bmpHeaderData.width_px, bmpHeaderData.image_size_bytes, nImageBytesNeeded, nRowPadByteCount);
+	debugMessage("File %s: sz=%u, IMAGE h/w=(%d,%d) size=%u bytesNeeded=%d rowPad=%d", fileSpec, bmpHeaderData.size, bmpHeaderData.height_px, bmpHeaderData.width_px, bmpHeaderData.image_size_bytes, nImageBytesNeeded, nRowPadByteCount);
 
-
+#ifdef SHOW_EXTRA_DEBUG
 	hexDump("BMP Header", &bmpHeaderData, sizeof(struct _BMPHeader));
 
 	printf("- Addr header struct: %p\n", &bmpHeaderData);
@@ -134,7 +154,7 @@ void loadTestImage(void)
 	printf("- Addr image_size_bytes: %p\n", &bmpHeaderData.image_size_bytes);
 	uint8_t *pBuffer = (uint8_t *)&bmpHeaderData;
 	printf("- Addr image data: %p\n", &pBuffer[bmpHeaderData.offset]);
-
+#endif
 
 	fileBuffer = xmalloc(nImageBytesNeeded);
 
@@ -144,42 +164,17 @@ void loadTestImage(void)
 	// read the image data into our buffer
 	fread(fileBuffer, nImageBytesNeeded, 1, fpTestFile);
 
+#ifdef SHOW_EXTRA_DEBUG
 	hexDump("Image bytes", fileBuffer, nImageBytesNeeded);
+#endif
 
 	fclose(fpTestFile);
-
-	// TESTS
-	printf("\n\n- Image Indexing -----------------------\n");
-	printf("\n- Four corners\n");
-	showPixelAtRC(23,0);
-	showPixelAtRC(0,0);
-	showPixelAtRC(23,31);
-	showPixelAtRC(0,31);
-
-	show8x8cornersatRC("Panel 0 8x8-0,0",0,0);
-	show8x8cornersatRC("Panel 0 8x8-0,1",0,8);
-	show8x8cornersatRC("Panel 0 8x8-0,2",0,16);
-	show8x8cornersatRC("Panel 0 8x8-0,3",0,24);
-
-	show8x8cornersatRC("Panel 1 8x8-1,0",8,0);
-	show8x8cornersatRC("Panel 1 8x8-1,1",8,8);
-	show8x8cornersatRC("Panel 1 8x8-1,2",8,16);
-	show8x8cornersatRC("Panel 1 8x8-1,3",8,24);
-
-	show8x8cornersatRC("Panel 2 8x8-2,0",16,0);
-	show8x8cornersatRC("Panel 2 8x8-2,1",16,8);
-	show8x8cornersatRC("Panel 2 8x8-2,2",16,16);
-	show8x8cornersatRC("Panel 2 8x8-2,3",16,24);
-	printf("\n- Image Indexing -----------------------\n\n\n");
-}
-
-void show8x8cornersatRC(const char *title, int nRow, int nColumn)
-{
-	printf("\n- %s 8x8\n", title);
-	showPixelAtRC(nRow+0,nColumn+0);
-	showPixelAtRC(nRow+0,nColumn+7);
-	showPixelAtRC(nRow+7,nColumn+0);
-	showPixelAtRC(nRow+7,nColumn+7);
+	
+	if(lengthOut != NULL) {
+	    *lengthOut = getImageSizeInBytes();
+	}
+	
+	return getBufferBaseAddress();
 }
 
 

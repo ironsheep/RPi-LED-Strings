@@ -165,16 +165,24 @@ static ssize_t LEDfifo_write(struct file *f, const char __user *buf, size_t len,
     loff_t *off)
 {
     unsigned long bytesNotCopied;
+    
     printk(KERN_INFO "LEDfifo: write(%d) bytes\n", len);
-    bytesNotCopied = copy_from_user(kernel_buffer, buf, len);
-    if(bytesNotCopied != 0) {
-        printk(KERN_ERR "LEDfifo: write() Failed to copy %ld bytes in kernel\n", bytesNotCopied);
+    bytesNotCopied = len;
+    
+    if(len > s_screenBufferSizeInBytes) {
+        printk(KERN_ERR "LEDfifo: write() Abort, too long (%ld bytes) [> max %d]\n", bytesNotCopied, s_screenBufferSizeInBytes);
     }
     else {
-        // write buffer via GPIO to matrix
-        // FIXME: UNDONE maybe pass desired buffer ptr as data? at task init
-        tasklet_init(&tasklet, taskletScreenWrite, 0); 
-        tasklet_hi_schedule(&tasklet);
+        bytesNotCopied = copy_from_user(kernel_buffer, buf, len);
+        if(bytesNotCopied != 0) {
+            printk(KERN_ERR "LEDfifo: write() Failed to copy %ld bytes in kernel\n", bytesNotCopied);
+        }
+        else {
+            // write buffer via GPIO to matrix
+            // FIXME: UNDONE maybe pass desired buffer ptr as data? at task init
+            tasklet_init(&tasklet, taskletScreenWrite, 0); 
+            tasklet_hi_schedule(&tasklet);
+        }
     }
     return len - bytesNotCopied;
 }
