@@ -164,8 +164,9 @@ static ssize_t LEDfifo_read(struct file *f, char __user *buf, size_t len, loff_t
 static ssize_t LEDfifo_write(struct file *f, const char __user *buf, size_t len,
     loff_t *off)
 {
-    printk(KERN_INFO "LEDfifo: write(%ld) bytes\n", len);
-    unsigned long bytesNotCopied = copy_from_user(kernel_buffer, buf, len);
+    unsigned long bytesNotCopied;
+    printk(KERN_INFO "LEDfifo: write(%d) bytes\n", len);
+    bytesNotCopied = copy_from_user(kernel_buffer, buf, len);
     if(bytesNotCopied != 0) {
         printk(KERN_ERR "LEDfifo: write() Failed to copy %ld bytes in kernel\n", bytesNotCopied);
     }
@@ -1186,15 +1187,13 @@ void taskletScreenWrite(unsigned long data)
     uint8_t nBitShiftCount;  // [0-7]
     uint8_t nAllBits;
     
-    uint16_t panelOffsetInBytes[3];
-    
     DEFINE_SPINLOCK(mr_wr_lock);
     unsigned long flags;
 
     clearCounts();
     nBytesWritten = 0;
     
-    printk(KERN_INFO "LEDfifo: taskletScreenWrite(%ld) ENTRY\n");
+    printk(KERN_INFO "LEDfifo: taskletScreenWrite(0x%p) ENTRY\n", (void *)data);
     
     // in memory the colors for the LED String are ordered as GRB!!!!
     // for this form, taskletScreenWrite(), we translate the current contents of kernel_buffer writing results to our GPIO's
