@@ -70,6 +70,12 @@ MODULE_PARM_DESC(name, "The name to display in /var/log/kern.log");  ///< parame
 #define DEFAULT_TRESET_COUNT 1000
 #define DEFAULT_LOOP_ENABLE 0
 
+// our LED Matrix dimensions
+#define HARDWARE_MAX_PANELS 3
+#define HARDWARE_MAX_LEDS_PER_PANEL 256
+#define HARDWARE_MAX_COLOR_BYTES_PER_LED 3
+
+
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(3,10,0))
 #define STR_PRINTF_RET(len, str, args...) len += sprintf(page + len, str, ## args)
 #elif (LINUX_VERSION_CODE < KERNEL_VERSION(4,3,0))
@@ -111,6 +117,9 @@ static struct proc_dir_entry *file;
 
 static volatile unsigned int *gpio;
 
+static uint8_t *kernel_buffer;
+static size_t s_screenBufferSizeInBytes = (HARDWARE_MAX_PANELS * HARDWARE_MAX_LEDS_PER_PANEL * HARDWARE_MAX_COLOR_BYTES_PER_LED);
+
 static unsigned char ledType[FIFO_MAX_STR_LEN+1] = DEFAULT_LED_STRTYPE; // +1 for zero term.
 static int gpioPins[FIFO_MAX_PIN_COUNT];    // max 3 gpio pins can be assigned
 static int periodDurationNsec = DEFAULT_PERIOD_IN_NSEC;
@@ -127,14 +136,20 @@ static struct tasklet_struct tasklet;
 //
 static int LEDfifo_open(struct inode *i, struct file *f)
 {
-    printk(KERN_INFO "LEDfifo: open()\n");
+    // alloc our single screen buffer the user will write to...
+    if((kernel_buffer = kmalloc(s_screenBufferSizeInBytes , GFP_KERNEL)) == 0){
+        printk(KERN_ERR "LEDfifo: open() Cannot allocate Screen Buffer(s) in kernel\n");
+        return -1;
+    }
+    printk(KERN_INFO "LEDfifo: open() w/Alloc Screen Buffer(s)\n");
     return 0;
 }
 
 
 static int LEDfifo_close(struct inode *i, struct file *f)
 {
-    printk(KERN_INFO "LEDfifo: close()\n");
+    kfree(kernel_buffer);
+    printk(KERN_INFO "LEDfifo: close() released Screen Buffer(s)\n");
     return 0;
 }
 
@@ -149,8 +164,18 @@ static ssize_t LEDfifo_read(struct file *f, char __user *buf, size_t len, loff_t
 static ssize_t LEDfifo_write(struct file *f, const char __user *buf, size_t len,
     loff_t *off)
 {
-    printk(KERN_INFO "LEDfifo: write()\n");
-    return len;
+    printk(KERN_INFO "LEDfifo: write(%ld) bytes\n", len);
+    unsigned long bytesNotCopied = copy_from_user(kernel_buffer, buf, len);
+    if(bytesNotCopied != 0) {
+        printk(KERN_ERR "LEDfifo: write() Failed to copy %ld bytes in kernel\n", bytesNotCopied);
+    }
+    else {
+        // write buffer via GPIO to matrix
+        // FIXME: UNDONE maybe pass desired buffer ptr as data? at task init
+        tasklet_init(&tasklet, taskletScreenWrite, 0); 
+        tasklet_hi_schedule(&tasklet);
+    }
+    return len - bytesNotCopied;
 }
 
 /*
@@ -1061,9 +1086,6 @@ void nSecDelay(int nSecDuration)
     for(ctr=0; ctr<delayCount; ctr++) { tst++; }
 }
 
-#define HARDWARE_MAX_PANELS 3
-#define HARDWARE_MAX_LEDS_PER_PANEL 256
-#define HARDWARE_MAX_COLOR_BYTES_PER_LED 3
 
 
 //  our tasklet: write single color to entire LED Matrix
@@ -1150,8 +1172,79 @@ void taskletScreenFill(unsigned long data)
 void taskletScreenWrite(unsigned long data)
 {
     // no data?!  just write our single buffer to screen via GPIO?
-    printk(KERN_INFO "LEDfifo: taskletScreenWrite(%ld) ENTRY\n", data);
-    printk(KERN_INFO "LEDfifo: taskletScreenWrite() ENTRY\n");
+    // data is 24-bit RGB value to be written
+    uint8_t *pPanelByte[3];
+    uint16_t nPanelOffsetInBytes[3];
+    uint16_t nBytesWritten;
+    
+    
+    uint16_t nLedIdx;   // [0-255]
+    uint16_t nLEDOffset;  // [0-765]
+    uint8_t nColorOffset;  // [0-2]
+    
+    uint8_t nPanelIdx;  // [0-2]
+    uint8_t nBitShiftCount;  // [0-7]
+    uint8_t nAllBits;
+    
+    uint16_t panelOffsetInBytes[3];
+    
+    DEFINE_SPINLOCK(mr_wr_lock);
+    unsigned long flags;
+
+    clearCounts();
+    nBytesWritten = 0;
+    
+    printk(KERN_INFO "LEDfifo: taskletScreenWrite(%ld) ENTRY\n");
+    
+    // in memory the colors for the LED String are ordered as GRB!!!!
+    // for this form, taskletScreenWrite(), we translate the current contents of kernel_buffer writing results to our GPIO's
+    
+    nPanelOffsetInBytes[0] = 0;
+    nPanelOffsetInBytes[1] = 1 * (HARDWARE_MAX_LEDS_PER_PANEL * HARDWARE_MAX_COLOR_BYTES_PER_LED);
+    nPanelOffsetInBytes[2] = 2 * (HARDWARE_MAX_LEDS_PER_PANEL * HARDWARE_MAX_COLOR_BYTES_PER_LED);
+    
+	// ============= BEGIN CRITICAL SECTION ==================
+	//
+	// let's prevent interrupts for this series of LED writes
+	spin_lock_irqsave(&mr_wr_lock, flags);
+
+   // for each LED in a panel
+    for(nLedIdx = 0; nLedIdx < HARDWARE_MAX_LEDS_PER_PANEL; nLedIdx++) {
+        // calc offset to LED 3-bytes within panel
+        nLEDOffset = (nLedIdx * HARDWARE_MAX_COLOR_BYTES_PER_LED);
+        // for each COLOR of an LED (24 bit, 3 bytes)
+        for(nColorOffset = 0; nColorOffset < HARDWARE_MAX_COLOR_BYTES_PER_LED; nColorOffset++) {
+            // set pointer to next byte for each of our three panels
+            for(nPanelIdx = 0; nPanelIdx < HARDWARE_MAX_PANELS; nPanelIdx++) {
+                pPanelByte[nPanelIdx] = &kernel_buffer[nPanelOffsetInBytes[nPanelIdx] + nLEDOffset + nColorOffset];
+            }
+            
+            // for ea. bit MSBit to LSBit... [OR-in each of the three panel bits 0b00000321] then write all 3 gpio pins
+            for(nBitShiftCount = 0; nBitShiftCount < 8; nBitShiftCount++) {
+                // mask out the bits and OR them together (so they can all be written at one time)
+                nAllBits = 0;
+                for(nPanelIdx = 0; nPanelIdx < HARDWARE_MAX_PANELS; nPanelIdx++) {
+                    nAllBits |= ((*pPanelByte[nPanelIdx] >> (7 - nBitShiftCount)) & 0x01) << nPanelIdx;
+                }
+                xmitBitValuesToAllChannels(nAllBits);
+            }
+            
+    	    // count this a 1 byte written - will be three per LED!
+            nBytesWritten++;
+        }
+    }
+
+	// and then allow interrupts once again...
+	spin_unlock_irqrestore(&mr_wr_lock, flags);
+	//
+	// ============== END CRITICAL SECTION ===================
+	
+    xmitResetToAllChannels();
+    
+    printk(KERN_INFO "LEDfifo: -------------------------\n");
+    printk(KERN_INFO "LEDfifo: %d bytes written\n", nBytesWritten);
+    showCounts();    
+    printk(KERN_INFO "LEDfifo: taskletScreenWrite() EXIT\n");
     
 }
  

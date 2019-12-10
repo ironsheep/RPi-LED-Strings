@@ -126,6 +126,7 @@ int perform(int argc, const char *argv[])
         execStatus = (*commands[cmdIdx].pCommandFunction)(argc, argv);
     }
     if(cmdFoundIdx != CMD_NOT_FOUND && commands[cmdIdx].pCommandFunction == NULL) {
+        // show that this command is not yet implemented
         printf("** Command [%s] NOT YET IMPLEMENTED\n", argv[0]);
     }
     else {
