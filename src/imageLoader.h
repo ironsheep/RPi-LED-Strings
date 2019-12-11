@@ -22,6 +22,8 @@
 #ifndef IMAGE_LOADER_H
 #define IMAGE_LOADER_H
 
+#include <stdint.h>
+
 struct _BMPColorValue {
   uint8_t blue;
   uint8_t green;
@@ -31,7 +33,7 @@ struct _BMPColorValue {
 
 //void loadTestImage(void);
 int fileExists(const char *fileSpec);
-struct _BMPColorValue *loadImageFromFile(const char *fileSpec);
+struct _BMPColorValue *loadImageFromFile(const char *fileSpec, int *lengthOut);
 
 int getImageSizeInBytes(void);
 struct _BMPColorValue *getBufferBaseAddress(void);

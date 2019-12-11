@@ -55,7 +55,7 @@ void processCommands(int argc, const char *argv[])
     }
     else {
         do {
-            printf("matrix> ");
+            printf("\nmatrix> ");
             line = lsh_read_line();
             args = lsh_split_line(line, &argCt);
             status = perform(argCt, args);
@@ -140,7 +140,7 @@ int perform(int argc, const char *argv[])
              execStatus = CMD_RET_BAD_PARMS;
         }
     }
-    if(s_nCurrentCmdIdx != CMD_NOT_FOUND && commands[cmdIdx].pCommandFunction == NULL) {
+    else if(s_nCurrentCmdIdx != CMD_NOT_FOUND && commands[cmdIdx].pCommandFunction == NULL) {
         // show that this command is not yet implemented
         printf("** Command [%s] NOT YET IMPLEMENTED\n", argv[0]);
     }
@@ -173,7 +173,7 @@ int commandLoadBmpFile(int argc, const char *argv[])
         const char *fileSpec = argv[1];
         if(fileExists(fileSpec)) {
             int imageSize;
-            struct _BMPColorValue *bitBuffer = loadImageFromFile(fileSpec, *imageSize);
+            struct _BMPColorValue *bitBuffer = loadImageFromFile(fileSpec, &imageSize);
         }
 
     }

@@ -113,7 +113,7 @@ int fileExists(const char *fileSpec)
 
 void loadTestImage(void) 
 {
-    loadImageFromFile(sTestFileName);
+    loadImageFromFile(sTestFileName, NULL);
 }
 
 struct _BMPColorValue *loadImageFromFile(const char *fileSpec, int *lengthOut) 
@@ -131,7 +131,7 @@ struct _BMPColorValue *loadImageFromFile(const char *fileSpec, int *lengthOut)
 	if(!fpTestFile)
 	{
 		perror("ERROR: failed to open file: ");
-		return;
+		return NULL;
 	}
 	fread(&bmpHeaderData, sizeof(struct _BMPHeader), 1, fpTestFile);
 

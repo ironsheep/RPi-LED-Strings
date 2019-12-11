@@ -44,19 +44,19 @@ static int s_nPinsAr[3] = { 17, 27, 22 };
 
 int openMatrix(void)
 {
-    int errorValue = 0;
+    int errorValue = -1; // success
     
     debugMessage("Driver Connect");
     s_fdDriver = open("/dev/ledfifo0", O_RDWR);
     if(s_fdDriver < 0) {
-        errorValue = -1;
+        errorValue = 0;	// error
     }
     else {
         // configure for WS2812B
         resetToWS2812bValues(s_fdDriver);
         
         // and set our pins
-        setPins(s_fdDriver, &s_nPinsAr[0], sizeof(s_nPinsAr));
+        setPins(s_fdDriver, &s_nPinsAr[0], sizeof(s_nPinsAr)/sizeof(int));
         
         // reset all pixels to off (black)
         clearToColor(s_fdDriver, 0x000000);
@@ -67,12 +67,12 @@ int openMatrix(void)
 int closeMatrix(void)
 {
     int status;
-    int errorValue = 0;
+    int errorValue = -1; // success
     
     debugMessage("Driver Disconnect");
     status = close(s_fdDriver);
     if(status != 0) {
-        errorValue = -1;
+        errorValue = 0;	// error
     }
     return errorValue;
 }
@@ -124,7 +124,7 @@ void setPins(int fd, int pinsAr[], int pinCount)
     debugMessage("-> setPins() ENTRY");
     
     if(pinCount != 3) {
-        errorMessage("setPins() This device expects to have 3 pins!");
+        errorMessage("setPins() This device expects to have 3 pins (got %d)!", pinCount);
     }
     else {
         if (ioctl(fd, CMD_GET_VARIABLES, &deviceValues) == -1)
