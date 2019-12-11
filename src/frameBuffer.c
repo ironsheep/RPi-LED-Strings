@@ -111,19 +111,19 @@ uint16_t frameBufferSizeInBytes(void)
     return nLenFrameBuffer;
 }
 
-struct _LedPixel *ptrBuffer(uint8_t nBuffer)
+struct _LedPixel *ptrBuffer(uint8_t nBufferNumber)
 {
     struct _LedPixel *desiredAddr = NULL;
 
-    if(nBuffer <= nNumberAllocatedBuffers) {
-        desiredAddr = (struct _LedPixel *)pFrameBufferAr[nBuffer - 1];
+    if(nBufferNumber > 0 && nBufferNumber <= nNumberAllocatedBuffers) {
+        desiredAddr = (struct _LedPixel *)pFrameBufferAr[nBufferNumber - 1];
     }
     else {
-        if(nBuffer > MAX_BUFFER_POINTERS) {
-            warningMessage("buffer %d out-of-range: MAX %d supported", nBuffer, MAX_BUFFER_POINTERS);
+        if(nBufferNumber < 1 || nBufferNumber > MAX_BUFFER_POINTERS) {
+            warningMessage("buffer %d out-of-range: [1-%d]", nBufferNumber, MAX_BUFFER_POINTERS);
         }
         else {
-            warningMessage("buffer %d NOT yet Allocated. Use 'buffers %d' to allocate it");
+            warningMessage("buffer %d NOT yet Allocated. Use 'buffers %d' to allocate it", nBufferNumber, nBufferNumber);
         }
     }
     return desiredAddr;

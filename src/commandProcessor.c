@@ -251,7 +251,7 @@ int commandLoadBmpFile(int argc, const char *argv[])
                     warningMessage("Filesize (%d bytes) incorrect for 32x24 matrix (%d bytes), display aborted!", nImageSize, nBufferSize);
                 }
                 else {
-                    uint8_t *pCurrBuffer = (uint8_t *)ptrBuffer(s_nCurrentBufferIdx);
+                    uint8_t *pCurrBuffer = (uint8_t *)ptrBuffer(s_nCurrentBufferIdx + 1);
                     xlateLoadedImageIntoBuffer(pCurrBuffer, nBufferSize);
                     // now write xlated image to matrix itself
                     showBuffer(pCurrBuffer, nBufferSize);
