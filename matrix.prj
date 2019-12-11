@@ -28,6 +28,7 @@
     <File>src/frameBuffer.c</File>
     <File>src/matrixDriver.c</File>
     <File>NEWS</File>
+    <File>src/clockDisplay.h</File>
     <File>src/xmalloc.h</File>
     <File>AUTHORS</File>
     <File>src/debug.h</File>
@@ -41,6 +42,7 @@
     <File>src/xmalloc.c</File>
     <File>ChangeLog</File>
     <File>src/matrixDriver.h</File>
+    <File>src/clockDisplay.c</File>
     <File>src/commandProcessor.h</File>
     <File>src/piSystem.c</File>
   </Files>

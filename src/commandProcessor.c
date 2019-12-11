@@ -29,6 +29,7 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 #include "imageLoader.h"
 #include "frameBuffer.h"
 #include "matrixDriver.h"
+#include "clockDisplay.h"
 
 
 // forward declarations
@@ -44,7 +45,9 @@ int stringIsHexValue(const char *colorSpec);
 int isHexDigitsString(const char *posHexDigits);
 
 
-
+// ----------------------------------------------------------------------------
+//  Main Entry point
+//
 static int s_nCurrentBufferIdx = 0;
 
 void processCommands(int argc, const char *argv[])
@@ -87,6 +90,7 @@ int commandSelectBuffer(int argc, const char *argv[]);
 int commandFillBuffer(int argc, const char *argv[]);
 int commandWriteBuffer(int argc, const char *argv[]);
 int commandClearBuffer(int argc, const char *argv[]);
+int commandShowClock(int argc, const char *argv[]);
 
 struct _commandEntry {
     char *name;
@@ -100,7 +104,7 @@ struct _commandEntry {
     { "freebuffers", "freebuffers - release all buffers", 0 },
     { "fill",        "fill {selectedBuffers} {fillColor} - where selected is [N, N-M, ., all] and color is [red, 0xffffff, all]", 2, &commandFillBuffer },
     { "border",      "border {width} {borderColor}", 1 },
-    { "clock",       "clock {clockType} {faceColor} - where type is [digital, binary] and color is [red, 0xffffff]", 2 },
+    { "clock",       "clock {clockType} {faceColor} - where type is [digital, binary] and color is [red, 0xffffff]", 2, &commandShowClock },
     { "write",       "write {selectedBuffers} [{loopYN} {rate}] - where selected is [N, N-M, ., all]", 3, &commandWriteBuffer },
     { "square",      "square {boarderWidth} {height} {borderColor} {fillColor}", 4 },
     { "circle",      "circle {boarderWidth} {radius}  {borderColor} {fillColor}", 1 },
@@ -172,6 +176,46 @@ int perform(int argc, const char *argv[])
 // ----------------------------------------------------------------------------
 //  COMMAND Functions
 //
+int commandShowClock(int argc, const char *argv[])
+{
+    int bValidCommand = 1;
+
+    // IMPLEMENT:
+    //   clear {selectedBuffers} - where selected is [N, N-M, ., all]
+    if(stricmp(argv[0], commands[s_nCurrentCmdIdx].name) != 0) {
+        errorMessage("[CODE]: bad call commandClearBuffer with command [%s]", argv[0]);
+        bValidCommand = 0;
+    }
+    else if(argc - 1 != 2) {
+        errorMessage("[CODE]: bad call - param count err for command [%s]", argv[0]);
+        bValidCommand = 0;
+    }
+    if(bValidCommand) {
+        // which type of clock?
+        eClockFaceType clockType = CFT_Unknown;
+        if(stricmp(argv[1], "binary") == 0) {
+            clockType = CFT_BINARY;
+        }
+        else if(stricmp(argv[1], "digital") == 0) {
+             clockType = CFT_DIGITAL;
+        }
+        if(clockType == CFT_Unknown) {
+           errorMessage("Must specify type of clock face [digital|binary]");
+        }
+        else {
+            int nFaceColor = getValueOfColorSpec(argv[2]);
+            debugMessage("nFaceColor=(0x%.6X) clockType=[%s]",nFaceColor, argv[1]);
+            // stop clock if already running
+            if(isClockRunning()) {
+                stopClock(void);
+            }
+            // run latest version selected
+            runClock(clockType, nFaceColor);
+        }
+    }
+    return CMD_RET_SUCCESS;   // no errors
+}
+
 int commandClearBuffer(int argc, const char *argv[])
 {
     int bValidCommand = 1;
@@ -195,7 +239,7 @@ int commandClearBuffer(int argc, const char *argv[])
            errorMessage("Buffer (%d) out-of-range: [must be 1 >= N <= %d]", nMaxBuffers);
         }
         else {
-            int nFillColor = 0; // always black for clear
+            int nFaceColor = 0; // always clear to black
             debugMessage("nFillColor=(0x%.6X)",nFillColor);
             // now set fill color to selected buffer
             fillBufferWithColorRGB(nBufferNumber, nFillColor);
@@ -518,18 +562,18 @@ int stricmp(char const *a, char const *b)
     const char *aOrig = a;
     const char *bOrig = b;
     if(a == NULL && b != NULL) {
-	return -99;
+    return -99;
     }
     else if(a != NULL && b == NULL) {
-	return 99;
+    return 99;
     }
     else if(a == NULL && b == NULL) {
-	return -101;
+    return -101;
     }
     for (;; a++, b++) {
         int d = tolower((unsigned char)*a) - tolower((unsigned char)*b);
         if (d != 0 || !*a) {
-	    //debugMessage("stricmp(%s,%s)==%d", aOrig, bOrig, d);
+        //debugMessage("stricmp(%s,%s)==%d", aOrig, bOrig, d);
             return d;
         }
     }
