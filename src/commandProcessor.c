@@ -38,6 +38,7 @@ int perform(int argc, const char *argv[]);
 //   (misc. utilities)
 int stricmp(char const *a, char const *b);
 int stringHasSuffix(const char *str, const char *suffix);
+int stringHasPrefix(const char *str, const char *prefix);
 int getValueOfColorSpec(const char *colorSpec);
 int stringIsHexValue(const char *colorSpec);
 int isHexDigitsString(const char *posHexDigits);
@@ -78,7 +79,6 @@ void processCommands(int argc, const char *argv[])
 }
 
 // forward declarations for command functions
-int stricmp(char const *a, char const *b);
 int commandHelp(int argc, const char *argv[]);
 int commandQuit(int argc, const char *argv[]);
 int commandLoadBmpFile(int argc, const char *argv[]);
@@ -100,7 +100,7 @@ struct _commandEntry {
     { "fill",        "fill {selectedBuffers} {fillColor} - where selected is [N, N-M, ., all] and color is [red, 0xffffff, all]", 2, &commandFillBuffer },
     { "border",      "border {width} {borderColor}", 1 },
     { "clock",       "clock {clockType} {faceColor} - where type is [digital, binary] and color is [red, 0xffffff]", 2 },
-    { "write",       "write {selectedBuffers} {loopYN} {rate} - where selected is [N, N-M, ., all]", 3, &commandWriteBuffer },
+    { "write",       "write {selectedBuffers} [{loopYN} {rate}] - where selected is [N, N-M, ., all]", 3, &commandWriteBuffer },
     { "square",      "square {boarderWidth} {height} {borderColor} {fillColor}", 4 },
     { "circle",      "circle {boarderWidth} {radius}  {borderColor} {fillColor}", 1 },
     { "triangle",    "triangle  {boarderWidth} {baseWidth-odd!}  {borderColor} {fillColor}", 1 },
@@ -150,7 +150,7 @@ int perform(int argc, const char *argv[])
             execStatus = (*commands[cmdIdx].pCommandFunction)(argc, argv);
         }
         else {
-            infoMessage("  --> Invalid Parameter Count for [%s] %d vs %d", argc - 1, commands[cmdIdx].paramCount);
+            infoMessage("  --> Invalid Parameter Count for [%s] %d vs %d", argv[0], argc - 1, commands[cmdIdx].paramCount);
             infoMessage("  USAGE: %s\n", commands[cmdIdx].description);
             execStatus = CMD_RET_BAD_PARMS;
         }
@@ -177,10 +177,10 @@ int commandWriteBuffer(int argc, const char *argv[])
     // IMPLEMENT:
     //   write {selectedBuffers} {loopYN} {rate} - where selected is [N, N-M, ., all]
     if(stricmp(argv[0], commands[s_nCurrentCmdIdx].name) != 0) {
-        errorMessage("[CODE]: bad call commandAllocBuffers with command [%s]", argv[0]);
+        errorMessage("[CODE]: bad call commandWriteBuffer with command [%s]", argv[0]);
         bValidCommand = 0;
     }
-    else if(argc - 1 >= 1 && argc - 1 <= 3) {
+    else if(argc < 2 || argc > 4) {
         errorMessage("[CODE]: bad call - param count err for command [%s]", argv[0]);
         bValidCommand = 0;
     }
@@ -189,14 +189,14 @@ int commandWriteBuffer(int argc, const char *argv[])
         // FIXME: UNDONE PARMS argv[2] and argv[3] are NOT YET IMPLEMENTED
         int nBufferNumber = atoi(argv[1]);
         int nMaxBuffers = numberBuffers();
-        //debugMessage("alloc %d buffers...",nBuffers);
+        debugMessage("nBufferNumber=(%d)",nBufferNumber);
         if(nBufferNumber < 1 || nBufferNumber > nMaxBuffers) {
            errorMessage("Buffer (%d) out-of-range: [must be 1 >= N <= %d]", nMaxBuffers);
         }
         else {
-            // now write xlated image to matrix itself
+            // now write buffer N contents to matrix itself
             int nBufferSize = frameBufferSizeInBytes();
-            uint8_t *pCurrBuffer = (uint8_t *)ptrBuffer(s_nCurrentBufferIdx + 1);
+            uint8_t *pCurrBuffer = (uint8_t *)ptrBuffer(nBufferNumber);
             showBuffer(pCurrBuffer, nBufferSize);
         }
     }
@@ -210,7 +210,7 @@ int commandFillBuffer(int argc, const char *argv[])
     // IMPLEMENT:
     //   fill {selectedBuffers} {fillColor} - where selected is [N, N-M, ., all] and color is [red, 0xffffff, all]
     if(stricmp(argv[0], commands[s_nCurrentCmdIdx].name) != 0) {
-        errorMessage("[CODE]: bad call commandAllocBuffers with command [%s]", argv[0]);
+        errorMessage("[CODE]: bad call commandFillBuffer with command [%s]", argv[0]);
         bValidCommand = 0;
     }
     else if(argc - 1 != 2) {
@@ -221,12 +221,13 @@ int commandFillBuffer(int argc, const char *argv[])
         // FIXME: UNDONE argv[1] is really a buffer spec, interpret it into fromBuffer, toBuffer!
         int nBufferNumber = atoi(argv[1]);
         int nMaxBuffers = numberBuffers();
-        //debugMessage("alloc %d buffers...",nBuffers);
+        debugMessage("nBufferNumber=(%d)",nBufferNumber);
         if(nBufferNumber < 1 || nBufferNumber > nMaxBuffers) {
            errorMessage("Buffer (%d) out-of-range: [must be 1 >= N <= %d]", nMaxBuffers);
         }
         else {
             int nFillColor = getValueOfColorSpec(argv[2]);
+            debugMessage("nFillColor=(0x%.6X)",nFillColor);
             // now set fill color to selected buffer
             fillBufferWithColorRGB(nBufferNumber, nFillColor);
         }
@@ -408,41 +409,42 @@ int getValueOfColorSpec(const char *colorSpec)
 {
     int desiredValue = 0;
     if(stringIsHexValue(colorSpec)) {
-        desiredValue = (int)strtol(colorSpec);
+        desiredValue = (int)strtol(colorSpec, NULL, 16);
     }
-    else if(stricmp(colorSpec, "red")) {
+    else if(stricmp(colorSpec, "red") == 0) {
        desiredValue = 0xff0000;
     }
-    else if(stricmp(colorSpec, "green")) {
+    else if(stricmp(colorSpec, "green") == 0) {
        desiredValue = 0x00ff00;
     }
-    else if(stricmp(colorSpec, "blue")) {
+    else if(stricmp(colorSpec, "blue") == 0) {
        desiredValue = 0x0000ff;
     }
-    else if(stricmp(colorSpec, "cyan")) {
+    else if(stricmp(colorSpec, "cyan") == 0) {
        desiredValue = 0x00ffff;
     }
-    else if(stricmp(colorSpec, "yellow")) {
+    else if(stricmp(colorSpec, "yellow") == 0) {
        desiredValue = 0xffff00;
     }
-    else if(stricmp(colorSpec, "magenta")) {
+    else if(stricmp(colorSpec, "magenta") == 0) {
        desiredValue = 0xff00ff;
     }
-    else if(stricmp(colorSpec, "white")) {
+    else if(stricmp(colorSpec, "white") == 0) {
        desiredValue = 0xffffff;
     }
-    else if(stricmp(colorSpec, "black")) {
+    else if(stricmp(colorSpec, "black") == 0) {
        desiredValue = 0x000000;
     }
-    else if(stricmp(colorSpec, "silver")) {
+    else if(stricmp(colorSpec, "silver") == 0) {
        desiredValue = 0xc0c0c0;
     }
-    else if(stricmp(colorSpec, "gray")) {
+    else if(stricmp(colorSpec, "gray") == 0) {
        desiredValue = 0x808080;
     }
     else {
         warningMessage("Failed to decode colorSpec[%s]", colorSpec);
     }
+    //debugMessage("desiredValue=0x%.6X",desiredValue);
     return desiredValue;
 }
 
@@ -455,6 +457,7 @@ int stringIsHexValue(const char *colorSpec)
     else if(isHexDigitsString(colorSpec)) {
         hexStatus = 1;  // YES!
     }
+    //debugMessage("stringIsHexValue()=%d",hexStatus);
     return hexStatus;
 }
 
@@ -463,11 +466,12 @@ int isHexDigitsString(const char *posHexDigits)
     int nLength = strlen(posHexDigits);
     int hexStatus = 1; // YES is all hex digits
     for(int nCharIdx = 0; nCharIdx < nLength; nCharIdx++) {
-        if(!isxdigit(posHexDigits[nCharIdx]) {
+        if(!isxdigit(posHexDigits[nCharIdx])) {
             hexStatus = 0; // No
             break;  // done, we have our answer, abort loop
         }
     }
+    //debugMessage("isHexDigitsString()=%d",hexStatus);
     return hexStatus;
 }
 
@@ -477,9 +481,21 @@ int isHexDigitsString(const char *posHexDigits)
 // REF: https://stackoverflow.com/questions/5820810/case-insensitive-string-comp-in-c
 int stricmp(char const *a, char const *b)
 {
+    const char *aOrig = a;
+    const char *bOrig = b;
+    if(a == NULL && b != NULL) {
+	return -99;
+    }
+    else if(a != NULL && b == NULL) {
+	return 99;
+    }
+    else if(a == NULL && b == NULL) {
+	return -101;
+    }
     for (;; a++, b++) {
         int d = tolower((unsigned char)*a) - tolower((unsigned char)*b);
         if (d != 0 || !*a) {
+	    //debugMessage("stricmp(%s,%s)==%d", aOrig, bOrig, d);
             return d;
         }
     }
