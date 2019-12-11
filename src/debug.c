@@ -93,6 +93,17 @@ void errorMessage(const char *format, ...)
 	va_end(argp);
 }
 
+void perrorMessage(const char *format, ...)
+{
+	va_list argp;
+	
+	va_start(argp, format);
+	fprintf(stderr, "%s:ERROR- ", pAppName);
+	vfprintf(stderr, format, argp);
+	fprintf(stderr, "\n");
+	va_end(argp);
+}
+
 //
 // =============================================================================
 

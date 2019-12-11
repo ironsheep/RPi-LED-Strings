@@ -37,6 +37,7 @@ void verboseMessage(const char *format, ...);
 void infoMessage(const char *format, ...);
 void warningMessage(const char *format, ...);
 void errorMessage(const char *format, ...);
+void perrorMessage(const char *format, ...);    // decode-n-print errno, too!
 
 // special formats
 void hexDump (const char *desc, const void *addr, const int len);
