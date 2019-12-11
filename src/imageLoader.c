@@ -63,12 +63,12 @@ static int nRows;
 static int nColumns;
 static int nImageSizeInBytes;
 
-static int *pOffsetCheckTable;
+static uint8_t *pOffsetCheckTable[];
 static int nImageBytesNeeded;
 
-static int bSetupXlate = 0;
+static int bIsXlateSetup = 0;
 
-static int fileXlateMatrix[NUMBER_OF_PANELS * LEDS_PER_PANEL * BYTES_PER_LED];
+static uint16_t fileXlateMatrix[NUMBER_OF_PANELS * LEDS_PER_PANEL * BYTES_PER_LED];
 
 
 // -----------------------
@@ -195,9 +195,9 @@ struct _BMPColorValue *loadImageFromFile(const char *fileSpec, int *lengthOut)
         *lengthOut = getImageSizeInBytes();
     }
 
-    if(!bSetupXlate) {
+    if(!bIsXlateSetup) {
         initLoadTranslation();
-        bSetupXlate = 1;    // we did this!
+        bIsXlateSetup = 1;    // we did this!
     }
 
     return getBufferBaseAddress();
