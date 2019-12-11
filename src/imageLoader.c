@@ -22,9 +22,11 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 #include <sys/stat.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <string.h> // for memxxx() and strxxx()
 
 
 #include "imageLoader.h"
+#include "frameBuffer.h"
 #include "xmalloc.h"
 #include "debug.h"
 
@@ -65,6 +67,9 @@ static int *pOffsetCheckTable;
 static int nImageBytesNeeded;
 
 static int bSetupXlate = 0;
+
+static int fileXlateMatrix[NUMBER_OF_PANELS * LEDS_PER_PANEL * BYTES_PER_LED];
+
 
 // -----------------------
 // forward declarations
