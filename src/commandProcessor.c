@@ -86,6 +86,7 @@ int commandAllocBuffers(int argc, const char *argv[]);
 int commandSelectBuffer(int argc, const char *argv[]);
 int commandFillBuffer(int argc, const char *argv[]);
 int commandWriteBuffer(int argc, const char *argv[]);
+int commandClearBuffer(int argc, const char *argv[]);
 
 struct _commandEntry {
     char *name;
@@ -95,7 +96,7 @@ struct _commandEntry {
 } commands[] = {
     { "buffers",     "buffers {numberOfBuffers} - allocate N buffers", 1, &commandAllocBuffers },
     { "buffer",      "buffer {bufferNumber} - select buffer for next actions", 1, &commandSelectBuffer },
-    { "clear",       "clear {selectedBuffers} - where selected is [N, N-M, ., all]", 1 },
+    { "clear",       "clear {selectedBuffers} - where selected is [N, N-M, ., all]", 1, &commandClearBuffer },
     { "freebuffers", "freebuffers - release all buffers", 0 },
     { "fill",        "fill {selectedBuffers} {fillColor} - where selected is [N, N-M, ., all] and color is [red, 0xffffff, all]", 2, &commandFillBuffer },
     { "border",      "border {width} {borderColor}", 1 },
@@ -105,11 +106,12 @@ struct _commandEntry {
     { "circle",      "circle {boarderWidth} {radius}  {borderColor} {fillColor}", 1 },
     { "triangle",    "triangle  {boarderWidth} {baseWidth-odd!}  {borderColor} {fillColor}", 1 },
     { "copy",        "copy {srcBufferNumber} {destBufferNumber} {shiftUpDownPix} {shiftLeftRightPix}", 1 },
-    { "default",     "default [fill|line] {color}", 2 },
+    { "default",     "default [fill|line] {color} - set default colors for subsequent draw commands", 2 },
     { "moveto",      "moveto x y - move (pen) to X, Y", 2 },
     { "lineto",      "lineto x y - draw line from curr X,Y to new X,Y", 2 },
     { "loadbmpfile", "loadbmpfile {bmpFileName} - load 24-bit bitmap into current buffer", 1, &commandLoadBmpFile },
     { "loadscreensfile", "loadscreensfile {screenSetFileName} - sets NbrScreensLoaded, ensures sufficient buffers allocated, starting from current buffer", 1 },
+    { "loadcmdfile", "loadcmdfile {commandsFileName} - iterates over commands read from file, once.", 1 },
     { "helpcommands", "helpcommands - display list of available commands", 0, &commandHelp },
     { "quit",         "quit - exit command processor", 0, &commandQuit },
 };
@@ -170,6 +172,38 @@ int perform(int argc, const char *argv[])
 // ----------------------------------------------------------------------------
 //  COMMAND Functions
 //
+int commandClearBuffer(int argc, const char *argv[])
+{
+    int bValidCommand = 1;
+
+    // IMPLEMENT:
+    //   clear {selectedBuffers} - where selected is [N, N-M, ., all]
+    if(stricmp(argv[0], commands[s_nCurrentCmdIdx].name) != 0) {
+        errorMessage("[CODE]: bad call commandClearBuffer with command [%s]", argv[0]);
+        bValidCommand = 0;
+    }
+    else if(argc - 1 != 1) {
+        errorMessage("[CODE]: bad call - param count err for command [%s]", argv[0]);
+        bValidCommand = 0;
+    }
+    if(bValidCommand) {
+        // FIXME: UNDONE argv[1] is really a buffer spec, interpret it into fromBuffer, toBuffer!
+        int nBufferNumber = atoi(argv[1]);
+        int nMaxBuffers = numberBuffers();
+        debugMessage("nBufferNumber=(%d)",nBufferNumber);
+        if(nBufferNumber < 1 || nBufferNumber > nMaxBuffers) {
+           errorMessage("Buffer (%d) out-of-range: [must be 1 >= N <= %d]", nMaxBuffers);
+        }
+        else {
+            int nFillColor = 0; // always black for clear
+            debugMessage("nFillColor=(0x%.6X)",nFillColor);
+            // now set fill color to selected buffer
+            fillBufferWithColorRGB(nBufferNumber, nFillColor);
+        }
+    }
+    return CMD_RET_SUCCESS;   // no errors
+}
+
 int commandWriteBuffer(int argc, const char *argv[])
 {
     int bValidCommand = 1;
