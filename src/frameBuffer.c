@@ -22,44 +22,70 @@
 #include <stdio.h> 
 #include <string.h> 
 
-#include "xmalloc.h"
 #include "frameBuffer.h"
+#include "xmalloc.h"
+#include "debug.h"
 
-
+#define MAX_BUFFER_POINTERS 50
 // setup our master frame buffer
-static struct _LedPixel *pFrameBuffers; // [NUMBER_OF_BUFFERS][NUMBER_OF_PANELS][LEDS_PER_PANEL];
+static struct _LedPixel *pFrameBufferAr[MAX_BUFFER_POINTERS + 1]; 
+static int nNumberAllocatedBuffers;
+
 static int nLenPanel;
-static int nLenBuffer;
-static int nLenFrameBuffers;
+static int nLenFrameBuffer;
 
 void initBuffers(void)
 {
 	nLenPanel = (sizeof(struct _LedPixel) * LEDS_PER_PANEL);
-	nLenBuffer = (nLenPanel * NUMBER_OF_PANELS);
-	nLenFrameBuffers = (nLenBuffer * NUMBER_OF_BUFFERS);
+	nLenFrameBuffer = (nLenPanel * NUMBER_OF_PANELS);
+	nNumberAllocatedBuffers = 0;
 
 	// alloc our frame buffers and init to black
-	if(pFrameBuffers == NULL) {
-		pFrameBuffers = xmalloc(nLenFrameBuffers);
-		printf("- Allocated frameBuffer@%p:[%d buffers][%d panels][%d LEDs][%d bytes]\n", pFrameBuffers, NUMBER_OF_BUFFERS, NUMBER_OF_PANELS, LEDS_PER_PANEL, sizeof(struct _LedPixel));
+	if(pFrameBufferAr[0] == NULL) {
+		pFrameBufferAr[0] = xmalloc(nLenFrameBuffer);
+		pFrameBufferAr[1] = NULL; // we always have a null pointer at end of list of buffer pointers
+		nNumberAllocatedBuffers = 1;
+		printf("- Allocated frameBuffer@%p:[%d buffers][%d panels][%d LEDs][%d bytes]\n", pFrameBuffer, 1, NUMBER_OF_PANELS, LEDS_PER_PANEL, sizeof(struct _LedPixel));
 	}
 }
 
 void clearBuffers(void)
 {
-	// write zeros to our entire set of buffers
-	memset(pFrameBuffers, 0, nLenFrameBuffers);
-	printf("- Buffers reset to zero\n");
+    for(int nBffrIdx = 0; nBffrIdx < nNumberAllocatedBuffers; nBffrIdx++) {
+    	// write zeros to our entire set of buffers
+    	memset(pFrameBufferAr[nBffrIdx], 0, nLenFrameBuffer);
+    }
+	debugMessage("clearBuffers() - %d Buffers reset to zero", nNumberAllocatedBuffers);
+}
+
+int allocBuffers(int nDesiredBuffers)
+{
+    int allocStatus = 0;    // SUCCESS
+    if(nDesiredBuffers > MAX_BUFFER_POINTERS) {
+	    warningMessage("buffer %d out-of-range: MAX %d supported", nDesiredBuffers, MAX_BUFFER_POINTERS);
+    }
+    else if(nDesiredBuffers < nNumberAllocatedBuffers) {
+        for(int nBffrIdx = nNumberAllocatedBuffers; nBffrIdx < nDesiredBuffers; nBffrIdx++) {
+		    pFrameBufferAr[nBffrIdx] = xmalloc(nLenFrameBuffer);
+		    if(pFrameBufferAr[nBffrIdx] == NULL) {
+	            errorMessage("[CODE] failed to allocate buffer %d (of %d), Aborted", nBffrIdx, nDesiredBuffers);
+	            allocStatus = -1; // FAILURE
+	            break;
+		    }
+        }
+        pFrameBufferAr[nDesiredBuffers] = NULL; // place trailing NULL at end of list
+    }
+    return allocStatus;
 }
 
 uint8_t numberBuffers(void)
 {
-		return NUMBER_OF_BUFFERS;
+	return nNumberAllocatedBuffers;
 }
 
 uint8_t numberPanels(void)
 {
-		return NUMBER_OF_PANELS;
+	return NUMBER_OF_PANELS;
 }
 
 uint16_t maxLedsInBuffer(void)
@@ -76,9 +102,16 @@ struct _LedPixel *ptrBuffer(uint8_t nBuffer)
 {
 	struct _LedPixel *desiredAddr = NULL;
 	
-	if(nBuffer < NUMBER_OF_BUFFERS) {
-		struct _LedPixel *allBuffers = (struct _LedPixel *)pFrameBuffers;
-		desiredAddr = (struct _LedPixel *)&allBuffers[nBuffer * (LEDS_PER_PANEL * NUMBER_OF_PANELS)];
+	if(nBuffer <= nNumberAllocatedBuffers) {
+		desiredAddr = (struct _LedPixel *)pFrameBufferAr[nBuffer - 1];
+	}
+	else {
+	    if(nBuffer > MAX_BUFFER_POINTERS) {
+    	    warningMessage("buffer %d out-of-range: MAX %d supported", nBuffer, MAX_BUFFER_POINTERS);
+    	}
+    	else {
+     	    warningMessage("buffer %d NOT yet Allocated. Use 'buffers %d' to allocate it");
+       	}
 	}
 	return desiredAddr;
 }
@@ -88,8 +121,13 @@ struct _LedPixel *ptrPanel(struct _LedPixel *pBuffer, uint8_t nPanel)
 	struct _LedPixel *desiredAddr = NULL;
 	
 	if(pBuffer != NULL && nPanel < NUMBER_OF_PANELS) {
-		struct _LedPixel *currBuffer = pBuffer;
-		desiredAddr = &currBuffer[nPanel * LEDS_PER_PANEL];
+		desiredAddr = &pBuffer[nPanel * LEDS_PER_PANEL];
+	}
+	else if(nPanel < NUMBER_OF_PANELS) {
+ 	    warningMessage("panel %d out-of-range. Max %d panels.", nPanel, NUMBER_OF_PANELS);
+	}
+	else {
+ 	    errorMessage("[CODE] ptrPanel(NULL,%d) must specify buffer address.", pBuffer, nPanel);
 	}
 	return desiredAddr;
 }

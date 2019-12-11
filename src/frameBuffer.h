@@ -24,13 +24,12 @@
 
 #include <stdint.h> 
 
-#define NUMBER_OF_PANELS 3
-#define LEDS_PER_PANEL 256
 #define BYTES_PER_LED 3
+#define LEDS_PER_PANEL 256
+#define NUMBER_OF_PANELS 3
+
 #define ROWS_PER_PANEL 8
 #define COLUMNS_PER_PANEL 32
-
-#define NUMBER_OF_BUFFERS 2
 
 struct _LedPixel {
 	uint8_t green;	// sent first to string in order msb to lsb!
@@ -51,7 +50,6 @@ uint8_t numberBuffers(void);
 uint8_t numberPanels(void);
 uint16_t maxLedsInBuffer(void);
 uint16_t maxLedsInPanel(void);
-
 
 // getting references to objects
 struct _LedPixel *ptrBuffer(uint8_t nBuffer); 
