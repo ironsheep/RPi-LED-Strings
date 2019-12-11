@@ -53,6 +53,7 @@ uint8_t numberBuffers(void);
 uint8_t numberPanels(void);
 uint16_t maxLedsInBuffer(void);
 uint16_t maxLedsInPanel(void);
+uint16_t frameBufferSizeInBytes(void);
 
 // getting references to objects
 struct _LedPixel *ptrBuffer(uint8_t nBuffer); 

@@ -39,5 +39,6 @@ struct _BMPColorValue *loadImageFromFile(const char *fileSpec, int *lengthOut);
 int getImageSizeInBytes(void);
 struct _BMPColorValue *getBufferBaseAddress(void);
 struct _BMPColorValue *getPixelAddressForRowColumn(uint8_t nRow, uint8_t nColumn);
+void xlateLoadedImageIntoBuffer(uint8_t *buffer, size_t length);
 
 #endif /* IMAGE_LOADER_H */

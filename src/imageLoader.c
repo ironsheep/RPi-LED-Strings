@@ -203,7 +203,21 @@ struct _BMPColorValue *loadImageFromFile(const char *fileSpec, int *lengthOut)
     return getBufferBaseAddress();
 }
 
+void xlateLoadedImageIntoBuffer(uint8_t *buffer, size_t length)
+{
+    size_t nImageSizeInBytes = getImageSizeInBytes();
+    uint8_t *pImageBuffer = getBufferBaseAddress();
 
+    if(length <> nImageSizeInBytes) {
+        errorMessage("xlateLoadedImageIntoBuffer() - bad buffer size (%d), NOT image size (%d)", length, nImageSizeInBytes);
+    }
+    else {
+        for(int nByteIdx = 0; nByteIdx < length; nByteIdx++) {
+            int nBufferOffset = fileXlateMatrix[nByteIdx];
+            buffer[nByteIdx] = pImageBuffer[nBufferOffset];
+        }
+    }
+}
 
 
 // -----------------------

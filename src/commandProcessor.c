@@ -243,8 +243,19 @@ int commandLoadBmpFile(int argc, const char *argv[])
         }
         if(bValidCommand) {
             if(fileExists(fileSpec)) {
-                int imageSize;
-                struct _BMPColorValue *bitBuffer = loadImageFromFile(fileSpec, &imageSize);
+                int nImageSize;
+                loadImageFromFile(fileSpec, &nImageSize);
+                int nBufferSize = frameBufferSizeInBytes();
+                if(nImageSize <> nBufferSize) {
+                    warningMessage("Filesize (%d bytes) incorrect for 32x24 matrix (%d bytes), display aborted!", nImageSize, nBufferSize);
+                }
+                else {
+                    uint8_t *pCurrBuffer = (uint8_t *)ptrBuffer(s_nCurrentBufferIdx);
+                    xlateLoadedImageIntoBuffer(pCurrBuffer, nBufferSize);
+                    // now write xlated image to matrix itself
+                    showBuffer(pCurrBuffer, nBufferSize);
+
+                }
             }
         }
     }
