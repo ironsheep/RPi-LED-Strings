@@ -63,7 +63,7 @@ static int nRows;
 static int nColumns;
 static int nImageSizeInBytes;
 
-static uint8_t *pOffsetCheckTable[];
+static uint8_t *pOffsetCheckTable;
 static int nImageBytesNeeded;
 
 static int bIsXlateSetup = 0;
@@ -105,7 +105,7 @@ struct _BMPColorValue *getPixelAddressForRowColumn(uint8_t nRow, uint8_t nColumn
     int nColumnIndex = nColumn;
     // now offset is simple (
     int nOffset = (nRowIndex * nColumns) + nColumnIndex;
-    printf("- Offset=%d, RC=(%d,%d)\n", nOffset, nRow, nColumn);
+    //printf("- Offset=%d, RC=(%d,%d)\n", nOffset, nRow, nColumn);
     struct _BMPColorValue *rgbArray = (struct _BMPColorValue *)fileBuffer;
 
     return &rgbArray[nOffset];
@@ -215,7 +215,7 @@ void initLoadTranslation(void)
 	memset(&fileXlateMatrix, 0xFF, sizeof(fileXlateMatrix));
 
 	nImageBytesNeeded = getImageSizeInBytes();
-	pOffsetCheckTable = (void *)xmalloc(nImageBytesNeeded);
+	pOffsetCheckTable = (uint8_t *)xmalloc(nImageBytesNeeded);
 	// fill offset-used buffer with not-set value
 	memset(pOffsetCheckTable, 0x00, nImageBytesNeeded);
 
@@ -226,6 +226,7 @@ void initLoadTranslation(void)
 void initFileXlateMatrix(void)
 {
     debugMessage("initFileXlateMatrix() - ENTRY");
+#ifdef TEST_OUTPUT_NEEDED
 	// quick test of get routine (seeing issues)
 	uint8_t *pCurrFilePixel = (uint8_t *)getPixelAddressForRowColumn(16, 4);
 	printf("- TEST 16,4 = %p\n", pCurrFilePixel);
@@ -233,6 +234,7 @@ void initFileXlateMatrix(void)
 	printf("- TEST 8,4 = %p\n", pCurrFilePixel);
 	pCurrFilePixel = (uint8_t *)getPixelAddressForRowColumn(0, 4);
 	printf("- TEST 0,4 = %p\n\n\n", pCurrFilePixel);
+#endif
 
 
 	// panels are arranged in columns 8-pixels tall by 32 pixels wide
@@ -283,7 +285,7 @@ void initFileXlateMatrix(void)
 			struct _BMPColorValue *pCurrFilePixel;
 			// at the beginning of each color do...
 			if(nColorIndex == 0) {
-				printf("\n----------------\n");
+				//printf("\n----------------\n");
 				pCurrFilePixel = getPixelAddressForRowColumn(nRowIndex, nColumnIndex);
 			}
 
@@ -310,6 +312,7 @@ void initFileXlateMatrix(void)
 			// load matrix location with file offset
 			int nXlateOffset = nPanelOffsetIndex + nByteOfColorIndex;
 			fileXlateMatrix[nXlateOffset] = nFileOffsetValue;
+#ifdef NEEDED
 			printf("- File RC={%d,%d} - Panel[#%d, RC={%d,%d} px:%d color:%d byte:%d]",
 				nRowIndex,
 				nColumnIndex,
@@ -320,6 +323,7 @@ void initFileXlateMatrix(void)
 				nColorIndex,
 				nByteOfColorIndex);
 			printf("  -- MATRIX[%d] = (%d); FILE [px:%d + clr:%d] @%p\n", nXlateOffset, nFileOffsetValue, nFilePixelOffset, nColorOffset, pCurrFilePixel);
+#endif
 
 			// detect if offset used more than once. Should NEVER be!!
 			if(nFileOffsetValue >= nImageBytesNeeded) {
