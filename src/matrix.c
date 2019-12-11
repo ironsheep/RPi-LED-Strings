@@ -93,30 +93,30 @@ int main (int argc, char **argv)
     int argCt;
     int paramCt;
 
-    printf("- main() ENTRY\n");
+    debugMessage("main() ENTRY");
 
-    printf("- argc=(%d)\n", argc);
+    debugMessage("argc=(%d)", argc);
     for(int argCt=0; argCt<argc; argCt++) {
-	printf("- arg[%d] = [%s]\n", argCt, argv[argCt]);
+    	debugMessage("arg[%d] = [%s]", argCt, argv[argCt]);
     }
     
     textdomain(PACKAGE);
 
 
-    printf("- copy app name\n");
+    //debugMessage("- copy app name");
     
     
     // save off our appname
     char *tmpStr = strdup((const char *)basename(argv[0]));
     if(tmpStr != NULL) {
-	pAppName = tmpStr;
+    	pAppName = tmpStr;
     }
 
-    printf("- parse args\n");
+    //debugMessage("parse args");
     
     argp_parse(&argp, argc, argv, 0, NULL, NULL);
 
-    printf("- open driver\n");
+    verboseMessage("open driver");
     
     
     // FIXME: UNDONE only open device if we need it!
@@ -124,9 +124,9 @@ int main (int argc, char **argv)
         errorMessage("Failed to connect to driver: LEDfifoLKM Loaded?");
         exit(-1);
     }
-    printf("- process commands\n");
+    verboseMessage("process commands");
 
-    	paramCt = 0;
+	paramCt = 0;
 	if(fileName != NULL) {
 		parameters[0] = "load";
 		parameters[1] = fileName;
@@ -136,13 +136,13 @@ int main (int argc, char **argv)
  	
 	processCommands( paramCt, parameters );
 
-    printf("- close driver\n");
+    verboseMessage("close driver");
 	
     if(!closeMatrix()) {
         errorMessage("Failed to disconnect from LEDfifoLKM driver!");
         exit(-1);
     }
-    printf("- main() EXIT\n");
+    debugMessage("main() EXIT");
 
 	exit (0);
 }
