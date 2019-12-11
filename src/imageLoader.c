@@ -100,12 +100,12 @@ int fileExists(const char *fileSpec)
 {
     int foundStatus = 1; // found
     
-	struct stat st;
-	if(stat(sTestFileName, &st) != 0) {
-	    perrorMessage("stat() failure");
-	    foundStatus = 0; // not found
-	}
-	char *statYN = (foundStatus) ? "YES" : "no";
+    struct stat st;
+    if(stat(fileSpec, &st) != 0) {
+        perrorMessage("stat() failure");
+        foundStatus = 0; // not found
+    }
+    char *statYN = (foundStatus) ? "YES" : "no";
     debugMessage("fileExists(%s) -> %s", fileSpec, statYN);
     
     return foundStatus;
@@ -113,7 +113,7 @@ int fileExists(const char *fileSpec)
 
 void loadTestImage(void) 
 {
-    loadImageFromFile(sTestFileName);
+    loadImageFromFile(sTestFileName, NULL);
 }
 
 struct _BMPColorValue *loadImageFromFile(const char *fileSpec, int *lengthOut) 
@@ -131,7 +131,7 @@ struct _BMPColorValue *loadImageFromFile(const char *fileSpec, int *lengthOut)
 	if(!fpTestFile)
 	{
 		perrorMessage("fopen() failure");
-		return;
+		return NULL;
 	}
 	fread(&bmpHeaderData, sizeof(struct _BMPHeader), 1, fpTestFile);
 

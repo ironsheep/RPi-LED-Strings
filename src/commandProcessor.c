@@ -21,7 +21,7 @@
 
 #include <stdio.h> 
 #include <stdlib.h> // realloc()
-#include <string.h> // strtok()
+#include <string.h> // strtok(), strxxxx()
 #include <ctype.h> // tolower()
 
 #include "commandProcessor.h"
@@ -33,6 +33,8 @@ const char **lsh_split_line(char *line, int *tokenCtOut);
 int perform(int argc, const char *argv[]);
 
 
+int stricmp(char const *a, char const *b);
+int stringHasSuffix(const char *str, const char *suffix);
 
 
 void processCommands(int argc, const char *argv[])
@@ -171,9 +173,15 @@ int commandLoadBmpFile(int argc, const char *argv[])
     }
     else {
         const char *fileSpec = argv[1];
-        if(fileExists(fileSpec)) {
-            int imageSize;
-            struct _BMPColorValue *bitBuffer = loadImageFromFile(fileSpec, &imageSize);
+        if(!stringHasSuffix(fileSpec, ".bmp")) {
+            printf("ERROR[CODE]: invalid filetype [%s], expected [.bmp]\n", fileSpec);
+            bValueCommand = 0;
+        }
+	else {
+            if(fileExists(fileSpec)) {
+                int imageSize;
+                struct _BMPColorValue *bitBuffer = loadImageFromFile(fileSpec, &imageSize);
+            }
         }
 
     }
@@ -209,6 +217,19 @@ int stricmp(char const *a, char const *b)
         if (d != 0 || !*a)
             return d;
     }
+}
+
+int stringHasSuffix(const char *str, const char *suffix)
+{
+    if (!str || !suffix) {
+        return 0;
+    }
+    size_t lenstr = strlen(str);
+    size_t lensuffix = strlen(suffix);
+    if (lensuffix >  lenstr) {
+        return 0;
+    }
+    return stricmp(str + lenstr - lensuffix, suffix) == 0;
 }
 
 //

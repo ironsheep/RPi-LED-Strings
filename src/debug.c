@@ -98,9 +98,9 @@ void perrorMessage(const char *format, ...)
 	va_list argp;
 	
 	va_start(argp, format);
-	fprintf(stderr, "%s:ERROR- ", pAppName);
+	fprintf(stderr, "%s:pERROR- ", pAppName);
 	vfprintf(stderr, format, argp);
-	fprintf(stderr, "\n");
+	perror(" ");
 	va_end(argp);
 }
 
