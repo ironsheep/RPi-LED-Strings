@@ -77,6 +77,7 @@ int	allocBuffers(int nDesiredBuffers)
             }
             else {
                 debugMessage("allocated	buffer[%d] @%p", nBffrIdx,pFrameBufferAr[nBffrIdx]);
+                nNumberAllocatedBuffers++;
             }
         }
         pFrameBufferAr[nDesiredBuffers]	= NULL;	// place trailing NULL at end of list
@@ -97,12 +98,17 @@ uint8_t	numberPanels(void)
 
 uint16_t maxLedsInBuffer(void)
 {
-    return LEDS_PER_PANEL *	NUMBER_OF_PANELS;
+    return LEDS_PER_PANEL * NUMBER_OF_PANELS;
 }
 
 uint16_t maxLedsInPanel(void)
 {
     return LEDS_PER_PANEL;
+}
+
+uint16_t frameBufferSizeInBytes(void)
+{
+	return nLenFrameBuffer;
 }
 
 struct _LedPixel *ptrBuffer(uint8_t	nBuffer)

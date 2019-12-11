@@ -28,6 +28,7 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 #include "debug.h"
 #include "imageLoader.h"
 #include "frameBuffer.h"
+#include "matrixDriver.h"
 
 
 // forward declarations
@@ -246,7 +247,7 @@ int commandLoadBmpFile(int argc, const char *argv[])
                 int nImageSize;
                 loadImageFromFile(fileSpec, &nImageSize);
                 int nBufferSize = frameBufferSizeInBytes();
-                if(nImageSize <> nBufferSize) {
+                if(nImageSize != nBufferSize) {
                     warningMessage("Filesize (%d bytes) incorrect for 32x24 matrix (%d bytes), display aborted!", nImageSize, nBufferSize);
                 }
                 else {

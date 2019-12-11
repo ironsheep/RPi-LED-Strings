@@ -206,9 +206,9 @@ struct _BMPColorValue *loadImageFromFile(const char *fileSpec, int *lengthOut)
 void xlateLoadedImageIntoBuffer(uint8_t *buffer, size_t length)
 {
     size_t nImageSizeInBytes = getImageSizeInBytes();
-    uint8_t *pImageBuffer = getBufferBaseAddress();
+    uint8_t *pImageBuffer = (uint8_t *)getBufferBaseAddress();
 
-    if(length <> nImageSizeInBytes) {
+    if(length != nImageSizeInBytes) {
         errorMessage("xlateLoadedImageIntoBuffer() - bad buffer size (%d), NOT image size (%d)", length, nImageSizeInBytes);
     }
     else {
