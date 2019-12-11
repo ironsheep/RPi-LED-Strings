@@ -56,7 +56,8 @@ uint16_t maxLedsInPanel(void);
 uint16_t frameBufferSizeInBytes(void);
 
 // getting references to objects
-struct _LedPixel *ptrBuffer(uint8_t nBuffer); 
+struct _LedPixel *ptrBuffer(uint8_t nBufferNumber); 
 struct _LedPixel *ptrPanel(struct _LedPixel *pBuffer, uint8_t nPanel);
+void fillBufferWithColorRGB(uint8_t nBufferNumber, uint32_t nColorRGB); 
 
 #endif /* FRAME_BUFFER_H */

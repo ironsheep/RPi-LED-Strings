@@ -144,3 +144,20 @@ struct _LedPixel *ptrPanel(struct _LedPixel *pBuffer, uint8_t nPanel)
     }
     return desiredAddr;
 }
+
+void fillBufferWithColorRGB(uint8_t nBufferNumber, uint32_t nColorRGB)
+{
+    struct _LedPixel *pSelectedBuffer = ptrBuffer(nBufferNumber);
+    if(pSelectedBuffer != NULL) {
+        int nMaxLEDs = maxLedsInBuffer();
+        uint8_t red = (nColorRGB >> 16) & 0xff;
+        uint8_t green = (nColorRGB >> 8) & 0xff;
+        uint8_t blue = (nColorRGB >> 0) & 0xff;
+        for(int nLedIdx = 0; nLedIdx < nMaxLEDs; nLedIdx++) {
+            pSelectedBuffer[nLedIdx].red = red;
+            pSelectedBuffer[nLedIdx].green = green;
+            pSelectedBuffer[nLedIdx].blue = blue;
+        }
+    }
+}
+

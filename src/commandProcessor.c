@@ -22,7 +22,7 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 #include <stdio.h>
 #include <stdlib.h> // realloc()
 #include <string.h> // strtok(), strxxxx()
-#include <ctype.h> // tolower()
+#include <ctype.h> // tolower(), isxdigit()
 
 #include "commandProcessor.h"
 #include "debug.h"
@@ -38,6 +38,10 @@ int perform(int argc, const char *argv[]);
 //   (misc. utilities)
 int stricmp(char const *a, char const *b);
 int stringHasSuffix(const char *str, const char *suffix);
+int getValueOfColorSpec(const char *colorSpec);
+int stringIsHexValue(const char *colorSpec);
+int isHexDigitsString(const char *posHexDigits);
+
 
 
 static int s_nCurrentBufferIdx = 0;
@@ -80,6 +84,8 @@ int commandQuit(int argc, const char *argv[]);
 int commandLoadBmpFile(int argc, const char *argv[]);
 int commandAllocBuffers(int argc, const char *argv[]);
 int commandSelectBuffer(int argc, const char *argv[]);
+int commandFillBuffer(int argc, const char *argv[]);
+int commandWriteBuffer(int argc, const char *argv[]);
 
 struct _commandEntry {
     char *name;
@@ -89,12 +95,12 @@ struct _commandEntry {
 } commands[] = {
     { "buffers",     "buffers {numberOfBuffers} - allocate N buffers", 1, &commandAllocBuffers },
     { "buffer",      "buffer {bufferNumber} - select buffer for next actions", 1, &commandSelectBuffer },
-    { "clear",       "clear {selectedBuffers} - where selected is [N, N-M, all]", 1 },
+    { "clear",       "clear {selectedBuffers} - where selected is [N, N-M, ., all]", 1 },
     { "freebuffers", "freebuffers - release all buffers", 0 },
-    { "fill",        "fill {selectedBuffers} {fillColor} - where selected is [N, N-M, ., all] and color is [red, 0xffffff, all]", 2 },
+    { "fill",        "fill {selectedBuffers} {fillColor} - where selected is [N, N-M, ., all] and color is [red, 0xffffff, all]", 2, &commandFillBuffer },
     { "border",      "border {width} {borderColor}", 1 },
     { "clock",       "clock {clockType} {faceColor} - where type is [digital, binary] and color is [red, 0xffffff]", 2 },
-    { "buffers",     "write {selectedBuffers} {loopYN} {rate} - where selected is [N, N-M, ., all]", 3 },
+    { "write",       "write {selectedBuffers} {loopYN} {rate} - where selected is [N, N-M, ., all]", 3, &commandWriteBuffer },
     { "square",      "square {boarderWidth} {height} {borderColor} {fillColor}", 4 },
     { "circle",      "circle {boarderWidth} {radius}  {borderColor} {fillColor}", 1 },
     { "triangle",    "triangle  {boarderWidth} {baseWidth-odd!}  {borderColor} {fillColor}", 1 },
@@ -164,12 +170,77 @@ int perform(int argc, const char *argv[])
 // ----------------------------------------------------------------------------
 //  COMMAND Functions
 //
+int commandWriteBuffer(int argc, const char *argv[])
+{
+    int bValidCommand = 1;
+
+    // IMPLEMENT:
+    //   write {selectedBuffers} {loopYN} {rate} - where selected is [N, N-M, ., all]
+    if(stricmp(argv[0], commands[s_nCurrentCmdIdx].name) != 0) {
+        errorMessage("[CODE]: bad call commandAllocBuffers with command [%s]", argv[0]);
+        bValidCommand = 0;
+    }
+    else if(argc - 1 >= 1 && argc - 1 <= 3) {
+        errorMessage("[CODE]: bad call - param count err for command [%s]", argv[0]);
+        bValidCommand = 0;
+    }
+    if(bValidCommand) {
+        // FIXME: UNDONE argv[1] is really a buffer spec, interpret it into fromBuffer, toBuffer!
+        // FIXME: UNDONE PARMS argv[2] and argv[3] are NOT YET IMPLEMENTED
+        int nBufferNumber = atoi(argv[1]);
+        int nMaxBuffers = numberBuffers();
+        //debugMessage("alloc %d buffers...",nBuffers);
+        if(nBufferNumber < 1 || nBufferNumber > nMaxBuffers) {
+           errorMessage("Buffer (%d) out-of-range: [must be 1 >= N <= %d]", nMaxBuffers);
+        }
+        else {
+            // now write xlated image to matrix itself
+            int nBufferSize = frameBufferSizeInBytes();
+            uint8_t *pCurrBuffer = (uint8_t *)ptrBuffer(s_nCurrentBufferIdx + 1);
+            showBuffer(pCurrBuffer, nBufferSize);
+        }
+    }
+    return CMD_RET_SUCCESS;   // no errors
+}
+
+int commandFillBuffer(int argc, const char *argv[])
+{
+    int bValidCommand = 1;
+
+    // IMPLEMENT:
+    //   fill {selectedBuffers} {fillColor} - where selected is [N, N-M, ., all] and color is [red, 0xffffff, all]
+    if(stricmp(argv[0], commands[s_nCurrentCmdIdx].name) != 0) {
+        errorMessage("[CODE]: bad call commandAllocBuffers with command [%s]", argv[0]);
+        bValidCommand = 0;
+    }
+    else if(argc - 1 != 2) {
+        errorMessage("[CODE]: bad call - param count err for command [%s]", argv[0]);
+        bValidCommand = 0;
+    }
+    if(bValidCommand) {
+        // FIXME: UNDONE argv[1] is really a buffer spec, interpret it into fromBuffer, toBuffer!
+        int nBufferNumber = atoi(argv[1]);
+        int nMaxBuffers = numberBuffers();
+        //debugMessage("alloc %d buffers...",nBuffers);
+        if(nBufferNumber < 1 || nBufferNumber > nMaxBuffers) {
+           errorMessage("Buffer (%d) out-of-range: [must be 1 >= N <= %d]", nMaxBuffers);
+        }
+        else {
+            int nFillColor = getValueOfColorSpec(argv[2]);
+            // now set fill color to selected buffer
+            fillBufferWithColorRGB(nBufferNumber, nFillColor);
+        }
+    }
+    return CMD_RET_SUCCESS;   // no errors
+}
+
+
 int commandSelectBuffer(int argc, const char *argv[])
 {
     int bValidCommand = 1;
 
     // IMPLEMENT:
-    //   buffers {numberOfBuffers} - allocate N buffers
+    //   buffer {bufferNumber} - select buffer for next actions
     if(stricmp(argv[0], commands[s_nCurrentCmdIdx].name) != 0) {
         errorMessage("[CODE]: bad call commandAllocBuffers with command [%s]", argv[0]);
         bValidCommand = 0;
@@ -253,9 +324,6 @@ int commandLoadBmpFile(int argc, const char *argv[])
                 else {
                     uint8_t *pCurrBuffer = (uint8_t *)ptrBuffer(s_nCurrentBufferIdx + 1);
                     xlateLoadedImageIntoBuffer(pCurrBuffer, nBufferSize);
-                    // now write xlated image to matrix itself
-                    showBuffer(pCurrBuffer, nBufferSize);
-
                 }
             }
         }
@@ -281,6 +349,128 @@ int commandQuit(int argc, const char *argv[])
     return CMD_RET_EXIT;
 }
 
+
+// ----------------------------------------------------------------------------
+//  PRIVATE Functions
+//
+//
+// REF borrowing from: https://brennan.io/2015/01/16/write-a-shell-in-c
+//
+char *lsh_read_line(void)
+{
+    char *line = NULL;
+    ssize_t bufsize = 0; // have getline allocate a buffer for us
+    getline(&line, &bufsize, stdin);
+    return line;
+}
+
+#define LSH_TOK_BUFSIZE 64
+#define LSH_TOK_DELIM " \t\r\n\a"
+
+const char **lsh_split_line(char *line, int *tokenCtOut)
+{
+    int bufsize = LSH_TOK_BUFSIZE;
+    int position = 0;
+    char **tokens = malloc(bufsize * sizeof(char*));
+    char *token;
+
+    if (!tokens) {
+        fprintf(stderr, "lsh: allocation error\n");
+        exit(EXIT_FAILURE);
+    }
+
+    token = strtok(line, LSH_TOK_DELIM);
+    while (token != NULL) {
+        tokens[position] = token;
+        position++;
+
+        if (position >= bufsize) {
+            bufsize += LSH_TOK_BUFSIZE;
+            tokens = realloc(tokens, bufsize * sizeof(char*));
+            if (!tokens) {
+                fprintf(stderr, "lsh: allocation error\n");
+                exit(EXIT_FAILURE);
+            }
+        }
+
+        token = strtok(NULL, LSH_TOK_DELIM);
+    }
+    tokens[position] = NULL;
+
+    // if requested, pass count of tokens found to caller
+    if(tokenCtOut != NULL) {
+        *tokenCtOut = position;
+    }
+    return (const char **)tokens;
+}
+
+int getValueOfColorSpec(const char *colorSpec)
+{
+    int desiredValue = 0;
+    if(stringIsHexValue(colorSpec)) {
+        desiredValue = (int)strtol(colorSpec);
+    }
+    else if(stricmp(colorSpec, "red")) {
+       desiredValue = 0xff0000;
+    }
+    else if(stricmp(colorSpec, "green")) {
+       desiredValue = 0x00ff00;
+    }
+    else if(stricmp(colorSpec, "blue")) {
+       desiredValue = 0x0000ff;
+    }
+    else if(stricmp(colorSpec, "cyan")) {
+       desiredValue = 0x00ffff;
+    }
+    else if(stricmp(colorSpec, "yellow")) {
+       desiredValue = 0xffff00;
+    }
+    else if(stricmp(colorSpec, "magenta")) {
+       desiredValue = 0xff00ff;
+    }
+    else if(stricmp(colorSpec, "white")) {
+       desiredValue = 0xffffff;
+    }
+    else if(stricmp(colorSpec, "black")) {
+       desiredValue = 0x000000;
+    }
+    else if(stricmp(colorSpec, "silver")) {
+       desiredValue = 0xc0c0c0;
+    }
+    else if(stricmp(colorSpec, "gray")) {
+       desiredValue = 0x808080;
+    }
+    else {
+        warningMessage("Failed to decode colorSpec[%s]", colorSpec);
+    }
+    return desiredValue;
+}
+
+int stringIsHexValue(const char *colorSpec)
+{
+    int hexStatus = 0;  // NO!
+    if(stringHasPrefix(colorSpec, "0x") && isHexDigitsString(&colorSpec[2])) {
+        hexStatus = 1;  // YES!
+    }
+    else if(isHexDigitsString(colorSpec)) {
+        hexStatus = 1;  // YES!
+    }
+    return hexStatus;
+}
+
+int isHexDigitsString(const char *posHexDigits)
+{
+    int nLength = strlen(posHexDigits);
+    int hexStatus = 1; // YES is all hex digits
+    for(int nCharIdx = 0; nCharIdx < nLength; nCharIdx++) {
+        if(!isxdigit(posHexDigits[nCharIdx]) {
+            hexStatus = 0; // No
+            break;  // done, we have our answer, abort loop
+        }
+    }
+    return hexStatus;
+}
+
 // ----------------------------------------------------------------------------
 //  Missing Functions
 //
@@ -289,75 +479,35 @@ int stricmp(char const *a, char const *b)
 {
     for (;; a++, b++) {
         int d = tolower((unsigned char)*a) - tolower((unsigned char)*b);
-        if (d != 0 || !*a)
+        if (d != 0 || !*a) {
             return d;
         }
     }
+}
 
-    int stringHasSuffix(const char *str, const char *suffix)
-    {
-        if (!str || !suffix) {
-            return 0;
-        }
-        size_t lenstr = strlen(str);
-        size_t lensuffix = strlen(suffix);
-        if (lensuffix >  lenstr) {
-            return 0;
-        }
-        return stricmp(str + lenstr - lensuffix, suffix) == 0;
+int stringHasSuffix(const char *str, const char *suffix)
+{
+    if (!str || !suffix) {
+        return 0;
     }
-
-    //
-    // REF borrowing from: https://brennan.io/2015/01/16/write-a-shell-in-c
-    //
-
-    char *lsh_read_line(void)
-    {
-        char *line = NULL;
-        ssize_t bufsize = 0; // have getline allocate a buffer for us
-        getline(&line, &bufsize, stdin);
-        return line;
+    size_t lenstr = strlen(str);
+    size_t lensuffix = strlen(suffix);
+    if (lensuffix >  lenstr) {
+        return 0;
     }
+    return stricmp(str + lenstr - lensuffix, suffix) == 0;
+}
 
-    #define LSH_TOK_BUFSIZE 64
-    #define LSH_TOK_DELIM " \t\r\n\a"
-
-    const char **lsh_split_line(char *line, int *tokenCtOut)
-    {
-        int bufsize = LSH_TOK_BUFSIZE;
-        int position = 0;
-        char **tokens = malloc(bufsize * sizeof(char*));
-        char *token;
-
-        if (!tokens) {
-            fprintf(stderr, "lsh: allocation error\n");
-            exit(EXIT_FAILURE);
-        }
-
-        token = strtok(line, LSH_TOK_DELIM);
-        while (token != NULL) {
-            tokens[position] = token;
-            position++;
-
-            if (position >= bufsize) {
-                bufsize += LSH_TOK_BUFSIZE;
-                tokens = realloc(tokens, bufsize * sizeof(char*));
-                if (!tokens) {
-                    fprintf(stderr, "lsh: allocation error\n");
-                    exit(EXIT_FAILURE);
-                }
-            }
-
-            token = strtok(NULL, LSH_TOK_DELIM);
-        }
-        tokens[position] = NULL;
-
-        // if requested, pass count of tokens found to caller
-        if(tokenCtOut != NULL) {
-            *tokenCtOut = position;
-        }
-        return (const char **)tokens;
+int stringHasPrefix(const char *str, const char *prefix)
+{
+    if (!str || !prefix) {
+        return 0;
     }
-
-
+    size_t lenstr = strlen(str);
+    size_t lenprefix = strlen(prefix);
+    if (lenprefix > lenstr) {
+        return 0;
+    }
+    return strncmp(str + lenstr - lenprefix, prefix, lenprefix) == 0;
+}
 
