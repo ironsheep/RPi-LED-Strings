@@ -74,6 +74,7 @@ int stricmp(char const *a, char const *b);
 int commandHelp(int argc, const char *argv[]);
 int commandQuit(int argc, const char *argv[]);
 int commandLoadBmpFile(int argc, const char *argv[]);
+int commandAllocBuffers(int argc, const char *argv[]);
 
 struct _commandEntry {
     char *name;
@@ -81,7 +82,7 @@ struct _commandEntry {
     int   paramCount;
     int (*pCommandFunction)(int argc, const char *argv[]);
 } commands[] = {
-    { "buffers",     "buffers {numberOfBuffers} - allocate N buffers", 1 },
+    { "buffers",     "buffers {numberOfBuffers} - allocate N buffers", 1, &commandAllocBuffers },
     { "buffer",      "buffer {bufferNumber} - select buffer for next actions", 1 },
     { "clear",       "clear {selectedBuffers} - where selected is [N, N-M, all]", 1 },
     { "freebuffers", "freebuffers - release all buffers", 0 },
@@ -158,33 +159,59 @@ int perform(int argc, const char *argv[])
 // ----------------------------------------------------------------------------
 //  COMMAND Functions
 //
-int commandLoadBmpFile(int argc, const char *argv[])
+int commandAllocBuffers(int argc, const char *argv[])
 {
-    int bValueCommand = 1;
+	    int bValidCommand = 1;
     
     // IMPLEMENT:
     //   loadbmpfile {bmpFileName} - load 24-bit bitmap into current buffer
     if(stricmp(argv[0], commands[s_nCurrentCmdIdx].name) != 0) {
-        printf("ERROR[CODE]: bad call commandLoadBmpFile with command [%s]\n", argv[0]);
-        bValueCommand = 0;
+        errorMessage("[CODE]: bad call commandAllocBuffers with command [%s]", argv[0]);
+        bValidCommand = 0;
+    }
+    else if(argc != 1) {
+        errorMessage("[CODE]: bad call - param count err for command [%s]", argv[0]);
+        bValidCommand = 0;
+    }
+	if(bValidCommand) {
+	    int nBuffers = atoi(argv[1]);
+	    if(nBuffers > 0) {
+	        // ensure requested number of buffers are allocated
+	        allocBuffers(nBuffers);
+	    }
+	    else {
+            errorMessage("[CODE]: bad call - param value [converts as 0: %s]", argv[1]);
+	    }
+	}
+    return CMD_RET_SUCCESS;   // no errors
+}
+
+int commandLoadBmpFile(int argc, const char *argv[])
+{
+    int bValidCommand = 1;
+    
+    // IMPLEMENT:
+    //   loadbmpfile {bmpFileName} - load 24-bit bitmap into current buffer
+    if(stricmp(argv[0], commands[s_nCurrentCmdIdx].name) != 0) {
+        errorMessage("[CODE]: bad call commandLoadBmpFile with command [%s]", argv[0]);
+        bValidCommand = 0;
     }
     else if(argc != 2) {
-        printf("ERROR[CODE]: bad call - param count err for command [%s]\n", argv[0]);
-        bValueCommand = 0;
+        errorMessage("[CODE]: bad call - param count err for command [%s]", argv[0]);
+        bValidCommand = 0;
     }
-    else {
+		if(bValidCommand) {
         const char *fileSpec = argv[1];
         if(!stringHasSuffix(fileSpec, ".bmp")) {
-            printf("ERROR[CODE]: invalid filetype [%s], expected [.bmp]\n", fileSpec);
-            bValueCommand = 0;
+            warningMessage("Invalid filetype [%s], expected [.bmp]", fileSpec);
+            bValidCommand = 0;
         }
-	else {
+				if(bValidCommand) {
             if(fileExists(fileSpec)) {
                 int imageSize;
                 struct _BMPColorValue *bitBuffer = loadImageFromFile(fileSpec, &imageSize);
             }
         }
-
     }
     
     return CMD_RET_SUCCESS;   // no errors
