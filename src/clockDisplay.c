@@ -25,34 +25,36 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 #include "debug.h"
 
 // forward declarations
-static void *threadDigitalClock(void *argp);
-static void *threadBinaryClock(void *argp);
+void *threadDigitalClock(void *argp);
+void *threadBinaryClock(void *argp);
+void showCurrDigitalFace(void);
+void showCurrBinaryFace(void);
 
 
 static pthread_t clockThread;
 static int bClockRunning;
 
-void runClock(eClockFaceTypes clockType, utint32_t nFaceColor)
+void runClock(eClockFaceTypes clockType, uint32_t nFaceColor)
 {
     int status;
 
     verboseMessage("runClock() Start Clock Thread");
     switch(clockType) {
         case CFT_DIGITAL:
-            status = pthread_create(&clockThread, NULL, &threadDigitalClock, nFaceColor);
+            status = pthread_create(&clockThread, NULL, &threadDigitalClock, (void *)nFaceColor);
             if (status != 0) {
                 perrorMessage("pthread_create(Digital) failure");
             }
             break;
         case CFT_BINARY:
-            status = pthread_create(&clockThread, NULL, &threadBinaryClock, nFaceColor);
+            status = pthread_create(&clockThread, NULL, &threadBinaryClock, (void *)nFaceColor);
             if (status != 0) {
                 perrorMessage("pthread_create(Binary) failure");
             }
             break;
         default:
             errorMessage("runClock() Unknown clock type (%d)", clockType);
-            break
+            break;
     }
 }
 
@@ -76,7 +78,7 @@ int isClockRunning(void)
 // ---------------------------------------------------------------------------
 // Clock Thread Functions
 //
-static void *threadDigitalClock(void *argp)
+void *threadDigitalClock(void *argp)
 {
     bClockRunning = 1;  // show IS running
 
@@ -88,10 +90,10 @@ static void *threadDigitalClock(void *argp)
     do {
         showCurrDigitalFace();
         //sleep 1 second
-    }
+    } while(1);
 }
 
-static void *threadBinaryClock(void *argp)
+void *threadBinaryClock(void *argp)
 {
     bClockRunning = 1;  // show IS running
 
@@ -103,6 +105,14 @@ static void *threadBinaryClock(void *argp)
     do {
         showCurrBinaryFace();
         //sleep 1 second
-    }
+    } while(1);
+}
+
+void showCurrDigitalFace(void)
+{
+}
+
+void showCurrBinaryFace(void)
+{
 }
 

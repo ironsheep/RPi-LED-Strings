@@ -62,7 +62,7 @@ int allocBuffers(int nDesiredBuffers)
 {
     int allocStatus = 0;    // SUCCESS
 
-    debugMessage("allocBuffers(%d) - ENTRY", nDesiredBuffers);
+    //debugMessage("allocBuffers(%d) - ENTRY", nDesiredBuffers);
     if(nDesiredBuffers > MAX_BUFFER_POINTERS) {
         warningMessage("buffer %d out-of-range: MAX %d supported", nDesiredBuffers, MAX_BUFFER_POINTERS);
     }
@@ -82,7 +82,7 @@ int allocBuffers(int nDesiredBuffers)
         }
         pFrameBufferAr[nDesiredBuffers] = NULL; // place trailing NULL at end of list
     }
-    debugMessage("allocBuffers() - EXIT");
+    //debugMessage("allocBuffers() - EXIT");
     return allocStatus;
 }
 

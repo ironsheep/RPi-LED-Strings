@@ -118,6 +118,7 @@ struct _commandEntry {
     { "loadcmdfile", "loadcmdfile {commandsFileName} - iterates over commands read from file, once.", 1 },
     { "helpcommands", "helpcommands - display list of available commands", 0, &commandHelp },
     { "quit",         "quit - exit command processor", 0, &commandQuit },
+    { "exit",         "exit - exit command processor", 0, &commandQuit },
 };
 static int commandCount = sizeof(commands) / sizeof(struct _commandEntry);
 
@@ -192,7 +193,7 @@ int commandShowClock(int argc, const char *argv[])
     }
     if(bValidCommand) {
         // which type of clock?
-        eClockFaceType clockType = CFT_Unknown;
+        eClockFaceTypes clockType = CFT_Unknown;
         if(stricmp(argv[1], "binary") == 0) {
             clockType = CFT_BINARY;
         }
@@ -207,7 +208,7 @@ int commandShowClock(int argc, const char *argv[])
             debugMessage("nFaceColor=(0x%.6X) clockType=[%s]",nFaceColor, argv[1]);
             // stop clock if already running
             if(isClockRunning()) {
-                stopClock(void);
+                stopClock();
             }
             // run latest version selected
             runClock(clockType, nFaceColor);
@@ -239,7 +240,7 @@ int commandClearBuffer(int argc, const char *argv[])
            errorMessage("Buffer (%d) out-of-range: [must be 1 >= N <= %d]", nMaxBuffers);
         }
         else {
-            int nFaceColor = 0; // always clear to black
+            int nFillColor = 0; // always clear to black
             debugMessage("nFillColor=(0x%.6X)",nFillColor);
             // now set fill color to selected buffer
             fillBufferWithColorRGB(nBufferNumber, nFillColor);

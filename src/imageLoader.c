@@ -205,7 +205,7 @@ struct _BMPColorValue *loadImageFromFile(const char *fileSpec, int *lengthOut)
 
 void xlateLoadedImageIntoBuffer(uint8_t *buffer, size_t length)
 {
-    debugMessage("xlateLoadedImageIntoBuffer(0x%p, %d) - ENTRY", buffer, length);
+    //debugMessage("xlateLoadedImageIntoBuffer(0x%p, %d) - ENTRY", buffer, length);
     size_t nImageSizeInBytes = getImageSizeInBytes();
     uint8_t *pImageBuffer = (uint8_t *)getBufferBaseAddress();
 
@@ -218,7 +218,7 @@ void xlateLoadedImageIntoBuffer(uint8_t *buffer, size_t length)
             buffer[nByteIdx] = pImageBuffer[nBufferOffset];
         }
     }
-    debugMessage("xlateLoadedImageIntoBuffer() - ENTRY");
+    //debugMessage("xlateLoadedImageIntoBuffer() - EXIT");
 }
 
 
@@ -241,7 +241,7 @@ void initLoadTranslation(void)
 
 void initFileXlateMatrix(void)
 {
-    debugMessage("initFileXlateMatrix() - ENTRY");
+    //debugMessage("initFileXlateMatrix() - ENTRY");
     #ifdef TEST_OUTPUT_NEEDED
     // quick test of get routine (seeing issues)
     uint8_t *pCurrFilePixel = (uint8_t *)getPixelAddressForRowColumn(16, 4);
@@ -371,5 +371,5 @@ void initFileXlateMatrix(void)
             printf("- ERROR xlate[%d] not filled! -> has %d\n",  nXlateOffset, nFileOffsetValue);
         }
     }
-    debugMessage("initFileXlateMatrix() - EXIT");
+    //debugMessage("initFileXlateMatrix() - EXIT");
 }
