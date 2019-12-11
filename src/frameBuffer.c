@@ -45,7 +45,7 @@ void initBuffers(void)
 		pFrameBufferAr[0] = xmalloc(nLenFrameBuffer);
 		pFrameBufferAr[1] = NULL; // we always have a null pointer at end of list of buffer pointers
 		nNumberAllocatedBuffers = 1;
-		printf("- Allocated frameBuffer@%p:[%d buffers][%d panels][%d LEDs][%d bytes]\n", pFrameBuffer, 1, NUMBER_OF_PANELS, LEDS_PER_PANEL, sizeof(struct _LedPixel));
+		debugMessage("- Allocated frameBuffer@%p:[%d buffers][%d panels][%d LEDs][%d bytes]\n", pFrameBufferAr[0], 1, NUMBER_OF_PANELS, LEDS_PER_PANEL, sizeof(struct _LedPixel));
 	}
 }
 
@@ -68,9 +68,12 @@ int allocBuffers(int nDesiredBuffers)
         for(int nBffrIdx = nNumberAllocatedBuffers; nBffrIdx < nDesiredBuffers; nBffrIdx++) {
 		    pFrameBufferAr[nBffrIdx] = xmalloc(nLenFrameBuffer);
 		    if(pFrameBufferAr[nBffrIdx] == NULL) {
-	            errorMessage("[CODE] failed to allocate buffer %d (of %d), Aborted", nBffrIdx, nDesiredBuffers);
-	            allocStatus = -1; // FAILURE
-	            break;
+	                errorMessage("[CODE] failed to allocate buffer %d (of %d), Aborted", nBffrIdx, nDesiredBuffers);
+	                allocStatus = -1; // FAILURE
+	                break;
+		    } 
+		    else {
+                        debugMessage("allocated buffer[%d] @%p", nBffrIdx,pFrameBufferAr[nBffrIdx]);
 		    }
         }
         pFrameBufferAr[nDesiredBuffers] = NULL; // place trailing NULL at end of list

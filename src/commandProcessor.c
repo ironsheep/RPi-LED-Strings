@@ -27,6 +27,7 @@
 #include "commandProcessor.h"
 #include "debug.h"
 #include "imageLoader.h"
+#include "frameBuffer.h"
 
 char *lsh_read_line(void);
 const char **lsh_split_line(char *line, int *tokenCtOut);

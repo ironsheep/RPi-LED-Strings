@@ -32,6 +32,8 @@
 
 #include "commandProcessor.h"
 
+#include "frameBuffer.h"
+
 #define EXIT_FAILURE 1
 
 #if ENABLE_NLS
@@ -116,9 +118,10 @@ int main (int argc, char **argv)
     
     argp_parse(&argp, argc, argv, 0, NULL, NULL);
 
+    verboseMessage("setup frame-buffer subsystem");
+    initBuffers();
+
     verboseMessage("open driver");
-    
-    
     // FIXME: UNDONE only open device if we need it!
     if(!openMatrix()) {
         errorMessage("Failed to connect to driver: LEDfifoLKM Loaded?");

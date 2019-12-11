@@ -42,8 +42,11 @@ struct _LedPixel {
 // call to initialize our frame buffer (allocate, set to black, etc.)
 void initBuffers(void);
 
-// reset buffers so LED Screen goes blank
+// reset all buffers so LED Screen goes blank when written
 void clearBuffers(void);
+
+// alloc requested number of buffers (zero filled)
+int allocBuffers(int nDesiredBuffers);
 
 // object counts
 uint8_t numberBuffers(void);
