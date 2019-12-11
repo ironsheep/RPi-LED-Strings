@@ -1,4 +1,4 @@
-/* 
+/*
    matrix - interactive LED Matrix console
 
    Copyright (C) 2019 Stephen M Moraco
@@ -15,7 +15,7 @@
 
    You should have received a copy of the GNU General Public License
    along with this program; if not, write to the Free Software Foundation,
-   Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.  
+   Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
 */
 
@@ -45,7 +45,7 @@ static int s_nPinsAr[3] = { 17, 27, 22 };
 int openMatrix(void)
 {
     int errorValue = -1; // success
-    
+
     debugMessage("Driver Connect");
     s_fdDriver = open("/dev/ledfifo0", O_RDWR);
     if(s_fdDriver < 0) {
@@ -54,10 +54,10 @@ int openMatrix(void)
     else {
         // configure for WS2812B
         resetToWS2812bValues(s_fdDriver);
-        
+
         // and set our pins
         setPins(s_fdDriver, &s_nPinsAr[0], sizeof(s_nPinsAr)/sizeof(int));
-        
+
         // reset all pixels to off (black)
         clearToColor(s_fdDriver, 0x000000);
     }
@@ -68,7 +68,7 @@ int closeMatrix(void)
 {
     int status;
     int errorValue = -1; // success
-    
+
     debugMessage("Driver Disconnect");
     status = close(s_fdDriver);
     if(status != 0) {
@@ -80,7 +80,15 @@ int closeMatrix(void)
 void showBuffer(uint8_t *buffer, size_t bufferLen)
 {
     // write our buffer to the LED matrix for display
-    debugMessage("Write buffer %p(%ld) - TODO Implement this!", buffer, bufferLen);
+    debugMessage("showBuffer() %p(%ld) - ENTRY", buffer, bufferLen);
+    ssize_t numberBytesWritten = write(s_fdDriver, buffer, bufferLen);
+    if(numberBytesWritten == -1) {
+        perrorMessage("write() failed");
+    }
+    else if(numberBytesWritten != bufferLen) {
+        warningMessage("showBuffer() ONLY write %d of %d bytes!", numberBytesWritten, bufferLen);
+    }
+    debugMessage("showBuffer() - EXIT");
 }
 
 
@@ -90,9 +98,9 @@ void showBuffer(uint8_t *buffer, size_t bufferLen)
 void show_vars(int fd)
 {
     configure_arg_t deviceValues;
-    
+
     printf("-> get_vars() ENTRY\n");
-    
+
     if (ioctl(fd, CMD_GET_VARIABLES, &deviceValues) == -1)
     {
         perror("testApp ioctl get");
@@ -120,9 +128,9 @@ void show_vars(int fd)
 void setPins(int fd, int pinsAr[], int pinCount)
 {
     configure_arg_t deviceValues;
-    
+
     debugMessage("-> setPins() ENTRY");
-    
+
     if(pinCount != 3) {
         errorMessage("setPins() This device expects to have 3 pins (got %d)!", pinCount);
     }
@@ -132,7 +140,7 @@ void setPins(int fd, int pinsAr[], int pinCount)
             perror("setPins()  ioctl get");
         }
         else
-        { 
+        {
             deviceValues.gpioPins[0] = pinsAr[0];
             deviceValues.gpioPins[1] = pinsAr[1];
             deviceValues.gpioPins[2] = pinsAr[2];
@@ -174,14 +182,14 @@ void clearToColor(int fd, uint32_t color)
 void testSetPins(int fd)
 {
     configure_arg_t deviceValues;
-    
+
     printf("-> testSetPins() ENTRY\n");
     if (ioctl(fd, CMD_GET_VARIABLES, &deviceValues) == -1)
     {
         perror("testApp ioctl get");
     }
     else
-    { 
+    {
         if(deviceValues.gpioPins[0] == 0) {
 
             deviceValues.gpioPins[0] = 17;
@@ -240,7 +248,7 @@ void testBySendingColor(int fd, int value)
 void testSet2815(int fd)
 {
     configure_arg_t deviceValues;
-    
+
     printf("-> testSetPins() ENTRY\n");
 
     strcpy(deviceValues.ledType, "WS2815\0");
@@ -266,25 +274,25 @@ void testLOOPingControl(int fd)
     printf("-> testLOOPingControl() ENTRY\n");
     int loopStatusBefore = ioctl(fd, CMD_GET_LOOP_ENABLE);
     printf(" - loop Enable (before): %d\n", loopStatusBefore);
-    
+
     int testValue = (loopStatusBefore == 0) ? -1 : 0;
-    
+
     // write alternate value
     if(ioctl(fd, CMD_SET_LOOP_ENABLE, testValue) == -1)
     {
         perror("testApp ioctl SET LOOP");
     }
-    
+
     // check value on readback
     int loopStatusAfter = ioctl(fd, CMD_GET_LOOP_ENABLE);
     printf(" - loop Enable (after): %d\n", loopStatusAfter);
-    
+
     if(loopStatusAfter == testValue) {
         printf("- TEST PASS\n");
     }
     else {
         printf("- TEST FAILURE!!\n");
     }
-    
+
     printf("-- testLOOPingControl() EXIT\n\n");
 }
