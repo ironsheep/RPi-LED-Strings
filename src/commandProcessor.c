@@ -169,12 +169,13 @@ int commandAllocBuffers(int argc, const char *argv[])
         errorMessage("[CODE]: bad call commandAllocBuffers with command [%s]", argv[0]);
         bValidCommand = 0;
     }
-    else if(argc != 1) {
+    else if(argc - 1 != 1) {
         errorMessage("[CODE]: bad call - param count err for command [%s]", argv[0]);
         bValidCommand = 0;
     }
 	if(bValidCommand) {
 	    int nBuffers = atoi(argv[1]);
+	    debugMessage("alloc %d buffers...",nBuffers);
 	    if(nBuffers > 0) {
 	        // ensure requested number of buffers are allocated
 	        allocBuffers(nBuffers);
@@ -196,7 +197,7 @@ int commandLoadBmpFile(int argc, const char *argv[])
         errorMessage("[CODE]: bad call commandLoadBmpFile with command [%s]", argv[0]);
         bValidCommand = 0;
     }
-    else if(argc != 2) {
+    else if(argc - 1 != 1) {
         errorMessage("[CODE]: bad call - param count err for command [%s]", argv[0]);
         bValidCommand = 0;
     }

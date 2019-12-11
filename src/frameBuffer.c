@@ -61,10 +61,13 @@ void clearBuffers(void)
 int allocBuffers(int nDesiredBuffers)
 {
     int allocStatus = 0;    // SUCCESS
+
+    debugMessage("allocBuffers(%d) - ENTRY", nDesiredBuffers);
     if(nDesiredBuffers > MAX_BUFFER_POINTERS) {
 	    warningMessage("buffer %d out-of-range: MAX %d supported", nDesiredBuffers, MAX_BUFFER_POINTERS);
     }
-    else if(nDesiredBuffers < nNumberAllocatedBuffers) {
+    else if(nDesiredBuffers > nNumberAllocatedBuffers) {
+	debugMessage("Alloc %d additional buffers", nDesiredBuffers - nNumberAllocatedBuffers);
         for(int nBffrIdx = nNumberAllocatedBuffers; nBffrIdx < nDesiredBuffers; nBffrIdx++) {
 		    pFrameBufferAr[nBffrIdx] = xmalloc(nLenFrameBuffer);
 		    if(pFrameBufferAr[nBffrIdx] == NULL) {
@@ -78,6 +81,7 @@ int allocBuffers(int nDesiredBuffers)
         }
         pFrameBufferAr[nDesiredBuffers] = NULL; // place trailing NULL at end of list
     }
+    debugMessage("allocBuffers() - EXIT");
     return allocStatus;
 }
 
