@@ -16,7 +16,6 @@
     <Signature>UE Proj: v.1</Signature>
   </Project_ID>
   <Files>
-    <File>src/ledScreen.c</File>
     <File>src/imageLoader.h</File>
     <File>src/commandProcessor.c</File>
     <File>src/imageLoader.c</File>
@@ -29,7 +28,6 @@
     <File>src/frameBuffer.c</File>
     <File>src/matrixDriver.c</File>
     <File>NEWS</File>
-    <File>src/ledScreen.h</File>
     <File>src/xmalloc.h</File>
     <File>AUTHORS</File>
     <File>src/debug.h</File>

@@ -1,4 +1,4 @@
-/* 
+/*
    matrix - interactive LED Matrix console
 
    Copyright (C) 2019 Stephen M Moraco
@@ -15,7 +15,7 @@
 
    You should have received a copy of the GNU General Public License
    along with this program; if not, write to the Free Software Foundation,
-   Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.  
+   Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
 */
 
@@ -32,6 +32,7 @@ struct _BMPColorValue {
 
 
 //void loadTestImage(void);
+
 int fileExists(const char *fileSpec);
 struct _BMPColorValue *loadImageFromFile(const char *fileSpec, int *lengthOut);
 

@@ -39,7 +39,7 @@ static bool bThreadRun = false;
 sem_t semThreadStart; 
 
 //#define TEST1s
-#define TEST0s
+//#define TEST0s
 
 typedef struct _threadParameters {
 	bool *runStop;
@@ -62,12 +62,7 @@ void initScreen(void)
 	
 	// clear screen
 	clearScreen();
-	
-#ifdef DISABLED_FOR_NOW
-
-	// run our file loader as test (working code yet?
-	loadTestImage();
-	
+		
 	// fill translation buffer with not-set value
 	memset(&fileXlateMatrix, 0xFF, sizeof(fileXlateMatrix));
 
@@ -78,79 +73,6 @@ void initScreen(void)
 	
 	// populate our fileBuffer indices
 	initFileXlateMatrix();
-
-#endif
-	
-	// init gpio
-	initGPIO();
-	
-	// init display task
-	//blinkLED();
-	
-#ifdef TEST0s
-	// cope our 0's
-	testBit0Send();
-#endif
-	
-#ifdef TEST1s
-	// scope our 1's
-	testBit1Send();
-#endif
-	
-	// scope our RESET's
-	//testResetSend();
-
-
-#ifdef DISABLED_FOR_NOW
-
-	// start display threads
-	pthread_t taskPanelTop;
-	pthread_t taskPanelMid;
-	pthread_t taskPanelBot;
-	
-	sem_init(&semThreadStart, 0, 1); 
-	
-	uint8_t *pFileBufferBaseAddress = (uint8_t *)getBufferBaseAddress();
-
-#define THREAD1_LIVE
-#define THREAD2_LIVE
-#define THREAD3_LIVE
-
-#ifdef THREAD1_LIVE
-	ThreadParameters panelTopParams = { &bThreadRun, 0, (int *)&fileXlateMatrix, pFileBufferBaseAddress };
-	pthread_create(&taskPanelTop, NULL, ledStringWriteThread, (void*)&panelTopParams); 
-#endif
-
-#ifdef THREAD2_LIVE
-	ThreadParameters panelMidParams = { &bThreadRun, 1, (int *)&fileXlateMatrix, pFileBufferBaseAddress };
-	pthread_create(&taskPanelMid, NULL, ledStringWriteThread, (void*)&panelMidParams); 
-#endif
-
-#ifdef THREAD3_LIVE
-	ThreadParameters panelBotParams = { &bThreadRun, 2, (int *)&fileXlateMatrix, pFileBufferBaseAddress };
-	pthread_create(&taskPanelBot, NULL, ledStringWriteThread, (void*)&panelBotParams); 
-#endif
-
-	//sleep(30);	// 30 seconds
-	
-#ifdef THREAD1_LIVE
-	//pthread_join(taskPanelTop,NULL); // stop thread
-#endif
-
-#ifdef THREAD2_LIVE
-	//pthread_join(taskPanelMid,NULL); // stop thread
-#endif
-
-#ifdef THREAD3_LIVE
-	//pthread_join(taskPanelBot,NULL); // stop thread
-#endif
-	sem_destroy(&semThreadStart); 	// done with mutex
-
-
-#endif
-	
-	// return GPIO to normal setup
-	restoreGPIO();
 }
 
 void clearScreen(void)
