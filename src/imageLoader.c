@@ -165,7 +165,7 @@ struct _BMPColorValue *loadImageFromFile(const char *fileSpec, int *lengthOut)
 
     debugMessage("File %s: sz=%u, IMAGE h/w=(%d,%d) size=%u bytesNeeded=%d rowPad=%d", fileSpec, bmpHeaderData.size, bmpHeaderData.height_px, bmpHeaderData.width_px, bmpHeaderData.image_size_bytes, nImageBytesNeeded, nRowPadByteCount);
 
-#ifdef SHOW_EXTRA_DEBUG
+    #ifdef SHOW_EXTRA_DEBUG
     hexDump("BMP Header", &bmpHeaderData, sizeof(struct _BMPHeader));
 
     printf("- Addr header struct: %p\n", &bmpHeaderData);
@@ -175,7 +175,7 @@ struct _BMPColorValue *loadImageFromFile(const char *fileSpec, int *lengthOut)
     printf("- Addr image_size_bytes: %p\n", &bmpHeaderData.image_size_bytes);
     uint8_t *pBuffer = (uint8_t *)&bmpHeaderData;
     printf("- Addr image data: %p\n", &pBuffer[bmpHeaderData.offset]);
-#endif
+    #endif
 
     fileBuffer = xmalloc(nImageBytesNeeded);
 
@@ -185,9 +185,9 @@ struct _BMPColorValue *loadImageFromFile(const char *fileSpec, int *lengthOut)
     // read the image data into our buffer
     fread(fileBuffer, nImageBytesNeeded, 1, fpTestFile);
 
-#ifdef SHOW_EXTRA_DEBUG
+    #ifdef SHOW_EXTRA_DEBUG
     hexDump("Image bytes", fileBuffer, nImageBytesNeeded);
-#endif
+    #endif
 
     fclose(fpTestFile);
 
@@ -205,6 +205,7 @@ struct _BMPColorValue *loadImageFromFile(const char *fileSpec, int *lengthOut)
 
 void xlateLoadedImageIntoBuffer(uint8_t *buffer, size_t length)
 {
+    debugMessage("xlateLoadedImageIntoBuffer(0x%p, %d) - ENTRY", buffer, length);
     size_t nImageSizeInBytes = getImageSizeInBytes();
     uint8_t *pImageBuffer = (uint8_t *)getBufferBaseAddress();
 
@@ -217,6 +218,7 @@ void xlateLoadedImageIntoBuffer(uint8_t *buffer, size_t length)
             buffer[nByteIdx] = pImageBuffer[nBufferOffset];
         }
     }
+    debugMessage("xlateLoadedImageIntoBuffer() - ENTRY");
 }
 
 
@@ -225,150 +227,149 @@ void xlateLoadedImageIntoBuffer(uint8_t *buffer, size_t length)
 //
 void initLoadTranslation(void)
 {
-	// fill translation buffer with not-set value
-	memset(&fileXlateMatrix, 0xFF, sizeof(fileXlateMatrix));
+    // fill translation buffer with not-set value
+    memset(&fileXlateMatrix, 0xFF, sizeof(fileXlateMatrix));
 
-	nImageBytesNeeded = getImageSizeInBytes();
-	pOffsetCheckTable = (uint8_t *)xmalloc(nImageBytesNeeded);
-	// fill offset-used buffer with not-set value
-	memset(pOffsetCheckTable, 0x00, nImageBytesNeeded);
+    nImageBytesNeeded = getImageSizeInBytes();
+    pOffsetCheckTable = (uint8_t *)xmalloc(nImageBytesNeeded);
+    // fill offset-used buffer with not-set value
+    memset(pOffsetCheckTable, 0x00, nImageBytesNeeded);
 
-	// populate our fileBuffer indices
-	initFileXlateMatrix();
+    // populate our fileBuffer indices
+    initFileXlateMatrix();
 }
 
 void initFileXlateMatrix(void)
 {
     debugMessage("initFileXlateMatrix() - ENTRY");
-#ifdef TEST_OUTPUT_NEEDED
-	// quick test of get routine (seeing issues)
-	uint8_t *pCurrFilePixel = (uint8_t *)getPixelAddressForRowColumn(16, 4);
-	printf("- TEST 16,4 = %p\n", pCurrFilePixel);
-	pCurrFilePixel = (uint8_t *)getPixelAddressForRowColumn(8, 4);
-	printf("- TEST 8,4 = %p\n", pCurrFilePixel);
-	pCurrFilePixel = (uint8_t *)getPixelAddressForRowColumn(0, 4);
-	printf("- TEST 0,4 = %p\n\n\n", pCurrFilePixel);
-#endif
+    #ifdef TEST_OUTPUT_NEEDED
+    // quick test of get routine (seeing issues)
+    uint8_t *pCurrFilePixel = (uint8_t *)getPixelAddressForRowColumn(16, 4);
+    printf("- TEST 16,4 = %p\n", pCurrFilePixel);
+    pCurrFilePixel = (uint8_t *)getPixelAddressForRowColumn(8, 4);
+    printf("- TEST 8,4 = %p\n", pCurrFilePixel);
+    pCurrFilePixel = (uint8_t *)getPixelAddressForRowColumn(0, 4);
+    printf("- TEST 0,4 = %p\n\n\n", pCurrFilePixel);
+    #endif
 
 
-	// panels are arranged in columns 8-pixels tall by 32 pixels wide
-	//
-	// column pixels are numbered bottom to top on right edge and every other column from there
-	//  rest of columns are numbered top to bottom on the in-between columns.
-	//
-	//  Numbering: //
-	// COL:00  01         28   29   30   31
-	//   248  247	...  024  023  008  007
-	//   249  246	...  025  022  009  006
-	//   250  245	...  026  021  010  005
-	//   251  244	...  027  020  011  004
-	//   252  243	...  028  019  012  003
-	//   253  242	...  029  018  013  002
-	//   254  241	...  030  017  014  001
-	//   255  240	...  031  016  015  000
-	//
-	//  effectively we think of the panel as one long string of pixels (256 of them.)
-	//
-	// the file buffer has an access routine to provide ptr to RGB tuple for X,Y in width,height space
-	//  so call this routine to get pointer to location and also add in minor offset to R or G or B of color value too...
-	//
-	//  The file buffer is 32w x 24h so each panel is a third of the height but full width!
-	//
-	// get base address of our file buffer so we can calculate offsets
-	uint8_t *pFileBufferBaseAddress = (uint8_t *)getBufferBaseAddress();
+    // panels are arranged in columns 8-pixels tall by 32 pixels wide
+    //
+    // column pixels are numbered bottom to top on right edge and every other column from there
+    //  rest of columns are numbered top to bottom on the in-between columns.
+    //
+    //  Numbering: //
+    // COL:00  01         28   29   30   31
+    //   248  247   ...  024  023  008  007
+    //   249  246   ...  025  022  009  006
+    //   250  245   ...  026  021  010  005
+    //   251  244   ...  027  020  011  004
+    //   252  243   ...  028  019  012  003
+    //   253  242   ...  029  018  013  002
+    //   254  241   ...  030  017  014  001
+    //   255  240   ...  031  016  015  000
+    //
+    //  effectively we think of the panel as one long string of pixels (256 of them.)
+    //
+    // the file buffer has an access routine to provide ptr to RGB tuple for X,Y in width,height space
+    //  so call this routine to get pointer to location and also add in minor offset to R or G or B of color value too...
+    //
+    //  The file buffer is 32w x 24h so each panel is a third of the height but full width!
+    //
+    // get base address of our file buffer so we can calculate offsets
+    uint8_t *pFileBufferBaseAddress = (uint8_t *)getBufferBaseAddress();
 
-	for(int nPanelIndex = 0; nPanelIndex < NUMBER_OF_PANELS; nPanelIndex++) {	// [0-2] where 0 is top panel.
-		int nPanelOffsetIndex = (nPanelIndex * (COLUMNS_PER_PANEL * ROWS_PER_PANEL * BYTES_PER_LED));
-		for(int nByteOfColorIndex = 0; nByteOfColorIndex < (LEDS_PER_PANEL * BYTES_PER_LED); nByteOfColorIndex++) {	// [0-767]
-			int nColorIndex = nByteOfColorIndex % BYTES_PER_LED;	// [0-2]
-			int nPixelIndex = nByteOfColorIndex / BYTES_PER_LED;	// [0-255]
+    for(int nPanelIndex = 0; nPanelIndex < NUMBER_OF_PANELS; nPanelIndex++) {   // [0-2] where 0 is top panel.
+        int nPanelOffsetIndex = (nPanelIndex * (COLUMNS_PER_PANEL * ROWS_PER_PANEL * BYTES_PER_LED));
+        for(int nByteOfColorIndex = 0; nByteOfColorIndex < (LEDS_PER_PANEL * BYTES_PER_LED); nByteOfColorIndex++) { // [0-767]
+            int nColorIndex = nByteOfColorIndex % BYTES_PER_LED;    // [0-2]
+            int nPixelIndex = nByteOfColorIndex / BYTES_PER_LED;    // [0-255]
 
-			// FILE column index is inverted
-			int nColumnIndex = nByteOfColorIndex / (ROWS_PER_PANEL * BYTES_PER_LED);	// [0-31]
-			// - invert file column value
-			nColumnIndex = (COLUMNS_PER_PANEL - 1) - nColumnIndex;
+            // FILE column index is inverted
+            int nColumnIndex = nByteOfColorIndex / (ROWS_PER_PANEL * BYTES_PER_LED);    // [0-31]
+            // - invert file column value
+            nColumnIndex = (COLUMNS_PER_PANEL - 1) - nColumnIndex;
 
-			// panel columns are inverted from file columns
-			int nPanelColumnIndex = (COLUMNS_PER_PANEL - 1) - nColumnIndex;	// [0-31]
-			// panel rows alternate being 0->7 or 7->0!
-			int nPanelRowIndex = (nColumnIndex & 1 == 1) ? nPixelIndex % ROWS_PER_PANEL : (ROWS_PER_PANEL - 1) - (nPixelIndex % ROWS_PER_PANEL);	// [0-7]
+            // panel columns are inverted from file columns
+            int nPanelColumnIndex = (COLUMNS_PER_PANEL - 1) - nColumnIndex; // [0-31]
+            // panel rows alternate being 0->7 or 7->0!
+            int nPanelRowIndex = (nColumnIndex & 1 == 1) ? nPixelIndex % ROWS_PER_PANEL : (ROWS_PER_PANEL - 1) - (nPixelIndex % ROWS_PER_PANEL);    // [0-7]
 
-			// FILE row index (rows within panel are inverted)
-			int nRowIndex = (nPanelIndex * ROWS_PER_PANEL) + ((ROWS_PER_PANEL - 1) - nPanelRowIndex);
+            // FILE row index (rows within panel are inverted)
+            int nRowIndex = (nPanelIndex * ROWS_PER_PANEL) + ((ROWS_PER_PANEL - 1) - nPanelRowIndex);
 
-			struct _BMPColorValue *pCurrFilePixel;
-			// at the beginning of each color do...
-			if(nColorIndex == 0) {
-				//printf("\n----------------\n");
-				pCurrFilePixel = getPixelAddressForRowColumn(nRowIndex, nColumnIndex);
-			}
+            struct _BMPColorValue *pCurrFilePixel;
+            // at the beginning of each color do...
+            if(nColorIndex == 0) {
+                //printf("\n----------------\n");
+                pCurrFilePixel = getPixelAddressForRowColumn(nRowIndex, nColumnIndex);
+            }
 
-
-			uint8_t *pFileColorAddress;
-			uint8_t *pFilePixelAddress = (uint8_t *)pCurrFilePixel;
-			switch(nColorIndex) {
-				case 0:	// string wants GREEN here
-					pFileColorAddress = &pCurrFilePixel->green;
-					break;
-				case 1:	// string wants RED here
-					pFileColorAddress = &pCurrFilePixel->red;
-					break;
-				case 2:	// string wants BLUE here
-					pFileColorAddress = &pCurrFilePixel->blue;
-					break;
-				default:
-					printf("\n- ERROR Bad color index (%d) NOT [0-2]\n", nColorIndex);
-					break;
-			}
-			int nColorOffset = pFileColorAddress - pFilePixelAddress;
-			int nFilePixelOffset = pFilePixelAddress - pFileBufferBaseAddress;
-			int nFileOffsetValue = nFilePixelOffset + nColorOffset;
-			// load matrix location with file offset
-			int nXlateOffset = nPanelOffsetIndex + nByteOfColorIndex;
-			fileXlateMatrix[nXlateOffset] = nFileOffsetValue;
+            uint8_t *pFileColorAddress;
+            uint8_t *pFilePixelAddress = (uint8_t *)pCurrFilePixel;
+            switch(nColorIndex) {
+                case 0: // string wants GREEN here
+                    pFileColorAddress = &pCurrFilePixel->green;
+                    break;
+                case 1: // string wants RED here
+                    pFileColorAddress = &pCurrFilePixel->red;
+                    break;
+                case 2: // string wants BLUE here
+                    pFileColorAddress = &pCurrFilePixel->blue;
+                    break;
+                default:
+                    printf("\n- ERROR Bad color index (%d) NOT [0-2]\n", nColorIndex);
+                    break;
+            }
+            int nColorOffset = pFileColorAddress - pFilePixelAddress;
+            int nFilePixelOffset = pFilePixelAddress - pFileBufferBaseAddress;
+            int nFileOffsetValue = nFilePixelOffset + nColorOffset;
+            // load matrix location with file offset
+            int nXlateOffset = nPanelOffsetIndex + nByteOfColorIndex;
+            fileXlateMatrix[nXlateOffset] = nFileOffsetValue;
 #ifdef NEEDED
-			printf("- File RC={%d,%d} - Panel[#%d, RC={%d,%d} px:%d color:%d byte:%d]",
-				nRowIndex,
-				nColumnIndex,
-				nPanelIndex,
-				nPanelRowIndex,
-				nPanelColumnIndex,
-				nPixelIndex,
-				nColorIndex,
-				nByteOfColorIndex);
-			printf("  -- MATRIX[%d] = (%d); FILE [px:%d + clr:%d] @%p\n", nXlateOffset, nFileOffsetValue, nFilePixelOffset, nColorOffset, pCurrFilePixel);
+            printf("- File RC={%d,%d} - Panel[#%d, RC={%d,%d} px:%d color:%d byte:%d]",
+            nRowIndex,
+            nColumnIndex,
+            nPanelIndex,
+            nPanelRowIndex,
+            nPanelColumnIndex,
+            nPixelIndex,
+            nColorIndex,
+            nByteOfColorIndex);
+            printf("  -- MATRIX[%d] = (%d); FILE [px:%d + clr:%d] @%p\n", nXlateOffset, nFileOffsetValue, nFilePixelOffset, nColorOffset, pCurrFilePixel);
 #endif
 
-			// detect if offset used more than once. Should NEVER be!!
-			if(nFileOffsetValue >= nImageBytesNeeded) {
-				printf("\n- ERROR file-offset %d OUT OF RANGE: [0-%d]!\n", nFileOffsetValue, nImageBytesNeeded);
-			}
-			else {
-				if(pOffsetCheckTable[nFileOffsetValue] != 0) {
-					printf("\n- ERROR file-offset %d used more than once!\n", nFileOffsetValue);
-				}
-				else {
-					pOffsetCheckTable[nFileOffsetValue] = 1;	// mark this as used
-				}
-			}
-		}
-	}
-	//  check to see that all offsets are used
-	for(int nFileOffsetValue = 0; nFileOffsetValue < nImageBytesNeeded; nFileOffsetValue++) {	// [0-2] where 0 is top panel.
-		// each of these bytes if set are now 1 vs. 0
-		// if NOT let's warn!
-		if(pOffsetCheckTable[nFileOffsetValue] == 0) {
-			printf("- ERROR file-offset[%d] not used!\n",  nFileOffsetValue);
-		}
-	}
-	// lastly check to see that all matrix locations are filled
-	for(int nXlateOffset = 0; nXlateOffset < nImageBytesNeeded; nXlateOffset++) {	// [0-2] where 0 is top panel.
-		// each of these bytes if set are now 1 vs. 0
-		// if NOT let's warn!
-		int nFileOffsetValue = fileXlateMatrix[nXlateOffset];
-		if(nFileOffsetValue > nImageBytesNeeded || nFileOffsetValue < 0) {
-			printf("- ERROR xlate[%d] not filled! -> has %d\n",  nXlateOffset, nFileOffsetValue);
-		}
-	}
+            // detect if offset used more than once. Should NEVER be!!
+            if(nFileOffsetValue >= nImageBytesNeeded) {
+                printf("\n- ERROR file-offset %d OUT OF RANGE: [0-%d]!\n", nFileOffsetValue, nImageBytesNeeded);
+            }
+            else {
+                if(pOffsetCheckTable[nFileOffsetValue] != 0) {
+                    printf("\n- ERROR file-offset %d used more than once!\n", nFileOffsetValue);
+                }
+                else {
+                    pOffsetCheckTable[nFileOffsetValue] = 1;    // mark this as used
+                }
+            }
+        }
+    }
+    //  check to see that all offsets are used
+    for(int nFileOffsetValue = 0; nFileOffsetValue < nImageBytesNeeded; nFileOffsetValue++) {   // [0-2] where 0 is top panel.
+        // each of these bytes if set are now 1 vs. 0
+        // if NOT let's warn!
+        if(pOffsetCheckTable[nFileOffsetValue] == 0) {
+            printf("- ERROR file-offset[%d] not used!\n",  nFileOffsetValue);
+        }
+    }
+    // lastly check to see that all matrix locations are filled
+    for(int nXlateOffset = 0; nXlateOffset < nImageBytesNeeded; nXlateOffset++) {   // [0-2] where 0 is top panel.
+        // each of these bytes if set are now 1 vs. 0
+        // if NOT let's warn!
+        int nFileOffsetValue = fileXlateMatrix[nXlateOffset];
+        if(nFileOffsetValue > nImageBytesNeeded || nFileOffsetValue < 0) {
+            printf("- ERROR xlate[%d] not filled! -> has %d\n",  nXlateOffset, nFileOffsetValue);
+        }
+    }
     debugMessage("initFileXlateMatrix() - EXIT");
 }
