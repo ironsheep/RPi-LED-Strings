@@ -95,30 +95,31 @@ int commandShowClock(int argc, const char *argv[]);
 struct _commandEntry {
     char *name;
     char *description;
-    int   paramCount;
+    int   minParamCount;
+    int   maxParamCount;
     int (*pCommandFunction)(int argc, const char *argv[]);
 } commands[] = {
-    { "buffers",     "buffers {numberOfBuffers} - allocate N buffers", 1, &commandAllocBuffers },
-    { "buffer",      "buffer {bufferNumber} - select buffer for next actions", 1, &commandSelectBuffer },
-    { "clear",       "clear {selectedBuffers} - where selected is [N, N-M, ., all]", 1, &commandClearBuffer },
-    { "freebuffers", "freebuffers - release all buffers", 0 },
-    { "fill",        "fill {selectedBuffers} {fillColor} - where selected is [N, N-M, ., all] and color is [red, 0xffffff, all]", 2, &commandFillBuffer },
-    { "border",      "border {width} {borderColor}", 1 },
-    { "clock",       "clock {clockType} {faceColor} - where type is [digital, binary] and color is [red, 0xffffff]", 2, &commandShowClock },
-    { "write",       "write {selectedBuffers} [{loopYN} {rate}] - where selected is [N, N-M, ., all]", 3, &commandWriteBuffer },
-    { "square",      "square {boarderWidth} {height} {borderColor} {fillColor}", 4 },
-    { "circle",      "circle {boarderWidth} {radius}  {borderColor} {fillColor}", 1 },
-    { "triangle",    "triangle  {boarderWidth} {baseWidth-odd!}  {borderColor} {fillColor}", 1 },
-    { "copy",        "copy {srcBufferNumber} {destBufferNumber} {shiftUpDownPix} {shiftLeftRightPix}", 1 },
-    { "default",     "default [fill|line] {color} - set default colors for subsequent draw commands", 2 },
-    { "moveto",      "moveto x y - move (pen) to X, Y", 2 },
-    { "lineto",      "lineto x y - draw line from curr X,Y to new X,Y", 2 },
-    { "loadbmpfile", "loadbmpfile {bmpFileName} - load 24-bit bitmap into current buffer", 1, &commandLoadBmpFile },
-    { "loadscreensfile", "loadscreensfile {screenSetFileName} - sets NbrScreensLoaded, ensures sufficient buffers allocated, starting from current buffer", 1 },
-    { "loadcmdfile", "loadcmdfile {commandsFileName} - iterates over commands read from file, once.", 1 },
-    { "helpcommands", "helpcommands - display list of available commands", 0, &commandHelp },
-    { "quit",         "quit - exit command processor", 0, &commandQuit },
-    { "exit",         "exit - exit command processor", 0, &commandQuit },
+    { "buffers",     "buffers {numberOfBuffers} - allocate N buffers", 1, 1, &commandAllocBuffers },
+    { "buffer",      "buffer {bufferNumber} - select buffer for next actions", 1, 1, &commandSelectBuffer },
+    { "clear",       "clear {selectedBuffers} - where selected is [N, N-M, ., all]", 1, 1, &commandClearBuffer },
+    { "freebuffers", "freebuffers - release all buffers", 0, 0 },
+    { "fill",        "fill {selectedBuffers} {fillColor} - where selected is [N, N-M, ., all] and color is [red, 0xffffff, all]", 2, 2, &commandFillBuffer },
+    { "border",      "border {width} {borderColor} {indent}", 2, 3 },
+    { "clock",       "clock {clockType} [{faceColor}] - where type is [digital, binary, stop] and color is [red, 0xffffff]", 1, 2, &commandShowClock },
+    { "write",       "write {selectedBuffers} [{loopYN} {rate}] - where selected is [N, N-M, ., all]", 1, 3, &commandWriteBuffer },
+    { "square",      "square {boarderWidth} {height} {borderColor} {fillColor}", 3, 4 },
+    { "circle",      "circle {boarderWidth} {radius}  {borderColor} {fillColor}", 3, 4 },
+    { "triangle",    "triangle  {boarderWidth} {baseWidth-odd!}  {borderColor} {fillColor}", 3, 4 },
+    { "copy",        "copy {srcBufferNumber} {destBufferNumber} {shiftUpDownPix} {shiftLeftRightPix}", 4, 4 },
+    { "default",     "default [fill|line] {color} - set default colors for subsequent draw commands", 2, 2 },
+    { "moveto",      "moveto x y - move (pen) to X, Y", 2, 2 },
+    { "lineto",      "lineto x y - draw line from curr X,Y to new X,Y", 2, 2 },
+    { "loadbmpfile", "loadbmpfile {bmpFileName} - load 24-bit bitmap into current buffer", 1, 1, &commandLoadBmpFile },
+    { "loadscreensfile", "loadscreensfile {screenSetFileName} - sets NbrScreensLoaded, ensures sufficient buffers allocated, starting from current buffer", 1, 1 },
+    { "loadcmdfile", "loadcmdfile {commandsFileName} - iterates over commands read from file, once.", 1, 1 },
+    { "helpcommands", "helpcommands - display list of available commands", 0, 0, &commandHelp },
+    { "quit",         "quit - exit command processor", 0, 0, &commandQuit },
+    { "exit",         "exit - exit command processor", 0, 0, &commandQuit },
 };
 static int commandCount = sizeof(commands) / sizeof(struct _commandEntry);
 
@@ -153,11 +154,11 @@ int perform(int argc, const char *argv[])
     }
     if(s_nCurrentCmdIdx != CMD_NOT_FOUND && commands[cmdIdx].pCommandFunction != NULL) {
         // execute the related command function, if we have correct number of params
-        if(argc == commands[cmdIdx].paramCount + 1) {
+        if(argc < commands[cmdIdx].minParamCount + 1 && argc > commands[cmdIdx].maxParamCount + 1) {
             execStatus = (*commands[cmdIdx].pCommandFunction)(argc, argv);
         }
         else {
-            infoMessage("  --> Invalid Parameter Count for [%s] %d vs %d", argv[0], argc - 1, commands[cmdIdx].paramCount);
+            infoMessage("  --> Invalid Parameter Count for [%s] %d vs %d-%d", argv[0], argc - 1, commands[cmdIdx].minParamCount, commands[cmdIdx].maxParamCount);
             infoMessage("  USAGE: %s\n", commands[cmdIdx].description);
             execStatus = CMD_RET_BAD_PARMS;
         }
@@ -187,7 +188,7 @@ int commandShowClock(int argc, const char *argv[])
         errorMessage("[CODE]: bad call commandClearBuffer with command [%s]", argv[0]);
         bValidCommand = 0;
     }
-    else if(argc - 1 != 2) {
+    else if(argc - 1 < 1) {
         errorMessage("[CODE]: bad call - param count err for command [%s]", argv[0]);
         bValidCommand = 0;
     }
@@ -200,8 +201,17 @@ int commandShowClock(int argc, const char *argv[])
         else if(stricmp(argv[1], "digital") == 0) {
              clockType = CFT_DIGITAL;
         }
+        else if(stricmp(argv[1], "stop") == 0) {
+            clockType = CFT_NO_CLOCK;  // stop it if running
+        }
         if(clockType == CFT_Unknown) {
-           errorMessage("Must specify type of clock face [digital|binary]");
+            errorMessage("Must specify type of clock face [digital|binary]");
+        }
+        else if(clockType == CFT_NO_CLOCK) {
+            // user just wants to stop the clock
+            if(isClockRunning()) {
+                stopClock();
+            }
         }
         else {
             int nFaceColor = getValueOfColorSpec(argv[2]);
@@ -211,7 +221,7 @@ int commandShowClock(int argc, const char *argv[])
                 stopClock();
             }
             // run latest version selected
-            runClock(clockType, nFaceColor);
+            runClock(clockType, nFaceColor, s_nCurrentBufferIdx+1);
         }
     }
     return CMD_RET_SUCCESS;   // no errors

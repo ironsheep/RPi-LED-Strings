@@ -1,4 +1,4 @@
-/* 
+/*
    matrix - interactive LED Matrix console
 
    Copyright (C) 2019 Stephen M Moraco
@@ -15,14 +15,14 @@
 
    You should have received a copy of the GNU General Public License
    along with this program; if not, write to the Free Software Foundation,
-   Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.  
+   Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
 */
 
 #ifndef FRAME_BUFFER_H
 #define FRAME_BUFFER_H
 
-#include <stdint.h> 
+#include <stdint.h>
 
 #define BYTES_PER_LED 3
 #define LEDS_PER_PANEL 256
@@ -56,8 +56,9 @@ uint16_t maxLedsInPanel(void);
 uint16_t frameBufferSizeInBytes(void);
 
 // getting references to objects
-struct _LedPixel *ptrBuffer(uint8_t nBufferNumber); 
+struct _LedPixel *ptrBuffer(uint8_t nBufferNumber);
 struct _LedPixel *ptrPanel(struct _LedPixel *pBuffer, uint8_t nPanel);
-void fillBufferWithColorRGB(uint8_t nBufferNumber, uint32_t nColorRGB); 
+void fillBufferWithColorRGB(uint8_t nBufferNumber, uint32_t nColorRGB);
+void setBufferLEDColor(uint8_t nBufferNumber, uint32_t nColor, uint8_t locX, uint8_t locY);
 
 #endif /* FRAME_BUFFER_H */
