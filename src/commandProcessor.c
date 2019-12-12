@@ -215,9 +215,9 @@ int commandShowClock(int argc, const char *argv[])
         }
         else {
             int nFaceColor = 0x808080;	// grey unless spec'd
-	    if((argc - 1) == 2) {
+    	    if((argc - 1) == 2) {
                 nFaceColor = getValueOfColorSpec(argv[2]);
-	    }
+    	    }
             debugMessage("nFaceColor=(0x%.6X) clockType=[%s]",nFaceColor, argv[1]);
             // stop clock if already running
             if(isClockRunning()) {

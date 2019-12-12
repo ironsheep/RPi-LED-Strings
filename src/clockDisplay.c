@@ -116,9 +116,9 @@ void *threadDigitalClock(void *argp)
     do {
         showCurrDigitalFace((uint32_t)argp);
         //sleep 1 second
-        delayMilliSec(950);
+        //delayMilliSec(950);
 
-    } while(1);
+    } while(0);
 }
 
 void *threadBinaryClock(void *argp)
@@ -138,9 +138,9 @@ void *threadBinaryClock(void *argp)
 
         showCurrBinaryFace((uint32_t)argp);
         //sleep 1 second
-        delayMilliSec(950);
+        //delayMilliSec(950);
 
-    } while(1);
+    } while(0);
 }
 
 void showCurrDigitalFace(uint32_t nFaceColor)
