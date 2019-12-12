@@ -161,7 +161,7 @@ void fillBufferWithColorRGB(uint8_t nBufferNumber, uint32_t nColorRGB)
     }
 }
 
-void setBufferLEDColor(uint8_t nBufferNumber, uint32_t nColor, uint8_t locX, uint8_t locY)
+void setBufferLEDColor(uint8_t nBufferNumber, uint32_t nColorRGB, uint8_t locX, uint8_t locY)
 {
     struct _LedPixel *pSelectedBuffer = ptrBuffer(nBufferNumber);
     if(pSelectedBuffer != NULL) {
@@ -169,7 +169,10 @@ void setBufferLEDColor(uint8_t nBufferNumber, uint32_t nColor, uint8_t locX, uin
         uint8_t nPanelIdx = (locY / 8);
         uint8_t nPanelY = (locY % 8);
         uint16_t nColumnLEDidx = ((32 - 1) - locX) * 8;
-        uint16_t nLEDIdx = (bAddPanelY == 1) ? nColumnLEDidx + nPanelRow : nColumnLEDidx - nPanelRow;
+	uint16_t nOffsetToPanel = nPanelIdx * LEDS_PER_PANEL;
+        uint16_t nLEDIdx = (bAddPanelY == 1) ? nColumnLEDidx + nPanelY : nColumnLEDidx - nPanelY;
+	nLEDIdx += nOffsetToPanel;
+
         uint8_t red = (nColorRGB >> 16) & 0xff;
         uint8_t green = (nColorRGB >> 8) & 0xff;
         uint8_t blue = (nColorRGB >> 0) & 0xff;

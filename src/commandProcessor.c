@@ -154,7 +154,7 @@ int perform(int argc, const char *argv[])
     }
     if(s_nCurrentCmdIdx != CMD_NOT_FOUND && commands[cmdIdx].pCommandFunction != NULL) {
         // execute the related command function, if we have correct number of params
-        if(argc < commands[cmdIdx].minParamCount + 1 && argc > commands[cmdIdx].maxParamCount + 1) {
+        if(argc >= commands[cmdIdx].minParamCount + 1 && argc <= commands[cmdIdx].maxParamCount + 1) {
             execStatus = (*commands[cmdIdx].pCommandFunction)(argc, argv);
         }
         else {
@@ -214,7 +214,10 @@ int commandShowClock(int argc, const char *argv[])
             }
         }
         else {
-            int nFaceColor = getValueOfColorSpec(argv[2]);
+            int nFaceColor = 0x808080;	// grey unless spec'd
+	    if((argc - 1) == 2) {
+                nFaceColor = getValueOfColorSpec(argv[2]);
+	    }
             debugMessage("nFaceColor=(0x%.6X) clockType=[%s]",nFaceColor, argv[1]);
             // stop clock if already running
             if(isClockRunning()) {

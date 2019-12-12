@@ -31,7 +31,7 @@ typedef enum _eClockFaceTypes {
     CFT_NO_CLOCK,
 } eClockFaceTypes;
 
-void runClock(eClockFaceTypes clockType, uint32_t nFaceColor, uint8_t nBufferNumber);
+void runClock(eClockFaceTypes clockType, uint32_t nFaceColor, int nBufferNumber);
 void stopClock(void);
 int isClockRunning(void);
 
