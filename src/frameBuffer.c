@@ -165,12 +165,13 @@ void setBufferLEDColor(uint8_t nBufferNumber, uint32_t nColorRGB, uint8_t locX, 
 {
     struct _LedPixel *pSelectedBuffer = ptrBuffer(nBufferNumber);
     if(pSelectedBuffer != NULL) {
-        int bAddPanelY = (locX & 0x01);
+	// do we have bottom to top numbered column 
+        int bGoesUpPanelY = (locX & 0x01) == 1;
         uint8_t nPanelIdx = (locY / 8);
         uint8_t nPanelY = (locY % 8);
         uint16_t nColumnLEDidx = ((32 - 1) - locX) * 8;
 	uint16_t nOffsetToPanel = nPanelIdx * LEDS_PER_PANEL;
-        uint16_t nLEDIdx = (bAddPanelY == 1) ? nColumnLEDidx + nPanelY : nColumnLEDidx - nPanelY;
+        uint16_t nLEDIdx = (bGoesUpPanelY == 0) ? nColumnLEDidx + nPanelY : nColumnLEDidx + (7 - nPanelY);
 	nLEDIdx += nOffsetToPanel;
 
         uint8_t red = (nColorRGB >> 16) & 0xff;

@@ -178,20 +178,35 @@ typedef enum _eObjIndex {
     OI_SecUnits,
 } eObjIndex;
 
+#define TWObyTHREE
+
 struct _objLocnXY {
     uint8_t objId;
     uint8_t X;
     uint8_t Y;
 } locTable[] = {
+#ifndef TWObyTHREE
      { OI_HrTens, 4, 5 },
      { OI_HrUnits, 8, 5 },
-     { OI_Bar_Left, 11, 5 },
+     { OI_Bar_Left, 11, 7 },
      { OI_MinTens, 13, 5 },
      { OI_MinUnits, 17, 5 },
-     { OI_Bar_Right, 19, 5 },
-     { OI_SecTens, 21, 5 },
-     { OI_SecUnits, 25, 5 },
+     { OI_Bar_Right, 20, 7 },
+     { OI_SecTens, 22, 5 },
+     { OI_SecUnits, 26, 5 },
+#else
+     { OI_HrTens, 4, 3 },
+     { OI_HrUnits, 8, 3 },
+     { OI_Bar_Left, 11, 6 },
+     { OI_MinTens, 13, 3 },
+     { OI_MinUnits, 17, 3 },
+     { OI_Bar_Right, 20, 6 },
+     { OI_SecTens, 22, 3 },
+     { OI_SecUnits, 26, 3 },
+#endif
 };
+
+#define INT_TO_BCD(decimalValue) ((((decimalValue / 10) << 4) & 0xf0) + ((decimalValue % 10) & 0x0f))
 
 void showCurrBinaryFace(uint32_t nFaceColor)
 {
@@ -204,12 +219,24 @@ void showCurrBinaryFace(uint32_t nFaceColor)
     // convert to localtime
     struct tm *local = localtime(&secs);
 
-    updateBinaryFace(TU_SECONDS, 0x0ff, nFaceColor);
-    updateBinaryFace(TU_MINUTES, 0x0ff, nFaceColor);
-    updateBinaryFace(TU_HOURS, 0x0ff, nFaceColor);
-    //updateBinaryFace(TU_SECONDS, local->tm_sec, nFaceColor);
-    //updateBinaryFace(TU_MINUTES, local->tm_min, nFaceColor);
-    //updateBinaryFace(TU_HOURS, local->tm_hour, nFaceColor);
+    // and convert h:n:s to bcd
+    int hourBCD = INT_TO_BCD(local->tm_hour);
+    int minBCD = INT_TO_BCD(local->tm_min);
+    int secBCD = INT_TO_BCD(local->tm_sec);
+
+    debugMessage("tm_hour=%d, hourBCD=0x%.2X", local->tm_hour, hourBCD);
+    debugMessage("tm_min=%d, minBCD=0x%.2X", local->tm_min, minBCD);
+    debugMessage("tm_sec=%d, secBCD=0x%.2X", local->tm_sec, secBCD);
+
+#ifdef TEST_PLACEMENT
+    updateBinaryFace(TU_SECONDS, 0x0ff, 0xff0000);
+    updateBinaryFace(TU_MINUTES, 0x0ff, 0x00ff00);
+    updateBinaryFace(TU_HOURS, 0x0ff, 0x0000ff);
+#else
+    updateBinaryFace(TU_SECONDS, secBCD, nFaceColor);
+    updateBinaryFace(TU_MINUTES, minBCD, nFaceColor);
+    updateBinaryFace(TU_HOURS, hourBCD, nFaceColor);
+#endif
 
     // update blinking bars
     placeVertBar(locTable[OI_Bar_Left].X, locTable[OI_Bar_Left].Y);
@@ -241,32 +268,42 @@ void updateBinaryFace(eTimeUnits tmUnits, int tmValue, uint32_t nFaceColor)
 
 void placeTensUnits(int nValue, uint8_t locX, uint8_t locY, uint32_t nFaceColor)
 {
+#ifndef TWObyTHREE
+    const uint8_t rowOffset = 4;
+#else
+    const uint8_t rowOffset = 5;
+#endif
     uint8_t bit7 = (nValue & 0x0080) > 0;
     placeBit(bit7, locX, locY, nFaceColor);
     uint8_t bit6 = (nValue & 0x0040) > 0;
-    placeBit(bit6, locX, locY+4, nFaceColor);
+    placeBit(bit6, locX, locY+(1*rowOffset), nFaceColor);
     uint8_t bit5 = (nValue & 0x0020) > 0;
-    placeBit(bit5, locX, locY+8, nFaceColor);
+    placeBit(bit5, locX, locY+(2*rowOffset), nFaceColor);
     uint8_t bit4 = (nValue & 0x0010) > 0;
-    placeBit(bit4, locX, locY+12, nFaceColor);
+    placeBit(bit4, locX, locY+(3*rowOffset), nFaceColor);
     uint8_t bit3 = (nValue & 0x0008) > 0;
     placeBit(bit3, locX+4, locY, nFaceColor);
     uint8_t bit2 = (nValue & 0x0004) > 0;
-    placeBit(bit2, locX+4, locY+4, nFaceColor);
+    placeBit(bit2, locX+4, locY+(1*rowOffset), nFaceColor);
     uint8_t bit1 = (nValue & 0x0002) > 0;
-    placeBit(bit1, locX+4, locY+8, nFaceColor);
+    placeBit(bit1, locX+4, locY+(2*rowOffset), nFaceColor);
     uint8_t bit0 = (nValue & 0x0001) > 0;
-    placeBit(bit0, locX+4, locY+12, nFaceColor);
+    placeBit(bit0, locX+4, locY+(3*rowOffset), nFaceColor);
 }
+
 
 void placeBit(uint8_t bValue, uint8_t locX, uint8_t locY, uint32_t nFaceColor)
 {
+    uint32_t nColor = (bValue == 0) ? 0x444444 : nFaceColor;
     // set 4 LEDs 2x2 to same color (faceColor -OR- off)
-    uint32_t nColor = (bValue == 0) ? 0x000000 : nFaceColor;
     setBufferLEDColor(s_nClockBufferNumber, nColor, locX, locY);
     setBufferLEDColor(s_nClockBufferNumber, nColor, locX+1, locY);
     setBufferLEDColor(s_nClockBufferNumber, nColor, locX, locY+1);
     setBufferLEDColor(s_nClockBufferNumber, nColor, locX+1, locY+1);
+#ifdef TWObyTHREE
+    setBufferLEDColor(s_nClockBufferNumber, nColor, locX, locY+2);
+    setBufferLEDColor(s_nClockBufferNumber, nColor, locX+1, locY+2);
+#endif
 }
 
 static int bBarLight = 0;
@@ -275,7 +312,18 @@ void placeVertBar(uint8_t locX, uint8_t locY)
 {
     // set two vert pix to lt or dk gray
     bBarLight = (bBarLight == 0) ? 1 : 0;
-    uint32_t nColor = (bBarLight == 0) ? 0x404040 : 0x808080;
+    uint32_t nColor = (bBarLight == 0) ? 0x555555 : 0x808080;
+    // upper  bar
     setBufferLEDColor(s_nClockBufferNumber, nColor, locX, locY);
     setBufferLEDColor(s_nClockBufferNumber, nColor, locX, locY+1);
+    // lower bar
+    bBarLight = (bBarLight == 0) ? 1 : 0;
+    nColor = (bBarLight == 0) ? 0x555555 : 0x808080;
+#ifndef TWObyTHREE
+    setBufferLEDColor(s_nClockBufferNumber, nColor, locX, locY+8);
+    setBufferLEDColor(s_nClockBufferNumber, nColor, locX, locY+9);
+#else
+    setBufferLEDColor(s_nClockBufferNumber, nColor, locX, locY+10);
+    setBufferLEDColor(s_nClockBufferNumber, nColor, locX, locY+11);
+#endif
 }
