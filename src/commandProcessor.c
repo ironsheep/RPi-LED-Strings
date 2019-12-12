@@ -141,9 +141,14 @@ int perform(int argc, const char *argv[])
     s_nCurrentCmdIdx = CMD_NOT_FOUND;
 
     // process a single command with options
-    debugMessage("- perform() argc=(%d)", argc);
-    for(int argCt=0; argCt<argc; argCt++) {
-        debugMessage("- arg[%d] = [%s]", argCt, argv[argCt]);
+    if(argc > 0) {
+        debugMessage("- perform() argc=(%d)", argc);
+        for(int argCt=0; argCt<argc; argCt++) {
+            debugMessage("- arg[%d] = [%s]", argCt, argv[argCt]);
+        }
+    }
+    else {
+        return CMD_RET_SUCCESS;
     }
 
     for(cmdIdx = 0; cmdIdx < commandCount; cmdIdx++) {
@@ -166,6 +171,9 @@ int perform(int argc, const char *argv[])
     else if(s_nCurrentCmdIdx != CMD_NOT_FOUND && commands[cmdIdx].pCommandFunction == NULL) {
         // show that this command is not yet implemented
         infoMessage("** Command [%s] NOT YET IMPLEMENTED", argv[0]);
+    }
+    else if(argc == 0) {
+	    // do nothing, just let prompt show again...
     }
     else {
         // show that we don't know this command

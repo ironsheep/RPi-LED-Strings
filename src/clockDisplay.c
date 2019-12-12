@@ -204,9 +204,12 @@ void showCurrBinaryFace(uint32_t nFaceColor)
     // convert to localtime
     struct tm *local = localtime(&secs);
 
-    updateBinaryFace(TU_SECONDS, local->tm_sec, nFaceColor);
-    updateBinaryFace(TU_MINUTES, local->tm_min, nFaceColor);
-    updateBinaryFace(TU_HOURS, local->tm_hour, nFaceColor);
+    updateBinaryFace(TU_SECONDS, 0x0ff, nFaceColor);
+    updateBinaryFace(TU_MINUTES, 0x0ff, nFaceColor);
+    updateBinaryFace(TU_HOURS, 0x0ff, nFaceColor);
+    //updateBinaryFace(TU_SECONDS, local->tm_sec, nFaceColor);
+    //updateBinaryFace(TU_MINUTES, local->tm_min, nFaceColor);
+    //updateBinaryFace(TU_HOURS, local->tm_hour, nFaceColor);
 
     // update blinking bars
     placeVertBar(locTable[OI_Bar_Left].X, locTable[OI_Bar_Left].Y);
