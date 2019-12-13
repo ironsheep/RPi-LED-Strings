@@ -80,7 +80,7 @@ int closeMatrix(void)
 void showBuffer(uint8_t *buffer, size_t bufferLen)
 {
     // write our buffer to the LED matrix for display
-    debugMessage("showBuffer() %p(%ld) - ENTRY", buffer, bufferLen);
+    //debugMessage("showBuffer() %p(%ld) - ENTRY", buffer, bufferLen);
     ssize_t numberBytesWritten = write(s_fdDriver, buffer, bufferLen);
     if(numberBytesWritten == -1) {
         perrorMessage("write() failed");
@@ -88,7 +88,7 @@ void showBuffer(uint8_t *buffer, size_t bufferLen)
     else if(numberBytesWritten != bufferLen) {
         warningMessage("showBuffer() ONLY write %d of %d bytes!", numberBytesWritten, bufferLen);
     }
-    debugMessage("showBuffer() - EXIT");
+    //debugMessage("showBuffer() - EXIT");
 }
 
 

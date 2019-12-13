@@ -429,13 +429,12 @@ static int bBarLight = 0;
 void placeVertBar(uint8_t locX, uint8_t locY)
 {
     // set two vert pix to lt or dk gray
-    bBarLight = (bBarLight == 0) ? 1 : 0;
+    bBarLight = !bBarLight;
     uint32_t nColor = BAR_COLOR(bBarLight);
     // upper  bar
     setBufferLEDColor(s_nClockBufferNumber, nColor, locX, locY);
     setBufferLEDColor(s_nClockBufferNumber, nColor, locX, locY+1);
     // lower bar
-    bBarLight = (bBarLight == 0) ? 1 : 0;
     nColor = BAR_COLOR(bBarLight);
 #ifndef TWObyTHREE
     setBufferLEDColor(s_nClockBufferNumber, nColor, locX, locY+8);
