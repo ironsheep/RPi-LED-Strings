@@ -185,3 +185,53 @@ void setBufferLEDColor(uint8_t nBufferNumber, uint32_t nColorRGB, uint8_t locX, 
         errorMessage("setBufferLEDColor() No Buffer at #%d", nBufferNumber);
     }
 }
+
+void drawSquareInBuffer(uint8_t nBufferNumber, uint8_t locX, uint8_t locY, uint8_t nWidth, uint8_t nHeight, uint8_t nLineWidth, uint8_t nLineColor)
+{
+    moveToInBuffer(nBufferNumber, locX, locY);
+    
+    lineToInBuffer(nBufferNumber, locX + nWidth - 1, locY, nLineWidth, nLineColor);
+    lineToInBuffer(nBufferNumber, locX + nWidth - 1, locY + nHeight -1, nLineWidth, nLineColor);
+    lineToInBuffer(nBufferNumber, locX, locY + nHeight -1, nLineWidth, nLineColor);
+    lineToInBuffer(nBufferNumber, locX, locY, nLineWidth, nLineColor);
+}
+
+static int nPenX;
+static int nPenY;
+
+void moveToInBuffer(uint8_t nBufferNumber, uint8_t locX, uint8_t locY)
+{
+    debugMessage("moveTo() bfr #%d rc=(%d, %y)", nBufferNumber, locX, locY);
+    nPenX = locX;
+    nPenY = locY;
+}
+
+#define MIN(a,b) ((a < b) ? a : b)
+#define MAX(a,b) ((a > b) ? a : b)
+
+void lineToInBuffer(uint8_t nBufferNumber, uint8_t locX, uint8_t locY, uint8_t nLineWidth, uint8_t nLineColor)
+{
+    debugMessage("lineTo() bfr #%d fmRC=(%d, %d), toRC=(%d, %d), w=%d, c=0x%.6X", nBufferNumber, nPenX, nPenY, locX, locY);
+    int bIsHorzOrVertLine = (nPenX == locX) || (nPenY == locY);
+    if(bIsHorzOrVertLine) {
+        if(nPenX == locX) {
+            // draw vertical line
+            int nMinIdxY = MIN(nPenY, locY);
+            int nMaxIdxY = MAX(nPenY, locY); 
+            for(int yIdx = nMinIdxY; yIdx <= nMaxIdxY; yIdx++) {
+                setBufferLEDColor(nBufferNumber, nLineColor, nPenX, yIdx);
+            }
+        }
+        else {
+            // draw horizontal line
+            int nMinIdxX = MIN(nPenX, locX);
+            int nMaxIdxX = MAX(nPenX, locX); 
+            for(int xIdx = nMinIdxX; xIdx <= nMaxIdxX; xIdx++) {
+                setBufferLEDColor(nBufferNumber, nLineColor, xIdx, nPenY);
+            }
+       }
+    }
+    else {
+        warningMessage("- lineToInBuffer() sloped line NOT YET implemented, draw skipped.");
+    }
+}

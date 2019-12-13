@@ -91,6 +91,7 @@ int commandFillBuffer(int argc, const char *argv[]);
 int commandWriteBuffer(int argc, const char *argv[]);
 int commandClearBuffer(int argc, const char *argv[]);
 int commandShowClock(int argc, const char *argv[]);
+int commandSetBorder(int argc, const char *argv[]);
 
 struct _commandEntry {
     char *name;
@@ -104,7 +105,7 @@ struct _commandEntry {
     { "clear",       "clear {selectedBuffers} - where selected is [N, N-M, ., all]", 1, 1, &commandClearBuffer },
     { "freebuffers", "freebuffers - release all buffers", 0, 0 },
     { "fill",        "fill {selectedBuffers} {fillColor} - where selected is [N, N-M, ., all] and color is [red, 0xffffff, all]", 2, 2, &commandFillBuffer },
-    { "border",      "border {width} {borderColor} {indent}", 2, 3 },
+    { "border",      "border {width} {borderColor} [{indent}] - draw border of color", 2, 3, &commandSetBorder },
     { "clock",       "clock {clockType} [{faceColor}] - where type is [digital, binary, stop] and color is [red, 0xffffff]", 1, 2, &commandShowClock },
     { "write",       "write {selectedBuffers} [{loopYN} {rate}] - where selected is [N, N-M, ., all]", 1, 3, &commandWriteBuffer },
     { "square",      "square {boarderWidth} {height} {borderColor} {fillColor}", 3, 4 },
@@ -186,6 +187,42 @@ int perform(int argc, const char *argv[])
 // ----------------------------------------------------------------------------
 //  COMMAND Functions
 //
+int commandSetBorder(int argc, const char *argv[])
+{
+       int bValidCommand = 1;
+
+    // IMPLEMENT:
+    //   border {width} {borderColor} [{indent}] - draw border of color
+    if(stricmp(argv[0], commands[s_nCurrentCmdIdx].name) != 0) {
+        errorMessage("[CODE]: bad call commandSetBorder with command [%s]", argv[0]);
+        bValidCommand = 0;
+    }
+    else if(argc - 1 < 1) {
+        errorMessage("[CODE]: bad call - param count err for command [%s]", argv[0]);
+        bValidCommand = 0;
+    }
+    if(bValidCommand) {
+        // which specs for border?
+        int nLineWidthInPix = atoi(argv[1]);
+        uint32_t nLineColor = getValueOfColorSpec(argv[2]);
+        uint8_t nIndentInPix = 0;
+        if((argc - 1) == 3) {
+            nLineWidthInPix = atoi(argv[3]);
+        }
+        if(nLineWidthInPix >= 1 && nLineWidthInPix <= 12) {
+            int nOffsetX = nIndentInPix;
+            int nOffsetY = nIndentInPix;
+            int nBorderWidth = 32 - (2 * nIndentInPix);
+            int nBorderHeight = 24 - (2 * nIndentInPix);
+            drawSquareInBuffer(s_nCurrentBufferIdx+1, nOffsetX, nOffsetY, nBorderWidth, nBorderHeight, nLineWidthInPix, nLineColor);
+        }
+        else {
+            errorMessage("[CODE]: bad param(s) - line width too small! (%d not in range [1-12])", nLineWidthInPix);
+        }
+    }
+    return CMD_RET_SUCCESS;   // no errors
+}
+
 int commandShowClock(int argc, const char *argv[])
 {
     int bValidCommand = 1;

@@ -52,15 +52,20 @@ static pthread_t s_clockThread;
 static int s_bClockRunning;
 static uint32_t s_nFaceColor;
 static int s_nClockBufferNumber;
+static eClockFaceTypes s_nClockType;
 
+#define USE_TIMER
+
+#ifdef USE_PTHREADS
 void runClock(eClockFaceTypes clockType, uint32_t nFaceColor, int nBufferNumber)
 {
     int status;
 
     s_nFaceColor = nFaceColor;
     s_nClockBufferNumber = nBufferNumber;
+    s_nClockType = clockType;
 
-    verboseMessage("runClock() Start Clock Thread");
+    verboseMessage("runClock() Start Clock THread");
     switch(clockType) {
         case CFT_DIGITAL:
             status = pthread_create(&s_clockThread, NULL, &threadDigitalClock, (void *)nFaceColor);
@@ -91,11 +96,119 @@ void stopClock(void)
     }
     s_bClockRunning = 0;  // show NOT running
 }
+#endif
+
+#ifdef USE_TIMER
+void runClock(eClockFaceTypes clockType, uint32_t nFaceColor, int nBufferNumber)
+{
+    const long intervalInMilliSec = 1000;
+
+    s_nFaceColor = nFaceColor;
+    s_nClockBufferNumber = nBufferNumber;
+    s_nClockType = clockType;
+
+    verboseMessage("runClock() Start Clock Timer");
+    if(clockType == CFT_DIGITAL) {
+        warningMessage("runClock() clock type (%d) NOT YET SUPPORTED", clockType);
+    }
+    else if(clockType == CFT_BINARY) {
+        if(!s_bClockRunning) {
+            s_bClockRunning = 1;  // show IS running
+            create_timer(periodInMilliSec);
+        }
+        else {
+            warningMessage("runClock() Skipped, already running (use'clock stop' before next start)");
+        }
+    }
+    else {
+        errorMessage("runClock() Unknown clock type (%d)", clockType);
+    }
+}
+
+void stopClock(void)
+{
+    verboseMessage("stopClock() Stop Clock Thread");
+
+    if(s_bClockRunning) {
+        destroy_timer();
+        s_bClockRunning = 0;  // show NOT running
+    }
+    else {
+        warningMessage("stopClock() no clock running!");
+    }
+}
+
+#endif
 
 int isClockRunning(void)
 {
     return s_bClockRunning;
 }
+
+// ============================================================================
+//
+
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+
+void handleTimerExpiration(union sigval arg)
+{
+    int status;
+
+    status = pthread_mutex_lock(&mutex);
+    if (status != 0) {
+        errorMessage("handleTimerExpiration(): failed to Lock mutex error(%d)", status);
+    }
+
+    // task code run on timer expire...
+    if(s_nClockType == CFT_BINARY) {
+        showCurrBinaryFace(s_nFaceColor);
+    }
+
+    status = pthread_mutex_unlock(&mutex);
+    if (status != 0) {
+        errorMessage("handleTimerExpiration(): failed to Unlock mutex error(%d)", status);
+    }
+}
+
+static timer_t timer_id;
+
+void create_timer(long mSeconds)
+{
+    int status;
+    struct itimerspec ts;
+    struct sigevent se;
+    long long nanosecs = mSeconds * 1000 * 1000;
+
+    /*
+    * Set the sigevent structure to cause the signal to be
+    * delivered by creating a new thread.
+    */
+    se.sigev_notify = SIGEV_THREAD;
+    se.sigev_value.sival_ptr = &timer_id;
+    se.sigev_notify_function = handleTimerExpiration;
+    se.sigev_notify_attributes = NULL;
+
+    ts.it_value.tv_sec = nanosecs / 1000000000;
+    ts.it_value.tv_nsec = nanosecs % 1000000000;
+    ts.it_interval.tv_sec = ts.it_value.tv_sec;
+    ts.it_interval.tv_nsec = ts.it_value.tv_nsec;
+
+    status = timer_create(CLOCK_REALTIME, &se, &timer_id);
+    if (status == -1) {
+        perrorMessage("create_timer(): timer_create() failed");
+    }
+
+    status = timer_settime(timer_id, 0, &ts, 0);
+    if (status == -1) {
+        perrorMessage("create_timer(): timer_settime() failed");
+    }
+}
+
+void destroy_timer(void)
+{
+    timer_delete(timer_id);
+}
+
 
 // ---------------------------------------------------------------------------
 // Clock Thread Functions

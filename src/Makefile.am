@@ -6,7 +6,7 @@ matrix_SOURCES = matrix.c commandProcessor.c  debug.c  frameBuffer.c  imageLoade
 
 #matrix_OBS :=
 
-matrix_LDADD = $(INTI_LIBS) -lpthread
+matrix_LDADD = $(INTI_LIBS) -lpthread -lrt
 
 EXTRA_DIST=matrix.lsm.in matrix.spec.in matrix.texi
 

@@ -60,5 +60,8 @@ struct _LedPixel *ptrBuffer(uint8_t nBufferNumber);
 struct _LedPixel *ptrPanel(struct _LedPixel *pBuffer, uint8_t nPanel);
 void fillBufferWithColorRGB(uint8_t nBufferNumber, uint32_t nColorRGB);
 void setBufferLEDColor(uint8_t nBufferNumber, uint32_t nColor, uint8_t locX, uint8_t locY);
+void drawSquareInBuffer(uint8_t nBufferNumber, uint8_t locX, uint8_t locY, uint8_t nWidth, uint8_t nHeight, uint8_t nLineWidth, uint8_t nLineColor);
+void moveToInBuffer(uint8_t nBufferNumber, uint8_t locX, uint8_t locY);
+void lineToInBuffer(uint8_t nBufferNumber, uint8_t locX, uint8_t locY, uint8_t nLineWidth, uint8_t nLineColor);
 
 #endif /* FRAME_BUFFER_H */
