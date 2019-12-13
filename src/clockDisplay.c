@@ -20,6 +20,7 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 */
 
 #include <pthread.h>
+#include <signal.h>
 #include <time.h>
 
 #include "clockDisplay.h"
@@ -46,6 +47,8 @@ void updateBinaryFace(eTimeUnits tmUnits, int tmValue, uint32_t nFaceColor);
 void placeTensUnits(int nValue, uint8_t locX, uint8_t locY, uint32_t nFaceColor);
 void placeBit(uint8_t bValue, uint8_t locX, uint8_t locY, uint32_t nFaceColor);
 void placeVertBar(uint8_t locX, uint8_t locY);
+void create_timer(long mSeconds);
+void destroy_timer(void);
 
 
 static pthread_t s_clockThread;
@@ -114,7 +117,7 @@ void runClock(eClockFaceTypes clockType, uint32_t nFaceColor, int nBufferNumber)
     else if(clockType == CFT_BINARY) {
         if(!s_bClockRunning) {
             s_bClockRunning = 1;  // show IS running
-            create_timer(periodInMilliSec);
+            create_timer(intervalInMilliSec);
         }
         else {
             warningMessage("runClock() Skipped, already running (use'clock stop' before next start)");
