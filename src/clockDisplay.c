@@ -137,10 +137,10 @@ void *threadBinaryClock(void *argp)
     do {
 
         showCurrBinaryFace((uint32_t)argp);
-        //sleep 1 second
-        //delayMilliSec(950);
+        // sleep 1 second
+        delayMilliSec(950);
 
-    } while(0);
+    } while(1);
 }
 
 void showCurrDigitalFace(uint32_t nFaceColor)
@@ -224,9 +224,9 @@ void showCurrBinaryFace(uint32_t nFaceColor)
     int minBCD = INT_TO_BCD(local->tm_min);
     int secBCD = INT_TO_BCD(local->tm_sec);
 
-    debugMessage("tm_hour=%d, hourBCD=0x%.2X", local->tm_hour, hourBCD);
-    debugMessage("tm_min=%d, minBCD=0x%.2X", local->tm_min, minBCD);
-    debugMessage("tm_sec=%d, secBCD=0x%.2X", local->tm_sec, secBCD);
+    //debugMessage("tm_hour=%d, hourBCD=0x%.2X", local->tm_hour, hourBCD);
+    //debugMessage("tm_min=%d, minBCD=0x%.2X", local->tm_min, minBCD);
+    //debugMessage("tm_sec=%d, secBCD=0x%.2X", local->tm_sec, secBCD);
 
 #ifdef TEST_PLACEMENT
     updateBinaryFace(TU_SECONDS, 0x0ff, 0xff0000);
@@ -294,7 +294,7 @@ void placeTensUnits(int nValue, uint8_t locX, uint8_t locY, uint32_t nFaceColor)
 
 void placeBit(uint8_t bValue, uint8_t locX, uint8_t locY, uint32_t nFaceColor)
 {
-    uint32_t nColor = (bValue == 0) ? 0x444444 : nFaceColor;
+    uint32_t nColor = (bValue == 0) ? 0x010101 : nFaceColor;
     // set 4 LEDs 2x2 to same color (faceColor -OR- off)
     setBufferLEDColor(s_nClockBufferNumber, nColor, locX, locY);
     setBufferLEDColor(s_nClockBufferNumber, nColor, locX+1, locY);
@@ -308,17 +308,19 @@ void placeBit(uint8_t bValue, uint8_t locX, uint8_t locY, uint32_t nFaceColor)
 
 static int bBarLight = 0;
 
+#define BAR_COLOR(bit) ((bit == 0) ? 0x040404 : 0x0A0A0A)
+
 void placeVertBar(uint8_t locX, uint8_t locY)
 {
     // set two vert pix to lt or dk gray
     bBarLight = (bBarLight == 0) ? 1 : 0;
-    uint32_t nColor = (bBarLight == 0) ? 0x555555 : 0x808080;
+    uint32_t nColor = BAR_COLOR(bBarLight);
     // upper  bar
     setBufferLEDColor(s_nClockBufferNumber, nColor, locX, locY);
     setBufferLEDColor(s_nClockBufferNumber, nColor, locX, locY+1);
     // lower bar
     bBarLight = (bBarLight == 0) ? 1 : 0;
-    nColor = (bBarLight == 0) ? 0x555555 : 0x808080;
+    nColor = BAR_COLOR(bBarLight);
 #ifndef TWObyTHREE
     setBufferLEDColor(s_nClockBufferNumber, nColor, locX, locY+8);
     setBufferLEDColor(s_nClockBufferNumber, nColor, locX, locY+9);
