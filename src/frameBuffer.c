@@ -262,12 +262,36 @@ void lineToInBuffer(uint8_t nBufferNumber, uint8_t locX, uint8_t locY, uint8_t n
 
 void writeStringToBufferWithColorRGB(uint8_t nBufferNumber, const char *cString, uint32_t nColorRGB)
 {
-    errorMessage("writeStringToBufferWithColorRGB() NOT YET IMPLEMENTED");
+    int strLen = strlen(cString);
+    char *rwCString = (char *)cString;
+    if(*cString == '"' && cString[strLen-1] == '"' && strLen > 2) {
+        cString++;
+	rwCString[strLen-1] = 0x00;
+	strLen -= 2;
+    }
+
+    writeStringToBufferPanelWithColorRGB(nBufferNumber, &cString[0], 1, nColorRGB);
+    const char *pWord2 = &cString[5];
+    while(*pWord2 == ' ') {
+	    pWord2++;
+    }
+    if(*pWord2 != 0x00) {
+        writeStringToBufferPanelWithColorRGB(nBufferNumber, pWord2, 2, nColorRGB);
+	if(strlen(pWord2) >= 5) {
+        const char *pWord3 = &pWord2[5];
+        while(*pWord3 == ' ') {
+    	    pWord3++;
+        }
+        if(*pWord3 != 0x00) {
+            writeStringToBufferPanelWithColorRGB(nBufferNumber, pWord3, 3, nColorRGB);
+	}
+        }
+    }
 }
 
 void writeStringToBufferPanelWithColorRGB(uint8_t nBufferNumber, const char *cString, uint8_t nPanelNumber, uint32_t nColorRGB)
 {
-    int locY = (nPanelNumber * ROWS_PER_PANEL);
+    int locY = ((nPanelNumber - 1) * ROWS_PER_PANEL);
     int locX = 1;
 
     for(int nCharIdx = 0; nCharIdx < strlen(cString); nCharIdx++) {

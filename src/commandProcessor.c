@@ -26,6 +26,7 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
 #include "commandProcessor.h"
 #include "debug.h"
+#include "xmalloc.h"
 #include "imageLoader.h"
 #include "frameBuffer.h"
 #include "matrixDriver.h"
@@ -44,6 +45,8 @@ int getValueOfColorSpec(const char *colorSpec);
 int getPanelNumberFromPanelSpec(const char *panelSpec);
 int stringIsHexValue(const char *colorSpec);
 int isHexDigitsString(const char *posHexDigits);
+void combineTokens(char **tokens, int ltIdx, int rtIdx);
+char *strconcat(char *str1, char *str2);
 
 
 // ----------------------------------------------------------------------------
@@ -232,7 +235,7 @@ int commandStringToScreen(int argc, const char *argv[])
                 nPanelNumber = getPanelNumberFromPanelSpec(argv[4]);
             }
             debugMessage("nPanelNumber=(%d)",nPanelNumber);
-            if(nPanelNumber > NUMBER_OF_PANELS) {
+            if(nPanelNumber < 0 || nPanelNumber > NUMBER_OF_PANELS) {
                errorMessage("Panel (%d) out-of-range: [must be 1 >= N <= %d]", NUMBER_OF_PANELS);
             }
             else {
@@ -279,7 +282,7 @@ int commandColorToScreen(int argc, const char *argv[])
             nPanelNumber = getPanelNumberFromPanelSpec(argv[2]);
         }
         debugMessage("nPanelNumber=(%d)",nPanelNumber);
-        if(nPanelNumber > NUMBER_OF_PANELS) {
+        if(nPanelNumber < 0 || nPanelNumber > NUMBER_OF_PANELS) {
            errorMessage("Panel (%d) out-of-range: [must be 1 >= N <= %d]", NUMBER_OF_PANELS);
         }
         else {
@@ -649,11 +652,79 @@ const char **lsh_split_line(char *line, int *tokenCtOut)
     }
     tokens[position] = NULL;
 
+    // now let's put back together double-quoted strings
+    int ltIdx = 0;
+    do {
+	int ltTokenLen = strlen(tokens[ltIdx]);
+	if(tokens[ltIdx][0] == '"' && tokens[ltIdx][ltTokenLen - 1] != '"') {
+	    int rtIdx = ltIdx + 1;
+	    int groupedTokensCt = 1;
+	    do {
+		    int rtTokenLen = strlen(tokens[rtIdx]);
+	        if(tokens[rtIdx][rtTokenLen - 1] == '"') {
+                combineTokens(tokens, ltIdx, rtIdx);
+		        ltIdx = -1; // so that next incr makes ZERO!;
+		        break; // restart outer loop
+		    }
+		    else {
+		        groupedTokensCt += 1;
+		        rtIdx += 1;
+		    }
+        } while(tokens[rtIdx] != NULL);
+	}
+	ltIdx++;
+    } while (tokens[ltIdx] != NULL);
+    
+    // now fixup position
+    position = 0;
+    do {
+        if(tokens[position] != NULL) {
+	        position += 1;
+	    }
+    } while(tokens[position] != NULL);
+
     // if requested, pass count of tokens found to caller
     if(tokenCtOut != NULL) {
         *tokenCtOut = position;
     }
     return (const char **)tokens;
+}
+
+void combineTokens(char **tokens, int ltIdx, int rtIdx)
+{
+    // append tokens[ltIdx] thru tokens[rtIdx]
+    int targetIdx = ltIdx;
+    int currIdx = ltIdx + 1;
+    do {
+        tokens[targetIdx] = strconcat(tokens[targetIdx], tokens[currIdx]);
+        tokens[currIdx++] = NULL;
+    } while(currIdx <= rtIdx);
+
+    // then move all forward shortening the entire list
+    int destIdx = ltIdx + 1;
+    int srcIdx = rtIdx + 1;
+    do {
+        if(tokens[srcIdx] != NULL) {
+            tokens[destIdx++] = tokens[srcIdx];
+            tokens[srcIdx++] = NULL;
+        }
+    } while(tokens[srcIdx] != NULL);
+
+    // lastly remove double-quotes from combined token
+    if(tokens[targetIdx][0] == '"') {
+       int targetLen = strlen(tokens[targetIdx]);
+       tokens[targetIdx][targetLen - 1] = 0x00;
+       tokens[targetIdx] = &tokens[targetIdx][1];
+    }
+}
+
+char *strconcat(char *str1, char *str2)
+{
+    char *result = xmalloc(strlen(str1) + 1 + strlen(str2) + 1); // +1 for the null-terminator and for the space between
+    strcpy(result, str1);
+    strcat(result, " ");
+    strcat(result, str2);
+    return result;
 }
 
 int getPanelNumberFromPanelSpec(const char *panelSpec)
@@ -663,9 +734,19 @@ int getPanelNumberFromPanelSpec(const char *panelSpec)
     if(tolower(panelSpec[0]) == 'p' && strlen(panelSpec) == 2) {
         if(panelSpec[1] >= 0x30 && panelSpec[1] <= 0x32) {
             desiredValue = panelSpec[1] - 0x30;
+        } else {
+            desiredValue = -1;
         }
     }
-    debugMessage("getPanelNumberFromPanelSpec(%s) = (%d)", panelSpec, desiredValue);
+    else {
+        desiredValue = -1;
+    }
+    if(desiredValue == -1) {
+        errorMessage("getPanelNumberFromPanelSpec(%s) - INVALID SPEC", panelSpec);
+    }   
+    else {
+        debugMessage("getPanelNumberFromPanelSpec(%s) = (%d)", panelSpec, desiredValue);
+    }
     return desiredValue;
 }
 
@@ -674,7 +755,12 @@ int getValueOfColorSpec(const char *colorSpec)
 {
     int desiredValue = 0;
     if(stringIsHexValue(colorSpec)) {
-        desiredValue = (int)strtol(colorSpec, NULL, 16);
+        if(stringHasPrefix(colorSpec, "0x")) {
+            desiredValue = (int)strtol(&colorSpec[2], NULL, 16);
+        }
+        else {
+            desiredValue = (int)strtol(colorSpec, NULL, 16);
+        }
     }
     else if(stricmp(colorSpec, "red") == 0) {
        desiredValue = 0xff0000;
@@ -723,7 +809,7 @@ int stringIsHexValue(const char *colorSpec)
     else if(isHexDigitsString(colorSpec)) {
         hexStatus = 1;  // YES!
     }
-    //debugMessage("stringIsHexValue()=%d",hexStatus);
+    debugMessage("stringIsHexValue()=%d",hexStatus);
     return hexStatus;
 }
 
@@ -737,7 +823,7 @@ int isHexDigitsString(const char *posHexDigits)
             break;  // done, we have our answer, abort loop
         }
     }
-    //debugMessage("isHexDigitsString()=%d",hexStatus);
+    debugMessage("isHexDigitsString(%s)=%d", posHexDigits, hexStatus);
     return hexStatus;
 }
 
@@ -782,14 +868,21 @@ int stringHasSuffix(const char *str, const char *suffix)
 
 int stringHasPrefix(const char *str, const char *prefix)
 {
+    int checkStatus = -1;
     if (!str || !prefix) {
-        return 0;
+        checkStatus = 0;
     }
-    size_t lenstr = strlen(str);
-    size_t lenprefix = strlen(prefix);
-    if (lenprefix > lenstr) {
-        return 0;
+    else {
+        size_t lenstr = strlen(str);
+        size_t lenprefix = strlen(prefix);
+        if (lenprefix > lenstr) {
+            checkStatus = 0;
+        }
+        else {
+            checkStatus = strncmp(str, prefix, lenprefix) == 0;
+        }
     }
-    return strncmp(str + lenstr - lenprefix, prefix, lenprefix) == 0;
+    debugMessage("stringHasPrefix([%s], [%s]) == %d", str, prefix, checkStatus);
+    return checkStatus;
 }
 
