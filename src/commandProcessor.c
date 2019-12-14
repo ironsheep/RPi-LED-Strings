@@ -41,6 +41,7 @@ int stricmp(char const *a, char const *b);
 int stringHasSuffix(const char *str, const char *suffix);
 int stringHasPrefix(const char *str, const char *prefix);
 int getValueOfColorSpec(const char *colorSpec);
+int getPanelNumberFromPanelSpec(const char *panelSpec);
 int stringIsHexValue(const char *colorSpec);
 int isHexDigitsString(const char *posHexDigits);
 
@@ -92,6 +93,8 @@ int commandWriteBuffer(int argc, const char *argv[]);
 int commandClearBuffer(int argc, const char *argv[]);
 int commandShowClock(int argc, const char *argv[]);
 int commandSetBorder(int argc, const char *argv[]);
+int commandColorToScreen(int argc, const char *argv[]);
+int commandStringToScreen(int argc, const char *argv[]);
 
 struct _commandEntry {
     char *name;
@@ -105,6 +108,8 @@ struct _commandEntry {
     { "clear",       "clear {selectedBuffers} - where selected is [N, N-M, ., all]", 1, 1, &commandClearBuffer },
     { "freebuffers", "freebuffers - release all buffers", 0, 0 },
     // huh!  p[1-2], screen as new buffer types? which use current buffer and write directly to screen!
+    { "screen",      "screen {fillcolor|clear} [{[p[1-3]}]  - clear(or fill) single panel or entire screen", 1, 2, &commandColorToScreen },
+    { "string",      "string {selectedBuffers} {string} [{[p[1-3]}] - write string to screen w/wrap (or just single panel)", 2, 3, &commandStringToScreen },
     { "fill",        "fill {selectedBuffers} {fillColor} - where selected is [N, N-M, ., all] and color is [red, 0xffffff, all]", 2, 2, &commandFillBuffer },
     { "border",      "border {width} {borderColor} [{indent}] - draw border of color", 2, 3, &commandSetBorder },
     { "clock",       "clock {clockType} [{faceColor}] - where type is [digital, binary, stop] and color is [red, 0xffffff]", 1, 2, &commandShowClock },
@@ -188,6 +193,112 @@ int perform(int argc, const char *argv[])
 // ----------------------------------------------------------------------------
 //  COMMAND Functions
 //
+int commandStringToScreen(int argc, const char *argv[])
+{
+    int bValidCommand = 1;
+
+    // IMPLEMENT:
+    //   string {selectedBuffers} {string} [{[p[1-3]}] - write string to screen w/wrap (or just single panel)
+    if(stricmp(argv[0], commands[s_nCurrentCmdIdx].name) != 0) {
+        errorMessage("[CODE]: bad call commandColorToScreen with command [%s]", argv[0]);
+        bValidCommand = 0;
+    }
+    else if(argc - 1 < 2 || argc - 1 > 3) {
+        errorMessage("[CODE]: bad call - param count err for command [%s]", argv[0]);
+        bValidCommand = 0;
+    }
+    if(bValidCommand) {
+        // FIXME: UNDONE argv[1] is really a buffer spec, interpret it into fromBuffer, toBuffer!
+        int nBufferNumber = atoi(argv[1]);
+        int nMaxBuffers = numberBuffers();
+        debugMessage("nBufferNumber=(%d)",nBufferNumber);
+        if(nBufferNumber < 1 || nBufferNumber > nMaxBuffers) {
+            errorMessage("Buffer (%d) out-of-range: [must be 1 >= N <= %d]", nMaxBuffers);
+            bValidCommand = 0;
+        }
+        const char *cString = argv[2];
+        if(bValidCommand) {
+            debugMessage("cString=[%s]",cString);
+            if(strlen(cString < 1) {
+                errorMessage("[CODE]: bad call - can't write an empty string [%s]", argv[0]);
+                bValidCommand = 0;
+            }
+        }
+        if(bValidCommand) {
+            int nPanelNumber = 0;   // 0 == all panels
+            if((argc - 1) == 3) {
+                nPanelNumber = getPanelNumberFromPanelSpec(argv[3]);
+            }
+            debugMessage("nPanelNumber=(%d)",nPanelNumber);
+            if(nPanelNumber > NUMBER_OF_PANELS) {
+               errorMessage("Panel (%d) out-of-range: [must be 1 >= N <= %d]", NUMBER_OF_PANELS);
+            }
+            else {
+                if(nPanelNumber == 0) {
+                    // write string to full screen wrapping and end of each panel
+                    writeStringToBufferWithColorRGB(s_nCurrentBufferIdx+1, cString, nFillColor);
+                }
+                else {
+                     // write string to specified panel truncating at end of panel
+                    writeStringToBufferPanelWithColorRGB(s_nCurrentBufferIdx+1, cString, nPanelNumber, nFillColor);
+                }
+                // lastly immediately write to screen
+                int nBufferSize = frameBufferSizeInBytes();
+                uint8_t *pCurrBuffer = (uint8_t *)ptrBuffer(s_nCurrentBufferIdx+1);
+                showBuffer(pCurrBuffer, nBufferSize);
+            }
+        }
+    }
+    return CMD_RET_SUCCESS;   // no errors
+}
+
+int commandColorToScreen(int argc, const char *argv[])
+{
+    int bValidCommand = 1;
+
+    // IMPLEMENT:
+    //   screen {fillcolor|clear} [{[p[1-3]}]  - clear(or fill) single panel or entire screen
+    if(stricmp(argv[0], commands[s_nCurrentCmdIdx].name) != 0) {
+        errorMessage("[CODE]: bad call commandColorToScreen with command [%s]", argv[0]);
+        bValidCommand = 0;
+    }
+    else if(argc - 1 != 2) {
+        errorMessage("[CODE]: bad call - param count err for command [%s]", argv[0]);
+        bValidCommand = 0;
+    }
+    if(bValidCommand) {
+        int nFillColor = 0;
+        if(stricmp(argv[1], "clear") != 0) {
+            nFillColor = getValueOfColorSpec(argv[1]);
+        }
+        debugMessage("nFillColor=(0x%.6X)",nFillColor);
+        int nPanelNumber = 0;   // 0 = all panels
+        if((argc -1) == 2) {
+            nPanelNumber = getPanelNumberFromPanelSpec(argv[2]);
+        }
+        debugMessage("nPanelNumber=(%d)",nPanelNumber);
+        if(nPanelNumber > NUMBER_OF_PANELS) {
+           errorMessage("Panel (%d) out-of-range: [must be 1 >= N <= %d]", NUMBER_OF_PANELS);
+        }
+        else {
+            if(nPanelNumber == 0) {
+                // now set fill color to selected buffer
+                fillBufferWithColorRGB(s_nCurrentBufferIdx+1, nFillColor);
+            }
+            else {
+                 // now set fill color to selected panel in buffer
+                fillBufferPanelWithColorRGB(s_nCurrentBufferIdx+1, nPanelNumber, nFillColor);
+            }
+            // lastly immediately write to screen
+            int nBufferSize = frameBufferSizeInBytes();
+            uint8_t *pCurrBuffer = (uint8_t *)ptrBuffer(s_nCurrentBufferIdx+1);
+            showBuffer(pCurrBuffer, nBufferSize);
+        }
+    }
+    return CMD_RET_SUCCESS;   // no errors
+}
+
+
 int commandSetBorder(int argc, const char *argv[])
 {
        int bValidCommand = 1;
@@ -543,6 +654,20 @@ const char **lsh_split_line(char *line, int *tokenCtOut)
     return (const char **)tokens;
 }
 
+int getPanelNumberFromPanelSpec(const char *panelSpec)
+{
+    // parse string of [p1,p2,p3] returning int 1-3
+    int desiredValue = 0;
+    if(tolower(panelSpec[0]) == 'p' && strlen(panelSpec) == 2) {
+        if(panelSpec[1] >= 0x30 && panelSpec[1] <= 0x32) {
+            desiredValue = panelSpec[1] - 0x30;
+        }
+    }
+    debugMessage("getPanelNumberFromPanelSpec(%s) = (%d)", panelSpec, desiredValue);
+    return desiredValue;
+}
+
+
 int getValueOfColorSpec(const char *colorSpec)
 {
     int desiredValue = 0;
@@ -585,6 +710,7 @@ int getValueOfColorSpec(const char *colorSpec)
     //debugMessage("desiredValue=0x%.6X",desiredValue);
     return desiredValue;
 }
+
 
 int stringIsHexValue(const char *colorSpec)
 {

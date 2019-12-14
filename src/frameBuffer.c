@@ -25,6 +25,7 @@ Inc., 59    Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 #include "frameBuffer.h"
 #include "xmalloc.h"
 #include "debug.h"
+#include "charSet.h"
 
 #define MAX_BUFFER_POINTERS 50
 // setup our master frame buffer
@@ -159,20 +160,43 @@ void fillBufferWithColorRGB(uint8_t nBufferNumber, uint32_t nColorRGB)
             pSelectedBuffer[nLedIdx].blue = blue;
         }
     }
+    else {
+        errorMessage("fillBufferWithColorRGB() No Buffer at #%d", nBufferNumber);
+    }
+}
+
+void fillBufferPanelWithColorRGB(uint8_t nBufferNumber, uint8_t nPanelNumber, uint32_t nColorRGB)
+{
+    struct _LedPixel *pSelectedBuffer = ptrBuffer(nBufferNumber);
+    if(pSelectedBuffer != NULL) {
+       	uint16_t nOffsetToPanel = nPanelIdx * LEDS_PER_PANEL;
+        struct _LedPixel *pSelectedBufferPanel = &pSelectedBuffer[nOffsetToPanel];
+        uint8_t red = (nColorRGB >> 16) & 0xff;
+        uint8_t green = (nColorRGB >> 8) & 0xff;
+        uint8_t blue = (nColorRGB >> 0) & 0xff;
+    	for(int nLedIdx = 0; nLedIdx < LEDS_PER_PANEL; nLedIdx++) {
+            pSelectedBufferPanel[nLedIdx].red = red;
+            pSelectedBufferPanel[nLedIdx].green = green;
+            pSelectedBufferPanel[nLedIdx].blue = blue;
+    	}
+    }
+    else {
+        errorMessage("fillBufferPanelWithColorRGB() No Buffer at #%d", nBufferNumber);
+    }
 }
 
 void setBufferLEDColor(uint8_t nBufferNumber, uint32_t nColorRGB, uint8_t locX, uint8_t locY)
 {
     struct _LedPixel *pSelectedBuffer = ptrBuffer(nBufferNumber);
     if(pSelectedBuffer != NULL) {
-	// do we have bottom to top numbered column 
+	// do we have bottom to top numbered column
         int bGoesUpPanelY = (locX & 0x01) == 1;
         uint8_t nPanelIdx = (locY / 8);
         uint8_t nPanelY = (locY % 8);
         uint16_t nColumnLEDidx = ((32 - 1) - locX) * 8;
-	uint16_t nOffsetToPanel = nPanelIdx * LEDS_PER_PANEL;
+        uint16_t nOffsetToPanel = nPanelIdx * LEDS_PER_PANEL;
         uint16_t nLEDIdx = (bGoesUpPanelY == 0) ? nColumnLEDidx + nPanelY : nColumnLEDidx + (7 - nPanelY);
-	nLEDIdx += nOffsetToPanel;
+        nLEDIdx += nOffsetToPanel;
 
         uint8_t red = (nColorRGB >> 16) & 0xff;
         uint8_t green = (nColorRGB >> 8) & 0xff;
@@ -189,7 +213,7 @@ void setBufferLEDColor(uint8_t nBufferNumber, uint32_t nColorRGB, uint8_t locX, 
 void drawSquareInBuffer(uint8_t nBufferNumber, uint8_t locX, uint8_t locY, uint8_t nWidth, uint8_t nHeight, uint8_t nLineWidth, uint8_t nLineColor)
 {
     moveToInBuffer(nBufferNumber, locX, locY);
-    
+
     lineToInBuffer(nBufferNumber, locX + nWidth - 1, locY, nLineWidth, nLineColor);
     lineToInBuffer(nBufferNumber, locX + nWidth - 1, locY + nHeight -1, nLineWidth, nLineColor);
     lineToInBuffer(nBufferNumber, locX, locY + nHeight -1, nLineWidth, nLineColor);
@@ -217,7 +241,7 @@ void lineToInBuffer(uint8_t nBufferNumber, uint8_t locX, uint8_t locY, uint8_t n
         if(nPenX == locX) {
             // draw vertical line
             int nMinIdxY = MIN(nPenY, locY);
-            int nMaxIdxY = MAX(nPenY, locY); 
+            int nMaxIdxY = MAX(nPenY, locY);
             for(int yIdx = nMinIdxY; yIdx <= nMaxIdxY; yIdx++) {
                 setBufferLEDColor(nBufferNumber, nLineColor, nPenX, yIdx);
             }
@@ -225,7 +249,7 @@ void lineToInBuffer(uint8_t nBufferNumber, uint8_t locX, uint8_t locY, uint8_t n
         else {
             // draw horizontal line
             int nMinIdxX = MIN(nPenX, locX);
-            int nMaxIdxX = MAX(nPenX, locX); 
+            int nMaxIdxX = MAX(nPenX, locX);
             for(int xIdx = nMinIdxX; xIdx <= nMaxIdxX; xIdx++) {
                 setBufferLEDColor(nBufferNumber, nLineColor, xIdx, nPenY);
             }
@@ -234,4 +258,43 @@ void lineToInBuffer(uint8_t nBufferNumber, uint8_t locX, uint8_t locY, uint8_t n
     else {
         warningMessage("- lineToInBuffer() sloped line NOT YET implemented, draw skipped.");
     }
+}
+
+void writeStringToBufferWithColorRGB(uint8_t nBufferNumber, const char *cString, uint32_t nColorRGB)
+{
+    errorMessage("writeStringToBufferWithColorRGB() NOT YET IMPLEMENTED");
+}
+
+void writeStringToBufferPanelWithColorRGB(uint8_t nBufferNumber, const char *cString, uint8_t nPanelNumber, uint32_t nColorRGB)
+{
+    int locY = (nPanelNumber * ROWS_PER_PANEL);
+    int locX = 1;
+
+    for(int nCharIdx = 0; nCharIdx < strlen(cString); nCharIdx++) {
+        locX = setCharToBuffer(nBufferNumber, cString[nCharIdx], locX, locY,nColorRGB);
+        locX += 1; // add gap between chars
+        if(locX + 5 > 31) {
+            break;
+        }
+    }
+}
+
+int setCharToBuffer(uint8_t nBufferNumber, char cChar, uint8_t locX, uint8_t locY, uint32_t nColorRGB)
+{
+    // place 5 bytes of LED on/off info into buffer starting at top left corner X,Y
+    // returns next X addres after;
+    uint8_t nextLocX;
+    uint8_t *charRom5Bytes = getCharBitsAddr(cChar);
+    for(int nRomIdx = 0; nRomIdx < 5; nRomIdx++) {
+        nextLocX = locX + nRomIdx;
+        uint8_t nRomByte = charRom5Bytes[nRomIdx];
+        // now place LED bits ON with color if bit is set (bit0 is top, bit6 is bottom)
+        for(nBitIdx = 0; nBitIdx < 7; nBitIdx++) {
+            if((nRomByte & (1 << nBitIdx)) != 0) {
+                setBufferLEDColor(nBufferNumber, nColorRGB, nextLocX, locY + nBitIdx);
+            }
+        }
+    }
+    nextLocX += 1;
+    return nextLocX;
 }

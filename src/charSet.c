@@ -17,6 +17,54 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software Foundation,
 Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
+┌───────────────────────────────────┬─────────────────────────────────────────┬───────────────┐
+│ 5x7_CharSet v1.0                  │ (C)2013 Stephen Moraco, KZ0Q            │ 02 Jan 2013   │
+├───────────────────────────────────┴─────────────────────────────────────────┴───────────────┤
+│ PREMISE: an object which looks up ROM char addresses to bit definitions for 5x7 chars       │
+│  given the ASCII value for the character.                                                   │
+│                                                                                             │
+│ FEATURES:                                                                                   │
+│  - Returns address of [] char when out-of-range                                             │
+│  - Supports selection of alternate Micr-like number-set                                     │
+│  - Supports query to see if alternate Micr-like number-set is selected                      │
+│                                                                                             │
+│ LAYOUT OF CHARS:                                                                            │
+│                                       (Example Encoding)                                    │
+│  Byte Offset: 0 1 2 3 4                   0 1 2 3 4                                         │
+│              ┌─┬─┬─┬─┬─┐                 ┌─┬─┬─┬─┬─┐                                        │
+│              │ │ │ │ │ │0                │ │ │ │x│ │0                                       │
+│              ├─┼─┼─┼─┼─┤                 ├─┼─┼─┼─┼─┤                                        │
+│              │ │ │ │ │ │1                │ │ │x│x│ │1                                       │
+│              ├─┼─┼─┼─┼─┤                 ├─┼─┼─┼─┼─┤                                        │
+│              │ │ │ │ │ │2                │ │x│ │x│ │2                                       │
+│              ├─┼─┼─┼─┼─┤                 ├─┼─┼─┼─┼─┤                                        │
+│              │ │ │ │ │ │3                │x│ │ │x│ │3                                       │
+│              ├─┼─┼─┼─┼─┤                 ├─┼─┼─┼─┼─┤                                        │
+│              │ │ │ │ │ │4                │x│x│x│x│x│4                                       │
+│              ├─┼─┼─┼─┼─┤                 ├─┼─┼─┼─┼─┤                                        │
+│              │ │ │ │ │ │5                │ │ │ │x│ │5                                       │
+│              ├─┼─┼─┼─┼─┤                 ├─┼─┼─┼─┼─┤                                        │
+│              │ │ │ │ │ │6                │ │ │ │x│ │6                                       │
+│              └─┴─┴─┴─┴─┘                 └─┴─┴─┴─┴─┘                                        │
+│                                                                                      │
+│               │         Bit number!       │ │ │ │ │                                         │
+│               │                          $18│ │ │ │                                         │
+│               First Byte of 5              $14│ │ │                                         │
+│                                              $12│ │                                         │
+│                                                $7f│                                         │
+│                                                  $10                                        │
+├─────────────────────────────────────────────────────────────────────────────────────────────┤
+│ TYPICAL USE                                                                                 │
+│   Include this object...                                                                    │
+│   Ask it for address of the 5-bytes of 5x7 char def'n for given ASCII code [20-7f]          │
+│   Optional: toggle use of Micr-like numeric char set on/off                                 │
+│                                                                                             │
+├─────────────────────────────────────────────────────────────────────────────────────────────┤
+│ Revision History                                                                            │
+│                                                                                             │
+│ v1.0  Initial Draft                                                                         │
+│                                                                                             │
+└─────────────────────────────────────────────────────────────────────────────────────────────┘
 */
 
 #include "charSet.h"
