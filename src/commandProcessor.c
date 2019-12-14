@@ -109,7 +109,7 @@ struct _commandEntry {
     { "freebuffers", "freebuffers - release all buffers", 0, 0 },
     // huh!  p[1-2], screen as new buffer types? which use current buffer and write directly to screen!
     { "screen",      "screen {fillcolor|clear} [{[p[1-3]}]  - clear(or fill) single panel or entire screen", 1, 2, &commandColorToScreen },
-    { "string",      "string {selectedBuffers} {string} [{[p[1-3]}] - write string to screen w/wrap (or just single panel)", 2, 3, &commandStringToScreen },
+    { "string",      "string {selectedBuffers} {string} {lineColor} [{[p[1-3]}] - write string to screen w/wrap (or just single panel)", 3, 4, &commandStringToScreen },
     { "fill",        "fill {selectedBuffers} {fillColor} - where selected is [N, N-M, ., all] and color is [red, 0xffffff, all]", 2, 2, &commandFillBuffer },
     { "border",      "border {width} {borderColor} [{indent}] - draw border of color", 2, 3, &commandSetBorder },
     { "clock",       "clock {clockType} [{faceColor}] - where type is [digital, binary, stop] and color is [red, 0xffffff]", 1, 2, &commandShowClock },
@@ -198,12 +198,12 @@ int commandStringToScreen(int argc, const char *argv[])
     int bValidCommand = 1;
 
     // IMPLEMENT:
-    //   string {selectedBuffers} {string} [{[p[1-3]}] - write string to screen w/wrap (or just single panel)
+    //   string {selectedBuffers} {string} {color} [{[p[1-3]}] - write string to screen w/wrap (or just single panel)
     if(stricmp(argv[0], commands[s_nCurrentCmdIdx].name) != 0) {
         errorMessage("[CODE]: bad call commandColorToScreen with command [%s]", argv[0]);
         bValidCommand = 0;
     }
-    else if(argc - 1 < 2 || argc - 1 > 3) {
+    else if(argc - 1 < 3 || argc - 1 > 4) {
         errorMessage("[CODE]: bad call - param count err for command [%s]", argv[0]);
         bValidCommand = 0;
     }
@@ -219,15 +219,17 @@ int commandStringToScreen(int argc, const char *argv[])
         const char *cString = argv[2];
         if(bValidCommand) {
             debugMessage("cString=[%s]",cString);
-            if(strlen(cString < 1) {
+            if(strlen(cString) < 1) {
                 errorMessage("[CODE]: bad call - can't write an empty string [%s]", argv[0]);
                 bValidCommand = 0;
             }
         }
+        int nFillColor = getValueOfColorSpec(argv[3]);
+        debugMessage("nFillColor=(0x%.6X)",nFillColor);
         if(bValidCommand) {
             int nPanelNumber = 0;   // 0 == all panels
-            if((argc - 1) == 3) {
-                nPanelNumber = getPanelNumberFromPanelSpec(argv[3]);
+            if((argc - 1) == 4) {
+                nPanelNumber = getPanelNumberFromPanelSpec(argv[4]);
             }
             debugMessage("nPanelNumber=(%d)",nPanelNumber);
             if(nPanelNumber > NUMBER_OF_PANELS) {

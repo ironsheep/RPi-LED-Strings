@@ -169,7 +169,7 @@ void fillBufferPanelWithColorRGB(uint8_t nBufferNumber, uint8_t nPanelNumber, ui
 {
     struct _LedPixel *pSelectedBuffer = ptrBuffer(nBufferNumber);
     if(pSelectedBuffer != NULL) {
-       	uint16_t nOffsetToPanel = nPanelIdx * LEDS_PER_PANEL;
+       	uint16_t nOffsetToPanel = (nPanelNumber - 1) * LEDS_PER_PANEL;
         struct _LedPixel *pSelectedBufferPanel = &pSelectedBuffer[nOffsetToPanel];
         uint8_t red = (nColorRGB >> 16) & 0xff;
         uint8_t green = (nColorRGB >> 8) & 0xff;
@@ -284,12 +284,12 @@ int setCharToBuffer(uint8_t nBufferNumber, char cChar, uint8_t locX, uint8_t loc
     // place 5 bytes of LED on/off info into buffer starting at top left corner X,Y
     // returns next X addres after;
     uint8_t nextLocX;
-    uint8_t *charRom5Bytes = getCharBitsAddr(cChar);
+    const uint8_t *charRom5Bytes = getCharBitsAddr(cChar);
     for(int nRomIdx = 0; nRomIdx < 5; nRomIdx++) {
         nextLocX = locX + nRomIdx;
         uint8_t nRomByte = charRom5Bytes[nRomIdx];
         // now place LED bits ON with color if bit is set (bit0 is top, bit6 is bottom)
-        for(nBitIdx = 0; nBitIdx < 7; nBitIdx++) {
+        for(int nBitIdx = 0; nBitIdx < 7; nBitIdx++) {
             if((nRomByte & (1 << nBitIdx)) != 0) {
                 setBufferLEDColor(nBufferNumber, nColorRGB, nextLocX, locY + nBitIdx);
             }
