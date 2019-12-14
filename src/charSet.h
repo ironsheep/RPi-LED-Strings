@@ -26,6 +26,6 @@
 
 void useMicrNumbers(int bEnable); // Enable/Disable use of special Micr-like digits
 int isUsingMicrNumbers(void);     // Return T/F where T means we are using Micr-like digits
-const int8_t *getCharBitsAddr(char cCharacter); // Return addr of bits for char[0x20-0x7f] (ptr to 5-bytes)
+const uint8_t *getCharBitsAddr(uint8_t cCharacter); // Return addr of bits for char[0x20-0x7f] (ptr to 5-bytes)
 
 #endif /* CHAR_SET_H */
