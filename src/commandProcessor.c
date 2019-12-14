@@ -104,6 +104,7 @@ struct _commandEntry {
     { "buffer",      "buffer {bufferNumber} - select buffer for next actions", 1, 1, &commandSelectBuffer },
     { "clear",       "clear {selectedBuffers} - where selected is [N, N-M, ., all]", 1, 1, &commandClearBuffer },
     { "freebuffers", "freebuffers - release all buffers", 0, 0 },
+    // huh!  p[1-2], screen as new buffer types? which use current buffer and write directly to screen!
     { "fill",        "fill {selectedBuffers} {fillColor} - where selected is [N, N-M, ., all] and color is [red, 0xffffff, all]", 2, 2, &commandFillBuffer },
     { "border",      "border {width} {borderColor} [{indent}] - draw border of color", 2, 3, &commandSetBorder },
     { "clock",       "clock {clockType} [{faceColor}] - where type is [digital, binary, stop] and color is [red, 0xffffff]", 1, 2, &commandShowClock },

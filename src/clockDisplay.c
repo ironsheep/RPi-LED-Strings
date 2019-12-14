@@ -324,6 +324,8 @@ struct _objLocnXY {
 
 #define INT_TO_BCD(decimalValue) ((((decimalValue / 10) << 4) & 0xf0) + ((decimalValue % 10) & 0x0f))
 
+static int bBarLight = 0;
+
 void showCurrBinaryFace(uint32_t nFaceColor)
 {
     //
@@ -422,19 +424,18 @@ void placeBit(uint8_t bValue, uint8_t locX, uint8_t locY, uint32_t nFaceColor)
 #endif
 }
 
-static int bBarLight = 0;
 
 #define BAR_COLOR(bit) ((bit == 0) ? 0x040404 : 0x0A0A0A)
 
 void placeVertBar(uint8_t locX, uint8_t locY)
 {
     // set two vert pix to lt or dk gray
-    bBarLight = !bBarLight;
     uint32_t nColor = BAR_COLOR(bBarLight);
     // upper  bar
     setBufferLEDColor(s_nClockBufferNumber, nColor, locX, locY);
     setBufferLEDColor(s_nClockBufferNumber, nColor, locX, locY+1);
     // lower bar
+    bBarLight = !bBarLight;
     nColor = BAR_COLOR(bBarLight);
 #ifndef TWObyTHREE
     setBufferLEDColor(s_nClockBufferNumber, nColor, locX, locY+8);
