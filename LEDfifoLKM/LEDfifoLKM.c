@@ -1085,12 +1085,25 @@ static void testXmitBit(uint16_t onDelay, uint16_t offDelay)
  	nSecDelay(offDelay);
 }
 
+//  x8 = <<3 + x2 = <<1 -> x10!
+#define SHIFT_MULT_X10(value) ((value << 3) + (value << 1))
+//  x64 = <<7 + x32 = <<6 + x4 = << 2 -> x100!
+#define SHIFT_MULT_X100(value) ((value << 7) + (value << 6) + (value << 2))
+
 void nSecDelay(int nSecDuration)
 {
     volatile int ctr;
     volatile int tst;
 
-    int delayCount = ((nSecDuration << 3) + (nSecDuration << 1)) / 170; // div by 17.0
+    //int delayCount = SHIFT_MULT_X10(nSecDuration) / 165; // div by 16.5 worse
+    //int delayCount = SHIFT_MULT_X10(nSecDuration) / 170; // div by 17.0
+    //int delayCount = SHIFT_MULT_X10(nSecDuration) / 173; // div by 17.3 worse
+    int delayCount = SHIFT_MULT_X10(nSecDuration) / 174; // div by 17.4 best
+    //int delayCount = SHIFT_MULT_X100(nSecDuration) / 1742; // div by 17.42
+    //int delayCount = SHIFT_MULT_X100(nSecDuration) / 1745; // div by 17.45
+    //int delayCount = SHIFT_MULT_X100(nSecDuration) / 1748; // div by 17.48
+    //int delayCount = SHIFT_MULT_X10(nSecDuration) / 175; // div by 17.5 better
+    //int delayCount = SHIFT_MULT_X10(nSecDuration) / 178; // div by 17.8 worse
     
     for(ctr=0; ctr<delayCount; ctr++) { tst++; }
 }
