@@ -2,7 +2,7 @@ bin_PROGRAMS = matrix
 
 AM_CPPFLAGS = $(INTI_CFLAGS) $(MATRIXDRIVER_CPPFLAGS)
 
-matrix_SOURCES = matrix.c commandProcessor.c  debug.c  frameBuffer.c  imageLoader.c  xmalloc.c matrixDriver.c clockDisplay.c
+matrix_SOURCES = matrix.c commandProcessor.c  debug.c  frameBuffer.c  imageLoader.c  xmalloc.c matrixDriver.c clockDisplay.c charSet.c
 
 #matrix_OBS :=
 
