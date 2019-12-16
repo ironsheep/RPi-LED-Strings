@@ -37,10 +37,18 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 char *lsh_read_line(void);
 const char **lsh_split_line(char *line, int *tokenCtOut);
 int perform(int argc, const char *argv[]);
+
 //   (misc. utilities)
+struct _bufferSpec {
+    uint16_t fmBufferNumber;
+    uint16_t toBufferNumber;
+    utin16_t nMaxBuffers;
+};
+
 int stricmp(char const *a, char const *b);
 int stringHasSuffix(const char *str, const char *suffix);
 int stringHasPrefix(const char *str, const char *prefix);
+struct _bufferSpec *getBufferNumbersFromBufferSpec(const char *bufferSpec);
 int getValueOfColorSpec(const char *colorSpec);
 int getPanelNumberFromPanelSpec(const char *panelSpec);
 int stringIsHexValue(const char *colorSpec);
@@ -53,6 +61,7 @@ char *strconcat(char *str1, char *str2);
 //  Main Entry point
 //
 static int s_nCurrentBufferIdx = 0;
+
 
 void processCommands(int argc, const char *argv[])
 {
@@ -110,12 +119,12 @@ struct _commandEntry {
     { "buffer",      "buffer {bufferNumber} - select buffer for next actions", 1, 1, &commandSelectBuffer },
     { "clear",       "clear {selectedBuffers} - where selected is [N, N-M, ., all]", 1, 1, &commandClearBuffer },
     { "freebuffers", "freebuffers - release all buffers", 0, 0 },
-    // huh!  p[1-2], screen as new buffer types? which use current buffer and write directly to screen!
-    { "screen",      "screen {fillcolor|clear} [{[p[1-3]}]  - clear(or fill) single panel or entire screen", 1, 2, &commandColorToScreen },
-    { "string",      "string {selectedBuffers} {string} {lineColor} [{[p[1-3]}] - write string to screen w/wrap (or just single panel)", 3, 4, &commandStringToScreen },
+    // huh!  p[1-3|12,23], screen as new buffer types? which use current buffer and write directly to screen!
+    { "screen",      "screen {fillcolor|clear} [{panelSpec}]  - clear(or fill) single panel or entire screen", 1, 2, &commandColorToScreen },
+    { "string",      "string {selectedBuffers} {string} {lineColor} [{panelSpec}] - write string to screen w/wrap (or just single panel)", 3, 4, &commandStringToScreen },
     { "fill",        "fill {selectedBuffers} {fillColor} - where selected is [N, N-M, ., all] and color is [red, 0xffffff, all]", 2, 2, &commandFillBuffer },
-    { "border",      "border {width} {borderColor} [{indent}] - draw border of color", 2, 3, &commandSetBorder },
-    { "clock",       "clock {clockType} [{faceColor}] - where type is [digital, binary, stop] and color is [red, 0xffffff]", 1, 2, &commandShowClock },
+    { "border",      "border {width} {borderColor} {panelSpec} [{indent}] - draw border of color", 3, 4, &commandSetBorder },
+    { "clock",       "clock {clockType} [{faceColor} {panelNumber-digiOnly}]  - where type is [digital, binary, stop] and color is [red, 0xffffff]", 1, 2, &commandShowClock },
     { "write",       "write {selectedBuffers} [{loopYN} {rate}] - where selected is [N, N-M, ., all]", 1, 3, &commandWriteBuffer },
     { "square",      "square {boarderWidth} {height} {borderColor} {fillColor}", 3, 4 },
     { "circle",      "circle {boarderWidth} {radius}  {borderColor} {fillColor}", 3, 4 },
@@ -211,12 +220,9 @@ int commandStringToScreen(int argc, const char *argv[])
         bValidCommand = 0;
     }
     if(bValidCommand) {
-        // FIXME: UNDONE argv[1] is really a buffer spec, interpret it into fromBuffer, toBuffer!
-        int nBufferNumber = atoi(argv[1]);
-        int nMaxBuffers = numberBuffers();
-        debugMessage("nBufferNumber=(%d)",nBufferNumber);
-        if(nBufferNumber < 1 || nBufferNumber > nMaxBuffers) {
-            errorMessage("Buffer (%d) out-of-range: [must be 1 >= N <= %d]", nMaxBuffers);
+        struct _bufferNumber *bufferSpec = getBufferNumbersFromBufferSpec(argv[1]);
+        if(bufferSpec->fmBufferNumber < 1) {
+            errorMessage("Buffer (%d) out-of-range: [must be 1 >= N <= %d]", bufferSpec->fmBufferNumber, bufferSpec->nMaxBuffers);
             bValidCommand = 0;
         }
         const char *cString = argv[2];
@@ -235,24 +241,27 @@ int commandStringToScreen(int argc, const char *argv[])
                 nPanelNumber = getPanelNumberFromPanelSpec(argv[4]);
             }
             debugMessage("nPanelNumber=(%d)",nPanelNumber);
-            if(nPanelNumber < 0 || nPanelNumber > NUMBER_OF_PANELS) {
-               errorMessage("Panel (%d) out-of-range: [must be 1 >= N <= %d]", NUMBER_OF_PANELS);
+            if(nPanelNumber < 0) {
+               errorMessage("Panel (%d) out-of-range: [must be 1 >= N <= %d, 12, or 23]", NUMBER_OF_PANELS);
             }
             else {
+                // FIXME: UNDONE - Handle range of buffers case
                 if(nPanelNumber == 0) {
                     // write string to full screen wrapping and end of each panel
-                    writeStringToBufferWithColorRGB(s_nCurrentBufferIdx+1, cString, nFillColor);
+                    writeStringToBufferWithColorRGB(bufferSpec->fmBufferNumber, cString, nFillColor);
                 }
                 else {
                      // write string to specified panel truncating at end of panel
-                    writeStringToBufferPanelWithColorRGB(s_nCurrentBufferIdx+1, cString, nPanelNumber, nFillColor);
+                    writeStringToBufferPanelWithColorRGB(bufferSpec->fmBufferNumber, cString, nPanelNumber, nFillColor);
                 }
                 // lastly immediately write to screen
                 int nBufferSize = frameBufferSizeInBytes();
-                uint8_t *pCurrBuffer = (uint8_t *)ptrBuffer(s_nCurrentBufferIdx+1);
+                uint8_t *pCurrBuffer = (uint8_t *)ptrBuffer(bufferSpec->fmBufferNumber);
                 showBuffer(pCurrBuffer, nBufferSize);
+                // FIXME: UNDONE - if multiple buffers send all at once (since is range of buffers)
             }
         }
+        free(bufferSpec);
     }
     return CMD_RET_SUCCESS;   // no errors
 }
@@ -282,8 +291,8 @@ int commandColorToScreen(int argc, const char *argv[])
             nPanelNumber = getPanelNumberFromPanelSpec(argv[2]);
         }
         debugMessage("nPanelNumber=(%d)",nPanelNumber);
-        if(nPanelNumber < 0 || nPanelNumber > NUMBER_OF_PANELS) {
-           errorMessage("Panel (%d) out-of-range: [must be 1 >= N <= %d]", NUMBER_OF_PANELS);
+        if(nPanelNumber < 0) {
+           errorMessage("Panel (%d) out-of-range: [must be 1 >= N <= %d, 12, or 23]", NUMBER_OF_PANELS);
         }
         else {
             if(nPanelNumber == 0) {
@@ -407,19 +416,18 @@ int commandClearBuffer(int argc, const char *argv[])
         bValidCommand = 0;
     }
     if(bValidCommand) {
-        // FIXME: UNDONE argv[1] is really a buffer spec, interpret it into fromBuffer, toBuffer!
-        int nBufferNumber = atoi(argv[1]);
-        int nMaxBuffers = numberBuffers();
-        debugMessage("nBufferNumber=(%d)",nBufferNumber);
-        if(nBufferNumber < 1 || nBufferNumber > nMaxBuffers) {
-           errorMessage("Buffer (%d) out-of-range: [must be 1 >= N <= %d]", nMaxBuffers);
+        struct _bufferNumber *bufferSpec = getBufferNumbersFromBufferSpec(argv[1]);
+        if(bufferSpec->fmBufferNumber < 1) {
+           errorMessage("Buffer (%d) out-of-range: [must be 1 >= N <= %d]", bufferSpec->fmBufferNumber, bufferSpec->nMaxBuffers);
         }
         else {
             int nFillColor = 0; // always clear to black
             debugMessage("nFillColor=(0x%.6X)",nFillColor);
             // now set fill color to selected buffer
-            fillBufferWithColorRGB(nBufferNumber, nFillColor);
+            // FIXME: UNDONE - Handle range of buffers case
+            fillBufferWithColorRGB(bufferSpec->fmBufferNumber, nFillColor);
         }
+        free(bufferSpec);
     }
     return CMD_RET_SUCCESS;   // no errors
 }
@@ -439,20 +447,19 @@ int commandWriteBuffer(int argc, const char *argv[])
         bValidCommand = 0;
     }
     if(bValidCommand) {
-        // FIXME: UNDONE argv[1] is really a buffer spec, interpret it into fromBuffer, toBuffer!
         // FIXME: UNDONE PARMS argv[2] and argv[3] are NOT YET IMPLEMENTED
-        int nBufferNumber = atoi(argv[1]);
-        int nMaxBuffers = numberBuffers();
-        debugMessage("nBufferNumber=(%d)",nBufferNumber);
-        if(nBufferNumber < 1 || nBufferNumber > nMaxBuffers) {
-           errorMessage("Buffer (%d) out-of-range: [must be 1 >= N <= %d]", nMaxBuffers);
+        struct _bufferNumber *bufferSpec = getBufferNumbersFromBufferSpec(argv[1]);
+        if(bufferSpec->fmBufferNumber < 1) {
+           errorMessage("Buffer (%d) out-of-range: [must be 1 >= N <= %d]", bufferSpec->fmBufferNumber, bufferSpec->nMaxBuffers);
         }
         else {
             // now write buffer N contents to matrix itself
+            // FIXME: UNDONE - Handle range of buffers case
             int nBufferSize = frameBufferSizeInBytes();
-            uint8_t *pCurrBuffer = (uint8_t *)ptrBuffer(nBufferNumber);
+            uint8_t *pCurrBuffer = (uint8_t *)ptrBuffer(bufferSpec->fmBufferNumber);
             showBuffer(pCurrBuffer, nBufferSize);
         }
+        free(bufferSpec);
     }
     return CMD_RET_SUCCESS;   // no errors
 }
@@ -472,19 +479,18 @@ int commandFillBuffer(int argc, const char *argv[])
         bValidCommand = 0;
     }
     if(bValidCommand) {
-        // FIXME: UNDONE argv[1] is really a buffer spec, interpret it into fromBuffer, toBuffer!
-        int nBufferNumber = atoi(argv[1]);
-        int nMaxBuffers = numberBuffers();
-        debugMessage("nBufferNumber=(%d)",nBufferNumber);
-        if(nBufferNumber < 1 || nBufferNumber > nMaxBuffers) {
-           errorMessage("Buffer (%d) out-of-range: [must be 1 >= N <= %d]", nMaxBuffers);
+        struct _bufferNumber *bufferSpec = getBufferNumbersFromBufferSpec(argv[1]);
+        if(bufferSpec->fmBufferNumber < 1) {
+           errorMessage("Buffer (%d) out-of-range: [must be 1 >= N <= %d]", bufferSpec->fmBufferNumber, bufferSpec->nMaxBuffers);
         }
         else {
             int nFillColor = getValueOfColorSpec(argv[2]);
             debugMessage("nFillColor=(0x%.6X)",nFillColor);
             // now set fill color to selected buffer
-            fillBufferWithColorRGB(nBufferNumber, nFillColor);
+            // FIXME: UNDONE - Handle range of buffers case
+            fillBufferWithColorRGB(bufferSpec->fmBufferNumber, nFillColor);
         }
+        free(bufferSpec);
     }
     return CMD_RET_SUCCESS;   // no errors
 }
@@ -674,7 +680,7 @@ const char **lsh_split_line(char *line, int *tokenCtOut)
 	}
 	ltIdx++;
     } while (tokens[ltIdx] != NULL);
-    
+
     // now fixup position
     position = 0;
     do {
@@ -727,13 +733,72 @@ char *strconcat(char *str1, char *str2)
     return result;
 }
 
+struct _bufferSpec *getBufferNumbersFromBufferSpec(const char *bufferSpec)
+{
+    //parse [N, N-M, ., all]
+    int nMaxBuffers = numberBuffers();
+    struct _bufferSpec *returnSpec = xmalloc(sizeof(struct _bufferSpec));
+    returnSpec->nMaxBuffers = nMaxBuffers;
+
+    if(stricmp(bufferSpec, ".") {
+        // return list of just the current buffer
+        returnSpec->fmBuffer = s_nCurrentBufferIdx + 1;
+        returnSpec->toBuffer = returnSpec->fmBuffer;
+    }
+    else if(stricmp(bufferSpec, "all") {
+        // return list of all buffers
+        returnSpec->fmBuffer = 1;
+        returnSpec->toBuffer = nMaxBuffers;
+    }
+    else if(strchr(bufferSpec, '-') != NULL) {
+        const char *rtStr = strchr(bufferSpec, '-');
+        // return list of buffers: from-to
+        returnSpec->fmBuffer = atoi(bufferSpec);
+        returnSpec->toBuffer = atoi(&rtStr[1]); // skip the '-' char
+        if(returnSpec->toBuffer < returnSpec->fmBuffer) {
+            returnSpec->toBuffer = returnSpec->fmBuffer;
+            errorMessage("bad buffer spec [%s] ignored 'to' spec!");
+        }
+    }
+    else {
+        // return just the specfic buffer
+        returnSpec->fmBuffer = atoi(bufferSpec);
+        returnSpec->toBuffer = returnSpec->fmBuffer;
+    }
+
+    // NOTE: code not implemented yet...
+    if(returnSpec->fmBuffer != returnSpec->fmBuffer) {
+       errorMessage("[CODE] Buffer(from,to)=(%d,%d) 'Range of buffers' is NOT YET SUPPORTED", returnSpec->fmBuffer, returnSpec->toBuffer);
+    }
+
+    // validate results
+    if(returnSpec->fmBuffer < 1 || returnSpec->fmBuffer > nMaxBuffers) {
+        errorMessage("Buffer(from) (%d) out-of-range: [must be 1 >= N <= %d]", returnSpec->fmBuffer, nMaxBuffers);
+        returnSpec->fmBuffer = 0; // mark bad spec!
+        returnSpec->toBuffer = 0;
+    }
+    else if(returnSpec->toBuffer < 1 || returnSpec->toBuffer > nMaxBuffers) {
+        errorMessage("Buffer(to) (%d) out-of-range: [must be 1 >= N <= %d]", returnSpec->toBuffer, nMaxBuffers);
+        returnSpec->fmBuffer = 0; // mark bad spec!
+        returnSpec->toBuffer = 0;
+    }
+
+    debugMessage("getBufferNumbersFromBufferSpec(%s) -> (%d,%d)", returnSpec->fmBuffer, returnSpec->toBuffer);
+    return returnSpec;
+}
+
 int getPanelNumberFromPanelSpec(const char *panelSpec)
 {
-    // parse string of [p1,p2,p3] returning int 1-3
+    // parse string of [p1,p2,p3] returning int 1-3 -AND [p12,p23] returning 12,23
     int desiredValue = 0;
-    if(tolower(panelSpec[0]) == 'p' && strlen(panelSpec) == 2) {
-        if(panelSpec[1] >= 0x30 && panelSpec[1] <= 0x32) {
-            desiredValue = panelSpec[1] - 0x30;
+    if(tolower(panelSpec[0]) == 'p' && (strlen(panelSpec) == 2 || strlen(panelSpec) == 3) {
+        if(strlen(panelSpec) == 2 && panelSpec[1] >= 0x31 && panelSpec[1] <= 0x33) {
+         // parse string of [p1,p2,p3] returning int 1-3
+           desiredValue = panelSpec[1] - 0x30;
+        }
+        else if(strlen(panelSpec) == 3 && panelSpec[1] >= 0x31 && panelSpec[1] <= 0x32 && panelSpec[2] >= 0x32 && panelSpec[2] <= 0x33) {
+            // parse string of [p12,p23] returning 12,23
+            desiredValue = ((panelSpec[1] - 0x30) * 10) + panelSpec[2] - 0x30);
         } else {
             desiredValue = -1;
         }
@@ -743,7 +808,7 @@ int getPanelNumberFromPanelSpec(const char *panelSpec)
     }
     if(desiredValue == -1) {
         errorMessage("getPanelNumberFromPanelSpec(%s) - INVALID SPEC", panelSpec);
-    }   
+    }
     else {
         debugMessage("getPanelNumberFromPanelSpec(%s) = (%d)", panelSpec, desiredValue);
     }

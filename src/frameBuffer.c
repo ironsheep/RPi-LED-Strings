@@ -167,9 +167,21 @@ void fillBufferWithColorRGB(uint8_t nBufferNumber, uint32_t nColorRGB)
 
 void fillBufferPanelWithColorRGB(uint8_t nBufferNumber, uint8_t nPanelNumber, uint32_t nColorRGB)
 {
+    // We handle panel spec of 12 and 23 !!
+    int nLedsPerPanel = LEDS_PER_PANEL;
+    if(nPanelNumber == 12) {
+        // our "panel" is BOTH panels 1 & 2
+        nPanelNumber = 1;
+        nLedsPerPanel = 2 * LEDS_PER_PANEL;
+    }
+    else if(nPanelNumber == 23) {
+        // our "panel" is BOTH panels 2 & 3
+        nPanelNumber = 2;
+        nLedsPerPanel = 2 * LEDS_PER_PANEL;
+    }
     struct _LedPixel *pSelectedBuffer = ptrBuffer(nBufferNumber);
-    if(pSelectedBuffer != NULL) {
-       	uint16_t nOffsetToPanel = (nPanelNumber - 1) * LEDS_PER_PANEL;
+    if(pSelectedBuffer != NULL && nPanelNumber >= 1 && nPanelNumber <= NUMBER_OF_PANELS) {
+       	uint16_t nOffsetToPanel = (nPanelNumber - 1) * nLedsPerPanel;
         struct _LedPixel *pSelectedBufferPanel = &pSelectedBuffer[nOffsetToPanel];
         uint8_t red = (nColorRGB >> 16) & 0xff;
         uint8_t green = (nColorRGB >> 8) & 0xff;
@@ -181,7 +193,7 @@ void fillBufferPanelWithColorRGB(uint8_t nBufferNumber, uint8_t nPanelNumber, ui
     	}
     }
     else {
-        errorMessage("fillBufferPanelWithColorRGB() No Buffer at #%d", nBufferNumber);
+        errorMessage("fillBufferPanelWithColorRGB() No Buffer at #%d, panel-#%d", nBufferNumber, nPanelNumber);
     }
 }
 
@@ -189,7 +201,7 @@ void setBufferLEDColor(uint8_t nBufferNumber, uint32_t nColorRGB, uint8_t locX, 
 {
     struct _LedPixel *pSelectedBuffer = ptrBuffer(nBufferNumber);
     if(pSelectedBuffer != NULL) {
-	// do we have bottom to top numbered column
+        // do we have bottom to top numbered column
         int bGoesUpPanelY = (locX & 0x01) == 1;
         uint8_t nPanelIdx = (locY / 8);
         uint8_t nPanelY = (locY % 8);
@@ -266,8 +278,8 @@ void writeStringToBufferWithColorRGB(uint8_t nBufferNumber, const char *cString,
     char *rwCString = (char *)cString;
     if(*cString == '"' && cString[strLen-1] == '"' && strLen > 2) {
         cString++;
-	rwCString[strLen-1] = 0x00;
-	strLen -= 2;
+    	rwCString[strLen-1] = 0x00;
+    	strLen -= 2;
     }
 
     writeStringToBufferPanelWithColorRGB(nBufferNumber, &cString[0], 1, nColorRGB);
@@ -277,21 +289,29 @@ void writeStringToBufferWithColorRGB(uint8_t nBufferNumber, const char *cString,
     }
     if(*pWord2 != 0x00) {
         writeStringToBufferPanelWithColorRGB(nBufferNumber, pWord2, 2, nColorRGB);
-	if(strlen(pWord2) >= 5) {
-        const char *pWord3 = &pWord2[5];
-        while(*pWord3 == ' ') {
-    	    pWord3++;
-        }
-        if(*pWord3 != 0x00) {
-            writeStringToBufferPanelWithColorRGB(nBufferNumber, pWord3, 3, nColorRGB);
-	}
+    	if(strlen(pWord2) >= 5) {
+            const char *pWord3 = &pWord2[5];
+            while(*pWord3 == ' ') {
+        	    pWord3++;
+            }
+            if(*pWord3 != 0x00) {
+                writeStringToBufferPanelWithColorRGB(nBufferNumber, pWord3, 3, nColorRGB);
+        	}
         }
     }
 }
 
 void writeStringToBufferPanelWithColorRGB(uint8_t nBufferNumber, const char *cString, uint8_t nPanelNumber, uint32_t nColorRGB)
 {
-    int locY = ((nPanelNumber - 1) * ROWS_PER_PANEL);
+    // we support panel spec of 12 and 23 !! (these place us into middle of panel pair! - centered within the two panels)
+    float fPanelNumber = nPanelNumber;
+    if(nPanelNumber == 12) {
+       fPanelNumber = 1.5;
+    }
+    else if(nPanelNumber == 23) {
+        fPanelNumber = 2.5;
+    }
+    int locY = ((fPanelNumber - 1) * ROWS_PER_PANEL);
     int locX = 1;
 
     for(int nCharIdx = 0; nCharIdx < strlen(cString); nCharIdx++) {
