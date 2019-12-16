@@ -224,12 +224,30 @@ void setBufferLEDColor(uint8_t nBufferNumber, uint32_t nColorRGB, uint8_t locX, 
 
 void drawSquareInBuffer(uint8_t nBufferNumber, uint8_t locX, uint8_t locY, uint8_t nPanelNumber, uint8_t nWidth, uint8_t nHeight, uint8_t nLineWidth, uint32_t nLineColor)
 {
+    // We handle panel spec of 12 and 23 !!
+    int nRowsPerPanel = 8;
+    if(nPanelNumber == 12) {
+        // our "panel" is BOTH panels 1 & 2
+        nPanelNumber = 1;
+        nRowsPerPanel = 2 * 8;
+    }
+    else if(nPanelNumber == 23) {
+        // our "panel" is BOTH panels 2 & 3
+        nPanelNumber = 2;
+        nRowsPerPanel = 2 * 8;
+    }
+
+    if(nPanelNumber != 0) {
+       locY = (nPanelNumber - 1) * 8;
+       nHeight = nRowsPerPanel;
+    }
+
     moveToInBuffer(nBufferNumber, locX, locY);
 
-    lineToInBuffer(nBufferNumber, locX + nWidth - 1, locY, nLineWidth, nLineColor);
-    lineToInBuffer(nBufferNumber, locX + nWidth - 1, locY + nHeight -1, nLineWidth, nLineColor);
-    lineToInBuffer(nBufferNumber, locX, locY + nHeight -1, nLineWidth, nLineColor);
-    lineToInBuffer(nBufferNumber, locX, locY, nLineWidth, nLineColor);
+    lineToInBuffer(nBufferNumber, locX + nWidth - 1, locY, nLineWidth, nLineColor, nRowsPerPanel);
+    lineToInBuffer(nBufferNumber, locX + nWidth - 1, locY + nHeight -1, nLineWidth, nLineColor, nRowsPerPanel);
+    lineToInBuffer(nBufferNumber, locX, locY + nHeight -1, nLineWidth, nLineColor, nRowsPerPanel);
+    lineToInBuffer(nBufferNumber, locX, locY, nLineWidth, nLineColor, nRowsPerPanel);
 }
 
 static int nPenX;
@@ -245,17 +263,27 @@ void moveToInBuffer(uint8_t nBufferNumber, uint8_t locX, uint8_t locY)
 #define MIN(a,b) ((a < b) ? a : b)
 #define MAX(a,b) ((a > b) ? a : b)
 
-void lineToInBuffer(uint8_t nBufferNumber, uint8_t locX, uint8_t locY, uint8_t nLineWidth, uint32_t nLineColor)
+void lineToInBuffer(uint8_t nBufferNumber, uint8_t locX, uint8_t locY, uint8_t nLineWidth, uint32_t nLineColor, uint8_t nAreaHeight)
 {
     debugMessage("lineTo() bfr #%d fmRC=(%d, %d), toRC=(%d, %d), w=%d, c=0x%.06X", nBufferNumber, nPenX, nPenY, locX, locY, nLineWidth, nLineColor);
+    int nLineWidthAdjust = (nLineWidth - 1);
     int bIsHorzOrVertLine = (nPenX == locX) || (nPenY == locY);
     if(bIsHorzOrVertLine) {
         if(nPenX == locX) {
             // draw vertical line
             int nMinIdxY = MIN(nPenY, locY);
             int nMaxIdxY = MAX(nPenY, locY);
+            // adjust if nLineWidth offscreen to right
+            if((nPenX + nLineWidthAdjust) > 31) {
+                nPenX -= nLineWidthAdjust;
+            }
             for(int yIdx = nMinIdxY; yIdx <= nMaxIdxY; yIdx++) {
                 setBufferLEDColor(nBufferNumber, nLineColor, nPenX, yIdx);
+                if(nLineWidth > 1) {
+                    for(int nLineCt = 0; nLineCt < nLineWidth - 1; nLineCt++) {
+                        setBufferLEDColor(nBufferNumber, nLineColor, nPenX + nLineCt + 1, yIdx);
+                    }
+                }
             }
             nPenY = locY;
         }
@@ -263,8 +291,17 @@ void lineToInBuffer(uint8_t nBufferNumber, uint8_t locX, uint8_t locY, uint8_t n
             // draw horizontal line
             int nMinIdxX = MIN(nPenX, locX);
             int nMaxIdxX = MAX(nPenX, locX);
+            // adjust if nLineWidth offscreen to bottom
+            if((nPenY + nLineWidthAdjust) > nAreaHeight - 1) {
+                nPenY -= nLineWidthAdjust;
+            }
             for(int xIdx = nMinIdxX; xIdx <= nMaxIdxX; xIdx++) {
                 setBufferLEDColor(nBufferNumber, nLineColor, xIdx, nPenY);
+                if(nLineWidth > 1) {
+                    for(int nLineCt = 0; nLineCt < nLineWidth - 1; nLineCt++) {
+                        setBufferLEDColor(nBufferNumber, nLineColor, xIdx, nPenY + nLineCt + 1);
+                    }
+                }
             }
             nPenX = locX;
        }

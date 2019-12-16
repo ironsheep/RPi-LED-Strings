@@ -276,7 +276,7 @@ int commandColorToScreen(int argc, const char *argv[])
         errorMessage("[CODE]: bad call commandColorToScreen with command [%s]", argv[0]);
         bValidCommand = 0;
     }
-    else if(argc - 1 != 2) {
+    else if((argc - 1) < 1 || (argc - 1) > 2) {
         errorMessage("[CODE]: bad call - param count err for command [%s]", argv[0]);
         bValidCommand = 0;
     }
