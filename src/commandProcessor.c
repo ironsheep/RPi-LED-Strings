@@ -42,7 +42,7 @@ int perform(int argc, const char *argv[]);
 struct _bufferSpec {
     uint16_t fmBufferNumber;
     uint16_t toBufferNumber;
-    utin16_t nMaxBuffers;
+    uint16_t nMaxBuffers;
 };
 
 int stricmp(char const *a, char const *b);
@@ -220,7 +220,7 @@ int commandStringToScreen(int argc, const char *argv[])
         bValidCommand = 0;
     }
     if(bValidCommand) {
-        struct _bufferNumber *bufferSpec = getBufferNumbersFromBufferSpec(argv[1]);
+        struct _bufferSpec *bufferSpec = getBufferNumbersFromBufferSpec(argv[1]);
         if(bufferSpec->fmBufferNumber < 1) {
             errorMessage("Buffer (%d) out-of-range: [must be 1 >= N <= %d]", bufferSpec->fmBufferNumber, bufferSpec->nMaxBuffers);
             bValidCommand = 0;
@@ -318,7 +318,7 @@ int commandSetBorder(int argc, const char *argv[])
        int bValidCommand = 1;
 
     // IMPLEMENT:
-    //   border {width} {borderColor} [{indent}] - draw border of color
+    //   border {width} {borderColor} {panelSpec}  [{indent}] - draw border of color
     if(stricmp(argv[0], commands[s_nCurrentCmdIdx].name) != 0) {
         errorMessage("[CODE]: bad call commandSetBorder with command [%s]", argv[0]);
         bValidCommand = 0;
@@ -331,16 +331,24 @@ int commandSetBorder(int argc, const char *argv[])
         // which specs for border?
         int nLineWidthInPix = atoi(argv[1]);
         uint32_t nLineColor = getValueOfColorSpec(argv[2]);
-        uint8_t nIndentInPix = 0;
-        if((argc - 1) == 3) {
-            nLineWidthInPix = atoi(argv[3]);
+        int nPanelNumber = 0;   // 0 = all panels
+        if((argc - 1) > 2) {
+            nPanelNumber = getPanelNumberFromPanelSpec(argv[3]);
         }
-        if(nLineWidthInPix >= 1 && nLineWidthInPix <= 12) {
+        debugMessage("nPanelNumber=(%d)",nPanelNumber);
+        if(nPanelNumber < 0) {
+           errorMessage("Panel (%d) out-of-range: [must be 1 >= N <= %d, 12, or 23]", NUMBER_OF_PANELS);
+        }
+        uint8_t nIndentInPix = 0;
+        if((argc - 1) == 4) {
+            nLineWidthInPix = atoi(argv[4]);
+        }
+        if(nLineWidthInPix >= 0 && nLineWidthInPix <= 12) {
             int nOffsetX = nIndentInPix;
             int nOffsetY = nIndentInPix;
             int nBorderWidth = 32 - (2 * nIndentInPix);
             int nBorderHeight = 24 - (2 * nIndentInPix);
-            drawSquareInBuffer(s_nCurrentBufferIdx+1, nOffsetX, nOffsetY, nBorderWidth, nBorderHeight, nLineWidthInPix, nLineColor);
+            drawSquareInBuffer(s_nCurrentBufferIdx+1, nOffsetX, nOffsetY, nPanelNumber, nBorderWidth, nBorderHeight, nLineWidthInPix, nLineColor);
         }
         else {
             errorMessage("[CODE]: bad param(s) - line width too small! (%d not in range [1-12])", nLineWidthInPix);
@@ -416,7 +424,7 @@ int commandClearBuffer(int argc, const char *argv[])
         bValidCommand = 0;
     }
     if(bValidCommand) {
-        struct _bufferNumber *bufferSpec = getBufferNumbersFromBufferSpec(argv[1]);
+        struct _bufferSpec *bufferSpec = getBufferNumbersFromBufferSpec(argv[1]);
         if(bufferSpec->fmBufferNumber < 1) {
            errorMessage("Buffer (%d) out-of-range: [must be 1 >= N <= %d]", bufferSpec->fmBufferNumber, bufferSpec->nMaxBuffers);
         }
@@ -448,7 +456,7 @@ int commandWriteBuffer(int argc, const char *argv[])
     }
     if(bValidCommand) {
         // FIXME: UNDONE PARMS argv[2] and argv[3] are NOT YET IMPLEMENTED
-        struct _bufferNumber *bufferSpec = getBufferNumbersFromBufferSpec(argv[1]);
+        struct _bufferSpec *bufferSpec = getBufferNumbersFromBufferSpec(argv[1]);
         if(bufferSpec->fmBufferNumber < 1) {
            errorMessage("Buffer (%d) out-of-range: [must be 1 >= N <= %d]", bufferSpec->fmBufferNumber, bufferSpec->nMaxBuffers);
         }
@@ -479,7 +487,7 @@ int commandFillBuffer(int argc, const char *argv[])
         bValidCommand = 0;
     }
     if(bValidCommand) {
-        struct _bufferNumber *bufferSpec = getBufferNumbersFromBufferSpec(argv[1]);
+        struct _bufferSpec *bufferSpec = getBufferNumbersFromBufferSpec(argv[1]);
         if(bufferSpec->fmBufferNumber < 1) {
            errorMessage("Buffer (%d) out-of-range: [must be 1 >= N <= %d]", bufferSpec->fmBufferNumber, bufferSpec->nMaxBuffers);
         }
@@ -735,70 +743,75 @@ char *strconcat(char *str1, char *str2)
 
 struct _bufferSpec *getBufferNumbersFromBufferSpec(const char *bufferSpec)
 {
+    //debugMessage("getBufferNumbersFromBufferSpec(%s) - ENTRY", bufferSpec);
     //parse [N, N-M, ., all]
     int nMaxBuffers = numberBuffers();
     struct _bufferSpec *returnSpec = xmalloc(sizeof(struct _bufferSpec));
     returnSpec->nMaxBuffers = nMaxBuffers;
 
-    if(stricmp(bufferSpec, ".") {
+    if(stricmp(bufferSpec, ".")) {
         // return list of just the current buffer
-        returnSpec->fmBuffer = s_nCurrentBufferIdx + 1;
-        returnSpec->toBuffer = returnSpec->fmBuffer;
+        returnSpec->fmBufferNumber = s_nCurrentBufferIdx + 1;
+        returnSpec->toBufferNumber = returnSpec->fmBufferNumber;
     }
-    else if(stricmp(bufferSpec, "all") {
+    else if(stricmp(bufferSpec, "all")) {
         // return list of all buffers
-        returnSpec->fmBuffer = 1;
-        returnSpec->toBuffer = nMaxBuffers;
+        returnSpec->fmBufferNumber = 1;
+        returnSpec->toBufferNumber = nMaxBuffers;
     }
     else if(strchr(bufferSpec, '-') != NULL) {
         const char *rtStr = strchr(bufferSpec, '-');
         // return list of buffers: from-to
-        returnSpec->fmBuffer = atoi(bufferSpec);
-        returnSpec->toBuffer = atoi(&rtStr[1]); // skip the '-' char
-        if(returnSpec->toBuffer < returnSpec->fmBuffer) {
-            returnSpec->toBuffer = returnSpec->fmBuffer;
-            errorMessage("bad buffer spec [%s] ignored 'to' spec!");
+        returnSpec->fmBufferNumber = atoi(bufferSpec);
+        returnSpec->toBufferNumber = atoi(&rtStr[1]); // skip the '-' char
+        if(returnSpec->toBufferNumber < returnSpec->fmBufferNumber) {
+            returnSpec->toBufferNumber = returnSpec->fmBufferNumber;
+            errorMessage("bad buffer spec [%s] ignored 'to' spec!", bufferSpec);
         }
     }
     else {
         // return just the specfic buffer
-        returnSpec->fmBuffer = atoi(bufferSpec);
-        returnSpec->toBuffer = returnSpec->fmBuffer;
+        returnSpec->fmBufferNumber = atoi(bufferSpec);
+        returnSpec->toBufferNumber = returnSpec->fmBufferNumber;
     }
 
     // NOTE: code not implemented yet...
-    if(returnSpec->fmBuffer != returnSpec->fmBuffer) {
-       errorMessage("[CODE] Buffer(from,to)=(%d,%d) 'Range of buffers' is NOT YET SUPPORTED", returnSpec->fmBuffer, returnSpec->toBuffer);
+    if(returnSpec->fmBufferNumber != returnSpec->toBufferNumber) {
+       errorMessage("[CODE] Buffer(from,to)=(%d,%d) 'Range of buffers' is NOT YET SUPPORTED", returnSpec->fmBufferNumber, returnSpec->toBufferNumber);
     }
 
     // validate results
-    if(returnSpec->fmBuffer < 1 || returnSpec->fmBuffer > nMaxBuffers) {
-        errorMessage("Buffer(from) (%d) out-of-range: [must be 1 >= N <= %d]", returnSpec->fmBuffer, nMaxBuffers);
-        returnSpec->fmBuffer = 0; // mark bad spec!
-        returnSpec->toBuffer = 0;
+    if(returnSpec->fmBufferNumber < 1 || returnSpec->fmBufferNumber > nMaxBuffers) {
+        errorMessage("Buffer(from) (%d) out-of-range: [must be 1 >= N <= %d]", returnSpec->fmBufferNumber, nMaxBuffers);
+        returnSpec->fmBufferNumber = 0; // mark bad spec!
+        returnSpec->toBufferNumber = 0;
     }
-    else if(returnSpec->toBuffer < 1 || returnSpec->toBuffer > nMaxBuffers) {
-        errorMessage("Buffer(to) (%d) out-of-range: [must be 1 >= N <= %d]", returnSpec->toBuffer, nMaxBuffers);
-        returnSpec->fmBuffer = 0; // mark bad spec!
-        returnSpec->toBuffer = 0;
+    else if(returnSpec->toBufferNumber < 1 || returnSpec->toBufferNumber > nMaxBuffers) {
+        errorMessage("Buffer(to) (%d) out-of-range: [must be 1 >= N <= %d]", returnSpec->toBufferNumber, nMaxBuffers);
+        returnSpec->fmBufferNumber = 0; // mark bad spec!
+        returnSpec->toBufferNumber = 0;
     }
 
-    debugMessage("getBufferNumbersFromBufferSpec(%s) -> (%d,%d)", returnSpec->fmBuffer, returnSpec->toBuffer);
+    debugMessage("getBufferNumbersFromBufferSpec(%s) -> (%d,%d)", bufferSpec, returnSpec->fmBufferNumber, returnSpec->toBufferNumber);
     return returnSpec;
 }
 
 int getPanelNumberFromPanelSpec(const char *panelSpec)
 {
     // parse string of [p1,p2,p3] returning int 1-3 -AND [p12,p23] returning 12,23
+    // NEW: '*' means full screen, return 0 for this case
     int desiredValue = 0;
-    if(tolower(panelSpec[0]) == 'p' && (strlen(panelSpec) == 2 || strlen(panelSpec) == 3) {
+    if(panelSpec[0] == '*' && strlen(panelSpec) == 1) {
+        desiredValue = 0; // !yes!
+    }
+    else if(tolower(panelSpec[0]) == 'p' && (strlen(panelSpec) == 2 || strlen(panelSpec) == 3)) {
         if(strlen(panelSpec) == 2 && panelSpec[1] >= 0x31 && panelSpec[1] <= 0x33) {
          // parse string of [p1,p2,p3] returning int 1-3
            desiredValue = panelSpec[1] - 0x30;
         }
         else if(strlen(panelSpec) == 3 && panelSpec[1] >= 0x31 && panelSpec[1] <= 0x32 && panelSpec[2] >= 0x32 && panelSpec[2] <= 0x33) {
             // parse string of [p12,p23] returning 12,23
-            desiredValue = ((panelSpec[1] - 0x30) * 10) + panelSpec[2] - 0x30);
+            desiredValue = ((panelSpec[1] - 0x30) * 10) + (panelSpec[2] - 0x30);
         } else {
             desiredValue = -1;
         }

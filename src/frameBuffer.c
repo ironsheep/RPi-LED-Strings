@@ -222,7 +222,7 @@ void setBufferLEDColor(uint8_t nBufferNumber, uint32_t nColorRGB, uint8_t locX, 
     }
 }
 
-void drawSquareInBuffer(uint8_t nBufferNumber, uint8_t locX, uint8_t locY, uint8_t nWidth, uint8_t nHeight, uint8_t nLineWidth, uint8_t nLineColor)
+void drawSquareInBuffer(uint8_t nBufferNumber, uint8_t locX, uint8_t locY, uint8_t nPanelNumber, uint8_t nWidth, uint8_t nHeight, uint8_t nLineWidth, uint32_t nLineColor)
 {
     moveToInBuffer(nBufferNumber, locX, locY);
 
@@ -237,7 +237,7 @@ static int nPenY;
 
 void moveToInBuffer(uint8_t nBufferNumber, uint8_t locX, uint8_t locY)
 {
-    debugMessage("moveTo() bfr #%d rc=(%d, %y)", nBufferNumber, locX, locY);
+    debugMessage("moveTo() bfr #%d rc=(%d, %d)", nBufferNumber, locX, locY);
     nPenX = locX;
     nPenY = locY;
 }
@@ -245,9 +245,9 @@ void moveToInBuffer(uint8_t nBufferNumber, uint8_t locX, uint8_t locY)
 #define MIN(a,b) ((a < b) ? a : b)
 #define MAX(a,b) ((a > b) ? a : b)
 
-void lineToInBuffer(uint8_t nBufferNumber, uint8_t locX, uint8_t locY, uint8_t nLineWidth, uint8_t nLineColor)
+void lineToInBuffer(uint8_t nBufferNumber, uint8_t locX, uint8_t locY, uint8_t nLineWidth, uint32_t nLineColor)
 {
-    debugMessage("lineTo() bfr #%d fmRC=(%d, %d), toRC=(%d, %d), w=%d, c=0x%.6X", nBufferNumber, nPenX, nPenY, locX, locY);
+    debugMessage("lineTo() bfr #%d fmRC=(%d, %d), toRC=(%d, %d), w=%d, c=0x%.06X", nBufferNumber, nPenX, nPenY, locX, locY, nLineWidth, nLineColor);
     int bIsHorzOrVertLine = (nPenX == locX) || (nPenY == locY);
     if(bIsHorzOrVertLine) {
         if(nPenX == locX) {
@@ -257,6 +257,7 @@ void lineToInBuffer(uint8_t nBufferNumber, uint8_t locX, uint8_t locY, uint8_t n
             for(int yIdx = nMinIdxY; yIdx <= nMaxIdxY; yIdx++) {
                 setBufferLEDColor(nBufferNumber, nLineColor, nPenX, yIdx);
             }
+            nPenY = locY;
         }
         else {
             // draw horizontal line
@@ -265,6 +266,7 @@ void lineToInBuffer(uint8_t nBufferNumber, uint8_t locX, uint8_t locY, uint8_t n
             for(int xIdx = nMinIdxX; xIdx <= nMaxIdxX; xIdx++) {
                 setBufferLEDColor(nBufferNumber, nLineColor, xIdx, nPenY);
             }
+            nPenX = locX;
        }
     }
     else {
