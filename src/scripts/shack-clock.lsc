@@ -1,0 +1,9 @@
+# script to display KZ0Q shack clock
+screen clear
+buffer 1
+#border 2 0x010101 p12  # lightest white border possible
+border 2 0x000100 p12   # lightest green border possible
+string 1 KZ0Q blue p12
+write 1
+clock digital 0x0A0A00 p3  # light yellow
+prompt	# return to prompt vs. exit
