@@ -276,7 +276,7 @@ int commandColorToScreen(int argc, const char *argv[])
         errorMessage("[CODE]: bad call commandColorToScreen with command [%s]", argv[0]);
         bValidCommand = 0;
     }
-    else if(argc - 1 != 2) {
+    else if((argc - 1) < 1 || (argc - 1) > 2) {
         errorMessage("[CODE]: bad call - param count err for command [%s]", argv[0]);
         bValidCommand = 0;
     }
@@ -675,7 +675,7 @@ const char **lsh_split_line(char *line, int *tokenCtOut)
     int ltIdx = 0;
     do {
 	int ltTokenLen = strlen(tokens[ltIdx]);
-	if(tokens[ltIdx][0] == '"' && tokens[ltIdx][ltTokenLen - 1] != '"') {
+	if(tokens[ltIdx][0] == '"' && (tokens[ltIdx][ltTokenLen - 1] != '"' || ltTokenLen == 1)) {
 	    int rtIdx = ltIdx + 1;
 	    int groupedTokensCt = 1;
 	    do {
