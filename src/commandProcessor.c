@@ -124,7 +124,7 @@ struct _commandEntry {
     { "string",      "string {selectedBuffers} {string} {lineColor} [{panelSpec}] - write string to screen w/wrap (or just single panel)", 3, 4, &commandStringToScreen },
     { "fill",        "fill {selectedBuffers} {fillColor} - where selected is [N, N-M, ., all] and color is [red, 0xffffff, all]", 2, 2, &commandFillBuffer },
     { "border",      "border {width} {borderColor} {panelSpec} [{indent}] - draw border of color", 3, 4, &commandSetBorder },
-    { "clock",       "clock {clockType} [{faceColor} {panelNumber-digiOnly}]  - where type is [digital, binary, stop] and color is [red, 0xffffff]", 1, 2, &commandShowClock },
+    { "clock",       "clock {clockType} [{faceColor} {panelNumber-digiOnly}]  - where type is [digital, binary, stop] and color is [red, 0xffffff]", 1, 3, &commandShowClock },
     { "write",       "write {selectedBuffers} [{loopYN} {rate}] - where selected is [N, N-M, ., all]", 1, 3, &commandWriteBuffer },
     { "square",      "square {boarderWidth} {height} {borderColor} {fillColor}", 3, 4 },
     { "circle",      "circle {boarderWidth} {radius}  {borderColor} {fillColor}", 3, 4 },
@@ -362,12 +362,12 @@ int commandShowClock(int argc, const char *argv[])
     int bValidCommand = 1;
 
     // IMPLEMENT:
-    //   clear {selectedBuffers} - where selected is [N, N-M, ., all]
+    //   clock {clockType} [{faceColor} {panelNumber-digiOnly}]  - where type is [digital, binary, stop] and color is [red, 0xffffff]
     if(stricmp(argv[0], commands[s_nCurrentCmdIdx].name) != 0) {
         errorMessage("[CODE]: bad call commandClearBuffer with command [%s]", argv[0]);
         bValidCommand = 0;
     }
-    else if(argc - 1 < 1) {
+    else if((argc - 1) < 1 || (argc - 1) > 3) {
         errorMessage("[CODE]: bad call - param count err for command [%s]", argv[0]);
         bValidCommand = 0;
     }
@@ -394,16 +394,21 @@ int commandShowClock(int argc, const char *argv[])
         }
         else {
             int nFaceColor = 0x808080;	// grey unless spec'd
-    	    if((argc - 1) == 2) {
+    	    if((argc - 1) > 1) {
                 nFaceColor = getValueOfColorSpec(argv[2]);
     	    }
             debugMessage("nFaceColor=(0x%.6X) clockType=[%s]",nFaceColor, argv[1]);
+            int nPanelNumber = 0;   // 0 = all panels
+            if((argc - 1) > 2) {
+                nPanelNumber = getPanelNumberFromPanelSpec(argv[3]);
+            }
+            debugMessage("nPanelNumber=(%d)",nPanelNumber);
             // stop clock if already running
             if(isClockRunning()) {
                 stopClock();
             }
             // run latest version selected
-            runClock(clockType, nFaceColor, s_nCurrentBufferIdx+1);
+            runClock(clockType, nFaceColor, s_nCurrentBufferIdx+1, nPanelNumber);
         }
     }
     return CMD_RET_SUCCESS;   // no errors

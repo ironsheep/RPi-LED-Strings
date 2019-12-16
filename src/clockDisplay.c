@@ -38,9 +38,6 @@ typedef enum _eTimeUnits {
 
 
 // forward declarations
-void delayMilliSec(int nMilliSec);
-void *threadDigitalClock(void *argp);
-void *threadBinaryClock(void *argp);
 void showCurrDigitalFace(uint32_t nFaceColor);
 void showCurrBinaryFace(uint32_t nFaceColor);
 void updateBinaryFace(eTimeUnits tmUnits, int tmValue, uint32_t nFaceColor);
@@ -55,60 +52,23 @@ static pthread_t s_clockThread;
 static int s_bClockRunning;
 static uint32_t s_nFaceColor;
 static int s_nClockBufferNumber;
+static int s_nClockPanelNumber;
 static eClockFaceTypes s_nClockType;
 
-#define USE_TIMER
-
-#ifdef USE_PTHREADS
 void runClock(eClockFaceTypes clockType, uint32_t nFaceColor, int nBufferNumber)
 {
-    int status;
-
-    s_nFaceColor = nFaceColor;
-    s_nClockBufferNumber = nBufferNumber;
-    s_nClockType = clockType;
-
-    verboseMessage("runClock() Start Clock THread");
-    switch(clockType) {
-        case CFT_DIGITAL:
-            status = pthread_create(&s_clockThread, NULL, &threadDigitalClock, (void *)nFaceColor);
-            if (status != 0) {
-                perrorMessage("pthread_create(Digital) failure");
-            }
-            break;
-        case CFT_BINARY:
-            status = pthread_create(&s_clockThread, NULL, &threadBinaryClock, (void *)nFaceColor);
-            if (status != 0) {
-                perrorMessage("pthread_create(Binary) failure");
-            }
-            break;
-        default:
-            errorMessage("runClock() Unknown clock type (%d)", clockType);
-            break;
-    }
+    conmst int nPanelZero = 0; // full screen
+    runClock(clockType, nFaceColor, nBufferNumber, nPanelZero);
 }
 
-void stopClock(void)
-{
-    verboseMessage("stopClock() Stop Clock Thread");
-    if(s_bClockRunning) {
-        int status = pthread_cancel(s_clockThread);
-        if (status != 0) {
-            perrorMessage("stopClock() pthread_cancel() failure");
-        }
-    }
-    s_bClockRunning = 0;  // show NOT running
-}
-#endif
-
-#ifdef USE_TIMER
-void runClock(eClockFaceTypes clockType, uint32_t nFaceColor, int nBufferNumber)
+void runClock(eClockFaceTypes clockType, uint32_t nFaceColor, int nBufferNumber, int nPanelNumber)
 {
     const long intervalInMilliSec = 1000;
 
     s_nFaceColor = nFaceColor;
     s_nClockBufferNumber = nBufferNumber;
     s_nClockType = clockType;
+    s_nClockPanelNumber = nPanelNumber;
 
     verboseMessage("runClock() Start Clock Timer");
     if(clockType == CFT_DIGITAL) {
@@ -141,8 +101,6 @@ void stopClock(void)
     }
 }
 
-#endif
-
 int isClockRunning(void)
 {
     return s_bClockRunning;
@@ -165,6 +123,9 @@ void handleTimerExpiration(union sigval arg)
     // task code run on timer expire...
     if(s_nClockType == CFT_BINARY) {
         showCurrBinaryFace(s_nFaceColor);
+    }
+    else if(s_nClockType == CFT_DIGITAL) {
+        showCurrDigitalFace(s_nFaceColor);
     }
 
     status = pthread_mutex_unlock(&mutex);
@@ -214,51 +175,8 @@ void destroy_timer(void)
 
 
 // ---------------------------------------------------------------------------
-// Clock Thread Functions
+// Clock Display Functions
 //
-void *threadDigitalClock(void *argp)
-{
-    s_bClockRunning = 1;  // show IS running
-
-    // ensure clock face is blanked, once
-    fillBufferWithColorRGB(s_nClockBufferNumber ,0x000000);
-
-    // allow this thread to be cancelled
-    int status = pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
-    if(status != 0) {
-        perrorMessage("threadDigitalClock() pthread_setcancelstate() failure");
-    }
-
-    do {
-        showCurrDigitalFace((uint32_t)argp);
-        //sleep 1 second
-        //delayMilliSec(950);
-
-    } while(0);
-}
-
-void *threadBinaryClock(void *argp)
-{
-    s_bClockRunning = 1;  // show IS running
-
-    // ensure clock face is blanked, once
-    fillBufferWithColorRGB(s_nClockBufferNumber ,0x000000);
-
-    // allow this thread to be cancelled
-    int status = pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
-    if(status != 0) {
-        perrorMessage("threadDigitalClock() pthread_setcancelstate() failure");
-    }
-
-    do {
-
-        showCurrBinaryFace((uint32_t)argp);
-        // sleep 1 second
-        delayMilliSec(950);
-
-    } while(1);
-}
-
 void showCurrDigitalFace(uint32_t nFaceColor)
 {
     //
@@ -270,18 +188,13 @@ void showCurrDigitalFace(uint32_t nFaceColor)
     // convert to localtime
     struct tm *local = localtime(&secs);
 
-    // FIXME: UNDONE need logic here for Digital Clock
+    char clockDigits[5+1];
+    sprintf(clockDigits, "%.02d:%.02d", local->tm_hour, local->tm_min);
+    debugMsg("clockDigits=[%s]", clockDigits);
+
+    writeStringToBufferPanelWithColorRGB(s_nClockBufferNumber, clockDigits, s_nClockPanelNumber, nFaceColor);
 }
 
-void delayMilliSec(int nMilliSec)
-{
-    // get start time
-    clock_t start_time = clock();
-    // add offset
-    clock_t end_time = start_time + nMilliSec;
-    // looping till required time is not acheived
-    while (clock() < end_time);
-}
 
 typedef enum _eObjIndex {
     OI_HrTens = 0,
