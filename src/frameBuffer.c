@@ -307,15 +307,21 @@ void writeStringToBufferPanelWithColorRGB(uint8_t nBufferNumber, const char *cSt
 {
     // we support panel spec of 12 and 23 !! (these place us into middle of panel pair! - centered within the two panels)
     float fPanelNumber = nPanelNumber;
+    int bCenterString = 0;
     if(nPanelNumber == 12) {
-       fPanelNumber = 1.5;
+        fPanelNumber = 1.5;
+        bCenterString = 1;
     }
     else if(nPanelNumber == 23) {
         fPanelNumber = 2.5;
+        bCenterString = 1;
     }
     int locY = ((fPanelNumber - 1) * ROWS_PER_PANEL);
+    int strLenInPx = (strlen(cString) * 6); // chars * nbrPx/Char
     int locX = 1;
-
+    if(bCenterString && strLenInPx < 30) {
+        locX = (32 - strLenInPx) / 2;
+    }
     for(int nCharIdx = 0; nCharIdx < strlen(cString); nCharIdx++) {
         locX = setCharToBuffer(nBufferNumber, cString[nCharIdx], locX, locY,nColorRGB);
         locX += 1; // add gap between chars
@@ -338,6 +344,9 @@ int setCharToBuffer(uint8_t nBufferNumber, char cChar, uint8_t locX, uint8_t loc
         for(int nBitIdx = 0; nBitIdx < 7; nBitIdx++) {
             if((nRomByte & (1 << nBitIdx)) != 0) {
                 setBufferLEDColor(nBufferNumber, nColorRGB, nextLocX, locY + nBitIdx);
+            }
+            else {
+                setBufferLEDColor(nBufferNumber, 0x000000, nextLocX, locY + nBitIdx);
             }
         }
     }

@@ -55,11 +55,6 @@ static int s_nClockBufferNumber;
 static int s_nClockPanelNumber;
 static eClockFaceTypes s_nClockType;
 
-void runClock(eClockFaceTypes clockType, uint32_t nFaceColor, int nBufferNumber)
-{
-    conmst int nPanelZero = 0; // full screen
-    runClock(clockType, nFaceColor, nBufferNumber, nPanelZero);
-}
 
 void runClock(eClockFaceTypes clockType, uint32_t nFaceColor, int nBufferNumber, int nPanelNumber)
 {
@@ -71,10 +66,7 @@ void runClock(eClockFaceTypes clockType, uint32_t nFaceColor, int nBufferNumber,
     s_nClockPanelNumber = nPanelNumber;
 
     verboseMessage("runClock() Start Clock Timer");
-    if(clockType == CFT_DIGITAL) {
-        warningMessage("runClock() clock type (%d) NOT YET SUPPORTED", clockType);
-    }
-    else if(clockType == CFT_BINARY) {
+    if(clockType == CFT_BINARY || clockType == CFT_DIGITAL) {
         if(!s_bClockRunning) {
             s_bClockRunning = 1;  // show IS running
             create_timer(intervalInMilliSec);
@@ -189,10 +181,20 @@ void showCurrDigitalFace(uint32_t nFaceColor)
     struct tm *local = localtime(&secs);
 
     char clockDigits[5+1];
-    sprintf(clockDigits, "%.02d:%.02d", local->tm_hour, local->tm_min);
-    debugMsg("clockDigits=[%s]", clockDigits);
-
+    if((local->tm_sec & 0x01) == 1) {
+        sprintf(clockDigits, "%.02d:%.02d", local->tm_hour, local->tm_min);
+    } 
+    else {
+        sprintf(clockDigits, "%.02d %.02d", local->tm_hour, local->tm_min);
+    }
+    //debugMessage("clockDigits=[%s]", clockDigits);
+    
     writeStringToBufferPanelWithColorRGB(s_nClockBufferNumber, clockDigits, s_nClockPanelNumber, nFaceColor);
+
+    // now write buffer N contents to matrix itself
+    int nBufferSize = frameBufferSizeInBytes();
+    uint8_t *pCurrBuffer = (uint8_t *)ptrBuffer(s_nClockBufferNumber);
+    showBuffer(pCurrBuffer, nBufferSize);
 }
 
 

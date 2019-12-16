@@ -675,7 +675,7 @@ const char **lsh_split_line(char *line, int *tokenCtOut)
     int ltIdx = 0;
     do {
 	int ltTokenLen = strlen(tokens[ltIdx]);
-	if(tokens[ltIdx][0] == '"' && tokens[ltIdx][ltTokenLen - 1] != '"') {
+	if(tokens[ltIdx][0] == '"' && (tokens[ltIdx][ltTokenLen - 1] != '"' || ltTokenLen == 1)) {
 	    int rtIdx = ltIdx + 1;
 	    int groupedTokensCt = 1;
 	    do {
