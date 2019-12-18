@@ -96,8 +96,14 @@ void processCommands(int argc, const char *argv[])
                 }
                 line = NULL;
                 debugMessage("---- attempt read line from cmd file ----");
-                if(getlineIgnoringComments(&line, &lineLength, s_fpCommandFile) == -1) {
+                status = getlineIgnoringComments(&line, &lineLength, s_fpCommandFile);
+                if(status == -1) {
                     perrorMessage("processCommands() [from file] failed");
+                    fclose(s_fpCommandFile);
+                    s_fpCommandFile = NULL;
+                }
+                else if(status == 0) {
+                    fclose(s_fpCommandFile);
                     s_fpCommandFile = NULL;
                 }
             }
@@ -105,31 +111,50 @@ void processCommands(int argc, const char *argv[])
                 line = lsh_read_line();
             }
             debugMessage("process line [%s] into arguments", line);
-            args = lsh_split_line(line, &argCt);
-            status = perform(argCt, args);
-
-            free(line);
-            line = NULL;
-            free(args);
+            if(line != NULL) {
+                args = lsh_split_line(line, &argCt);
+                status = perform(argCt, args);
+                free(line);
+                line = NULL;
+                free(args);
+            }
+            else {
+                status = 1; // just continue in loop
+            }
         } while (status);
     }
 }
 
 int getlineIgnoringComments(char **pLine, size_t *nLineLength, FILE *stream)
 {
-    debugMessage("getlineIgnoringComments() - ENTRY");
+    //debugMessage("getlineIgnoringComments() - ENTRY");
     int returnValue = 0;
     int bLookingForNextLine = 1;
     do {
-        if(getline(pLine, nLineLength, stream) == -1) {
+        int status = getline(pLine, nLineLength, stream);
+        if(status  == -1 && errno != 0) {
             perrorMessage("processCommands() [from file] failed");
             bLookingForNextLine = 0;    // no longer
+            returnValue = status;
+            break;
+        }
+        else if(status  == -1 && errno == 0) {
+            // END OF FILE
+            debugMessage("at EOF!");
+            returnValue = 0; 
+            *pLine = NULL;
+            bLookingForNextLine = 0;    // no longer
+            break;
         }
         else {
             char *origLine = *pLine;
             *pLine = trimAndUncomment(*pLine);
 
             if(*pLine[0] == 0x00) {
+                // do nothing we're going to ignore this line
+                debugMessage("- ignoringLine=[%s]", *pLine);
+            }
+            else if(*pLine[0] == '#') {
                 // do nothing we're going to ignore this line
                 debugMessage("- ignoringLine=[%s]", *pLine);
             }
@@ -141,7 +166,7 @@ int getlineIgnoringComments(char **pLine, size_t *nLineLength, FILE *stream)
             }
         }
     } while(bLookingForNextLine);
-    debugMessage("getlineIgnoringComments() - EXIT");
+    //debugMessage("getlineIgnoringComments() - EXIT");
     return returnValue;
 }
 
@@ -150,7 +175,7 @@ static char pWorkString[WORK_STR_LEN + 1];
 
 char *trimAndUncomment(char *strWithWhite)
 {
-    debugMessage("trimAndUncomment(%s) - ENTRY", strWithWhite);
+    //debugMessage("trimAndUncomment(%s) - ENTRY", strWithWhite);
 
     // remove leading spaces
     char *newString = strWithWhite;
@@ -164,13 +189,13 @@ char *trimAndUncomment(char *strWithWhite)
     }
     size_t nNewLength = strlen(pLineStart);
     if(nNewLength != nLineLength) {
-        debugMessage("- old(%p)[%s](%d)", strWithWhite, strWithWhite, nLineLength);
+        //debugMessage("- old(%p)[%s](%d)", strWithWhite, strWithWhite, nLineLength);
         newString = strdup(pLineStart);
-        debugMessage("- NEW(%p)[%s](%d)", newString, newString, nNewLength);
-        debugMessage("** discarding [%s]", strWithWhite);
+        //debugMessage("- NEW(%p)[%s](%d)", newString, newString, nNewLength);
+        debugMessage("** FREE [%s]", strWithWhite);
         free(strWithWhite);
     }
-    debugMessage("trimAndUncomment() -> (%s) - EXIT", newString);
+    //debugMessage("trimAndUncomment() -> (%s) - EXIT", newString);
     return newString;
 }
 
@@ -827,7 +852,7 @@ const char **lsh_split_line(char *line, int *tokenCtOut)
     }
 
     token = strtok(line, LSH_TOK_DELIM);
-    while (token != NULL) {
+    while (token != NULL && token[0] != '#') {
         tokens[position] = token;
         position++;
 
