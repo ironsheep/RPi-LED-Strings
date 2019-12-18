@@ -95,7 +95,7 @@ void processCommands(int argc, const char *argv[])
                     free(line);
                 }
                 line = NULL;
-                debugMessage("attempt read line from cmd file");
+                debugMessage("---- attempt read line from cmd file ----");
                 if(getlineIgnoringComments(&line, &lineLength, s_fpCommandFile) == -1) {
                     perrorMessage("processCommands() [from file] failed");
                     s_fpCommandFile = NULL;
@@ -150,8 +150,7 @@ static char pWorkString[WORK_STR_LEN + 1];
 
 char *trimAndUncomment(char *strWithWhite)
 {
-    debugMessage("trimAndUncomment(%s) - ENTRY", );
-
+    debugMessage("trimAndUncomment(%s) - ENTRY", strWithWhite);
 
     // remove comments & blank lines
     // remove leading & trailing spaces
@@ -167,31 +166,35 @@ char *trimAndUncomment(char *strWithWhite)
     strncpy(pWorkString, pLineStart, WORK_STR_LEN);
     pWorkString[WORK_STR_LEN - 1] = 0x00;  // force and ending \0 byte
     int nWorkLen = strlen(pWorkString);
-    debugMessage("trimAndUncomment() ç[%s](%d) -> workString[%s](%d)", strWithWhite, nLineLength, pWorkString, nWorkLen);
+    debugMessage("- old(%p)[%s](%d)", strWithWhite, strWithWhite, nLineLength);
+    debugMessage("- NEW(%p)[%s](%d)", pWorkString, pWorkString, nWorkLen);
 
     pLineStart = pWorkString;
     char *pComment = strchr(pWorkString, '#');
     if(pComment != NULL) {
-        *pComment = 0x00;
+        *pComment = 0x00; // replace our '#'
     }
     nWorkLen = strlen(pWorkString);
     if(nWorkLen > 0) {
         char *pLineEnd = &pWorkString[nWorkLen - 1];
         while(isspace(*pLineEnd)) {
-            *pLineEnd-- = 0x00;
+            *pLineEnd = 0x00;
+            pLineEnd--;
             if(pLineEnd == pLineStart) {
                 break;
             }
         }
     }
 
-    size_t nNewLength = strlen(pLineStart);
+    size_t nNewLength = strlen(pWorkString);
     if(nNewLength != nLineLength) {
+        debugMessage("- old(%p)[%s](%d)", strWithWhite, strWithWhite, nLineLength);
+        debugMessage("- NEW(%p)[%s](%d)", pWorkString, pWorkString, nNewLength);
         newString = strdup(pLineStart);
         debugMessage("discarding [%s]", strWithWhite);
         free(strWithWhite);
     }
-    debugMessage("trimAndUncomment(%s) -> (%s) - EXIT", strWithWhite, newString);
+    debugMessage("trimAndUncomment() -> (%s) - EXIT", newString);
     return newString;
 }
 
