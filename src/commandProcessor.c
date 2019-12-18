@@ -95,6 +95,7 @@ void processCommands(int argc, const char *argv[])
                     free(line);
                 }
                 line = NULL;
+                debugMessage("attempt read line from cmd file");
                 if(getlineIgnoringComments(&line, &lineLength, s_fpCommandFile) == -1) {
                     perrorMessage("processCommands() [from file] failed");
                     s_fpCommandFile = NULL;
@@ -103,6 +104,7 @@ void processCommands(int argc, const char *argv[])
             else {
                 line = lsh_read_line();
             }
+            debugMessage("process line [%s] into arguments", line);
             args = lsh_split_line(line, &argCt);
             status = perform(argCt, args);
 
@@ -115,10 +117,11 @@ void processCommands(int argc, const char *argv[])
 
 int getlineIgnoringComments(char **pLine, size_t *nLineLength, FILE *stream)
 {
+    debugMessage("getlineIgnoringComments() - ENTRY");
     int returnValue = 0;
     int bLookingForNextLine = 1;
     do {
-        if(getlineIgnoringComments(pLine, nLineLength, stream) == -1) {
+        if(getline(pLine, nLineLength, stream) == -1) {
             perrorMessage("processCommands() [from file] failed");
             bLookingForNextLine = 0;    // no longer
         }
@@ -138,11 +141,13 @@ int getlineIgnoringComments(char **pLine, size_t *nLineLength, FILE *stream)
             }
         }
     } while(bLookingForNextLine);
+    debugMessage("getlineIgnoringComments() - EXIT");
     return returnValue;
 }
 
 char *trimAndUncomment(char *strWithWhite)
 {
+    debugMessage("trimAndUncomment(%s) - ENTRY", strWithWhite);
     // remove comments & blank lines
     // remove leading & trailing spaces
     char *newString = strWithWhite;
@@ -174,6 +179,7 @@ char *trimAndUncomment(char *strWithWhite)
         debugMessage("discarding [%s]", strWithWhite);
         free(strWithWhite);
     }
+    debugMessage("trimAndUncomment(%s) -> (%s) - EXIT", strWithWhite, newString);
     return newString;
 }
 
@@ -324,6 +330,7 @@ int commandLoadCmdFile(int argc, const char *argv[])
 
         }
     }
+    debugMessage("commandLoadCmdFile() - EXIT");
     return CMD_RET_SUCCESS;   // no errors
 }
 
