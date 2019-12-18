@@ -152,6 +152,34 @@ char *trimAndUncomment(char *strWithWhite)
 {
     debugMessage("trimAndUncomment(%s) - ENTRY", strWithWhite);
 
+    // remove leading spaces
+    char *newString = strWithWhite;
+    size_t nLineLength = strlen(strWithWhite);
+    char *pLineStart = strWithWhite;
+    while(isspace(*pLineStart)) {
+        pLineStart++;
+        if(*pLineStart == 0x00) {
+            break;
+        }
+    }
+    size_t nNewLength = strlen(pLineStart);
+    if(nNewLength != nLineLength) {
+        debugMessage("- old(%p)[%s](%d)", strWithWhite, strWithWhite, nLineLength);
+        newString = strdup(pLineStart);
+        debugMessage("- NEW(%p)[%s](%d)", newString, newString, nNewLength);
+        debugMessage("** discarding [%s]", strWithWhite);
+        free(strWithWhite);
+    }
+    debugMessage("trimAndUncomment() -> (%s) - EXIT", newString);
+    return newString;
+}
+
+
+#ifdef OLD_WAY
+char *trimAndUncomment(char *strWithWhite)
+{
+    debugMessage("trimAndUncomment(%s) - ENTRY", strWithWhite);
+
     // remove comments & blank lines
     // remove leading & trailing spaces
     char *newString = strWithWhite;
@@ -173,7 +201,7 @@ char *trimAndUncomment(char *strWithWhite)
     int nTailIdx = strlen(pWorkString) - 1;
     char *pComment = strchr(pWorkString, '#');
     if(pComment != NULL) {
-        nTailIdx = (pComment - pLineStart);
+        nTailIdx = (pComment - pLineStart) - 1;
     }
     if(nTailIdx > 0) {
        while(isspace(pWorkString[nTailIdx])) {
@@ -196,7 +224,7 @@ char *trimAndUncomment(char *strWithWhite)
     debugMessage("trimAndUncomment() -> (%s) - EXIT", newString);
     return newString;
 }
-
+#endif
 
 // forward declarations for command functions
 int commandHelp(int argc, const char *argv[]);
