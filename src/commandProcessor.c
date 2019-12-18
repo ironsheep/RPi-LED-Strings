@@ -145,9 +145,14 @@ int getlineIgnoringComments(char **pLine, size_t *nLineLength, FILE *stream)
     return returnValue;
 }
 
+#define WORK_STR_LEN 100
+static char pWorkString[WORK_STR_LEN + 1];
+
 char *trimAndUncomment(char *strWithWhite)
 {
     debugMessage("trimAndUncomment(%s) - ENTRY", strWithWhite);
+    
+    
     // remove comments & blank lines
     // remove leading & trailing spaces
     char *newString = strWithWhite;
@@ -159,17 +164,23 @@ char *trimAndUncomment(char *strWithWhite)
             break;
         }
     }
-    char *pLineEnd = &strWithWhite[nLineLength - 1];
-    char *pComment = strchr(pLineStart, '#');
+    strncpy(pWorkString, pLineStart, WORK_STR_LEN);
+    pWorkString[WORK_STR_LEN - 1] = 0x00;  // force and ending \0 byte
+    
+    int nWorkLen = strlen(pWorkString);
+    pLineStart = pWorkString;
+    char *pComment = strchr(pWorkString, '#');
     if(pComment != NULL) {
-        pLineEnd = (pComment - 1);
         *pComment = 0x00;
     }
-    while(isspace(*pLineEnd)) {
-        *pLineEnd = 0x00;
-        pLineEnd--;
-        if(pLineEnd == pLineStart) {
-            break;
+    nWorkLen = strlen(pWorkString);
+    if(nWorkLen > 0) {
+        char *pLineEnd = &pWorkString[nWorkLen - 1];
+        while(isspace(*pLineEnd)) {
+            *pLineEnd-- = 0x00;
+            if(pLineEnd == pLineStart) {
+                break;
+            }
         }
     }
 
