@@ -183,12 +183,12 @@ void showCurrDigitalFace(uint32_t nFaceColor)
     char clockDigits[5+1];
     if((local->tm_sec & 0x01) == 1) {
         sprintf(clockDigits, "%.02d:%.02d", local->tm_hour, local->tm_min);
-    } 
+    }
     else {
         sprintf(clockDigits, "%.02d %.02d", local->tm_hour, local->tm_min);
     }
     //debugMessage("clockDigits=[%s]", clockDigits);
-    
+
     writeStringToBufferPanelWithColorRGB(s_nClockBufferNumber, clockDigits, s_nClockPanelNumber, nFaceColor);
 
     // now write buffer N contents to matrix itself
@@ -217,23 +217,23 @@ struct _objLocnXY {
     uint8_t Y;
 } locTable[] = {
 #ifndef TWObyTHREE
-     { OI_HrTens, 4, 5 },
-     { OI_HrUnits, 8, 5 },
-     { OI_Bar_Left, 11, 7 },
-     { OI_MinTens, 13, 5 },
-     { OI_MinUnits, 17, 5 },
-     { OI_Bar_Right, 20, 7 },
-     { OI_SecTens, 22, 5 },
-     { OI_SecUnits, 26, 5 },
+    { OI_HrTens, 4, 5 },
+    { OI_HrUnits, 8, 5 },
+    { OI_Bar_Left, 11, 7 },
+    { OI_MinTens, 13, 5 },
+    { OI_MinUnits, 17, 5 },
+    { OI_Bar_Right, 20, 7 },
+    { OI_SecTens, 22, 5 },
+    { OI_SecUnits, 26, 5 },
 #else
-     { OI_HrTens, 4, 3 },
-     { OI_HrUnits, 8, 3 },
-     { OI_Bar_Left, 11, 6 },
-     { OI_MinTens, 13, 3 },
-     { OI_MinUnits, 17, 3 },
-     { OI_Bar_Right, 20, 6 },
-     { OI_SecTens, 22, 3 },
-     { OI_SecUnits, 26, 3 },
+    { OI_HrTens, 4, 3 },
+    { OI_HrUnits, 8, 3 },
+    { OI_Bar_Left, 11, 6 },
+    { OI_MinTens, 13, 3 },
+    { OI_MinUnits, 17, 3 },
+    { OI_Bar_Right, 20, 6 },
+    { OI_SecTens, 22, 3 },
+    { OI_SecUnits, 26, 3 },
 #endif
 };
 

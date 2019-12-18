@@ -181,16 +181,16 @@ void fillBufferPanelWithColorRGB(uint8_t nBufferNumber, uint8_t nPanelNumber, ui
     }
     struct _LedPixel *pSelectedBuffer = ptrBuffer(nBufferNumber);
     if(pSelectedBuffer != NULL && nPanelNumber >= 1 && nPanelNumber <= NUMBER_OF_PANELS) {
-       	uint16_t nOffsetToPanel = (nPanelNumber - 1) * nLedsPerPanel;
+        uint16_t nOffsetToPanel = (nPanelNumber - 1) * nLedsPerPanel;
         struct _LedPixel *pSelectedBufferPanel = &pSelectedBuffer[nOffsetToPanel];
         uint8_t red = (nColorRGB >> 16) & 0xff;
         uint8_t green = (nColorRGB >> 8) & 0xff;
         uint8_t blue = (nColorRGB >> 0) & 0xff;
-    	for(int nLedIdx = 0; nLedIdx < LEDS_PER_PANEL; nLedIdx++) {
+        for(int nLedIdx = 0; nLedIdx < LEDS_PER_PANEL; nLedIdx++) {
             pSelectedBufferPanel[nLedIdx].red = red;
             pSelectedBufferPanel[nLedIdx].green = green;
             pSelectedBufferPanel[nLedIdx].blue = blue;
-    	}
+        }
     }
     else {
         errorMessage("fillBufferPanelWithColorRGB() No Buffer at #%d, panel-#%d", nBufferNumber, nPanelNumber);
@@ -238,8 +238,8 @@ void drawSquareInBuffer(uint8_t nBufferNumber, uint8_t locX, uint8_t locY, uint8
     }
 
     if(nPanelNumber != 0) {
-       locY = (nPanelNumber - 1) * 8;
-       nHeight = nRowsPerPanel;
+        locY = (nPanelNumber - 1) * 8;
+        nHeight = nRowsPerPanel;
     }
 
     moveToInBuffer(nBufferNumber, locX, locY);
@@ -304,7 +304,7 @@ void lineToInBuffer(uint8_t nBufferNumber, uint8_t locX, uint8_t locY, uint8_t n
                 }
             }
             nPenX = locX;
-       }
+        }
     }
     else {
         warningMessage("- lineToInBuffer() sloped line NOT YET implemented, draw skipped.");
@@ -317,25 +317,25 @@ void writeStringToBufferWithColorRGB(uint8_t nBufferNumber, const char *cString,
     char *rwCString = (char *)cString;
     if(*cString == '"' && cString[strLen-1] == '"' && strLen > 2) {
         cString++;
-    	rwCString[strLen-1] = 0x00;
-    	strLen -= 2;
+        rwCString[strLen-1] = 0x00;
+        strLen -= 2;
     }
 
     writeStringToBufferPanelWithColorRGB(nBufferNumber, &cString[0], 1, nColorRGB);
     const char *pWord2 = &cString[5];
     while(*pWord2 == ' ') {
-	    pWord2++;
+        pWord2++;
     }
     if(*pWord2 != 0x00) {
         writeStringToBufferPanelWithColorRGB(nBufferNumber, pWord2, 2, nColorRGB);
-    	if(strlen(pWord2) >= 5) {
+        if(strlen(pWord2) >= 5) {
             const char *pWord3 = &pWord2[5];
             while(*pWord3 == ' ') {
-        	    pWord3++;
+                pWord3++;
             }
             if(*pWord3 != 0x00) {
                 writeStringToBufferPanelWithColorRGB(nBufferNumber, pWord3, 3, nColorRGB);
-        	}
+            }
         }
     }
 }

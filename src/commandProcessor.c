@@ -23,6 +23,7 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 #include <stdlib.h> // realloc()
 #include <string.h> // strtok(), strxxxx()
 #include <ctype.h> // tolower(), isxdigit()
+#include <errno.h>
 
 #include "commandProcessor.h"
 #include "debug.h"
@@ -61,11 +62,14 @@ char *strconcat(char *str1, char *str2);
 //  Main Entry point
 //
 static int s_nCurrentBufferIdx = 0;
+static int s_fpCommandFile = NULL;
 
+int getlineIgnoringComments(char **lineptr, size_t *n, FILE *stream);
 
 void processCommands(int argc, const char *argv[])
 {
     char *line;
+    size_t lineLength;
     const char **args;
     int argCt;
     int status;
@@ -84,15 +88,94 @@ void processCommands(int argc, const char *argv[])
     else {
         do {
             printf("\nmatrix> ");
-            line = lsh_read_line();
+            if(s_fpCommandFile != NULL) {
+                lineLength = 0;
+                if(line != NULL) {
+                    free(line)
+                }
+                line = NULL;
+                if(getlineIgnoringComments(&line, &lineLength, s_fpCommandFile) == -1)
+                    perrorMessage("processCommands() [from file] failed");
+                    s_fpCommandFile = NULL;
+                }
+            }
+            else {
+                line = lsh_read_line();
+            }
             args = lsh_split_line(line, &argCt);
             status = perform(argCt, args);
 
             free(line);
+            line = NULL;
             free(args);
         } while (status);
     }
 }
+
+int getlineIgnoringComments(char **pLine, size_t *nLineLength, FILE *stream)
+{
+    int returnValue = 0;
+    int bLookingForNextLine = 1;
+    do {
+        if(getlineIgnoringComments(pLine, lineLength, stream) == -1)
+            perrorMessage("processCommands() [from file] failed");
+            bLookingForNextLine = 0;    // no longer
+        }
+        else {
+            char *origLine = *pLine;
+            *pLine = trimAndUncomment(*pLine);
+
+            if(*pLine[0] == 0x00) {
+                // do nothing we're going to ignore this line
+                debugMessage("- ignoringLine=[%s]", *pLine);
+            }
+            else {
+                // we have a good line, return it
+                bLookingForNextLine = 0;    // no longer
+                debugMessage("- returning line [%s]", *pLine);
+                returnValue = *nLineLength = strlen(*pLine);
+            }
+        }
+    } while(blookingForNextLine);
+    return returnValue;
+}
+
+char *trimAndUncomment(char *strWithWhite)
+{
+    // remove comments & blank lines
+    // remove leading & trailing spaces
+    char *newString = strWithWhite;
+    size_t nLineLength = strlen(strWithWhite);
+    char *pLineStart = strWithWhite;
+    while(isspace(*pLineStart)) {
+        pLineStart++;
+        if(*pLineStart == 0x00) {
+            break;
+        }
+    }
+    char *pLineEnd = &strWithWhite[nLineLength - 1];
+    char *pComment = strchr(pLineStart, '#');
+    if(pComment != NULL) {
+        pLineEnd = (pComment - 1);
+        *pComment = 0x00;
+    }
+    while(isspace(*pLineEnd)) {
+        *pLineEnd = 0x00;
+        pLineEnd--;
+        if(pLineEnd == pLineStart) {
+            break;
+        }
+    }
+
+    size_t nNewLength = strlen(pLineStart);
+    if(nNewLength != nLineLength) {
+        newString = strdup(pLineStart);
+        debugMessage("discarding [%s]", strWithWhite);
+        free(strWithWhite);
+    }
+    return newString;
+}
+
 
 // forward declarations for command functions
 int commandHelp(int argc, const char *argv[]);
@@ -107,6 +190,7 @@ int commandShowClock(int argc, const char *argv[]);
 int commandSetBorder(int argc, const char *argv[]);
 int commandColorToScreen(int argc, const char *argv[]);
 int commandStringToScreen(int argc, const char *argv[]);
+int commandLoadCmdFile(int argc, const char *argv[]);
 
 struct _commandEntry {
     char *name;
@@ -132,7 +216,7 @@ struct _commandEntry {
     { "copy",        "copy {srcBufferNumber} {destBufferNumber} {shiftUpDownPix} {shiftLeftRightPix}", 4, 4 },
     { "default",     "default [fill|line] {color} - set default colors for subsequent draw commands", 2, 2 },
     { "moveto",      "moveto x y - move (pen) to X, Y", 2, 2 },
-    { "lineto",      "lineto x y - draw line from curr X,Y to new X,Y", 2, 2 },
+    { "lineto",      "lineto x y [{lineColor}] - draw line from curr X,Y to new X,Y", 2, 3 },
     { "loadbmpfile", "loadbmpfile {bmpFileName} - load 24-bit bitmap into current buffer", 1, 1, &commandLoadBmpFile },
     { "loadscreensfile", "loadscreensfile {screenSetFileName} - sets NbrScreensLoaded, ensures sufficient buffers allocated, starting from current buffer", 1, 1 },
     { "loadcmdfile", "loadcmdfile {commandsFileName} - iterates over commands read from file, once.", 1, 1 },
@@ -205,6 +289,43 @@ int perform(int argc, const char *argv[])
 // ----------------------------------------------------------------------------
 //  COMMAND Functions
 //
+int commandLoadCmdFile(int argc, const char *argv[])
+{
+    int bValidCommand = 1;
+
+    // IMPLEMENT:
+    //   loadcmdfile {commandsFileName} - iterates over commands read from file, once.
+    if(stricmp(argv[0], commands[s_nCurrentCmdIdx].name) != 0) {
+        errorMessage("[CODE]: bad call commandLoadCmdFile with command [%s]", argv[0]);
+        bValidCommand = 0;
+    }
+    else if((argc - 1) != 1) {
+        errorMessage("[CODE]: bad call - param count err for command [%s]", argv[0]);
+        bValidCommand = 0;
+    }
+    if(bValidCommand) {
+        const char *fileSpec = argv[1];
+        if(!stringHasSuffix(fileSpec, ".lsc")) {
+            warningMessage("Invalid filetype [%s], expected [.lsc]", fileSpec);
+            bValidCommand = 0;
+        }
+        if(bValidCommand && !fileExists(fileSpec)) {
+            errorMessage("File [%s], NOT found!", fileSpec);
+            bValidCommand = 0;
+        }
+        if(bValidCommand) {
+            // FIXME: UNDONE do something important here....
+            s_fpCommandFile = fopen(fileSpec,"r");
+            if(!fpTestFile) {
+                perrorMessage("fopen() failure");
+                s_fpCommandFile = NULL; // indicate there is no OPEN file!
+            }
+
+        }
+    }
+    return CMD_RET_SUCCESS;   // no errors
+}
+
 int commandStringToScreen(int argc, const char *argv[])
 {
     int bValidCommand = 1;
@@ -587,18 +708,20 @@ int commandLoadBmpFile(int argc, const char *argv[])
             warningMessage("Invalid filetype [%s], expected [.bmp]", fileSpec);
             bValidCommand = 0;
         }
+        if(bValidCommand && !fileExists(fileSpec)) {
+            errorMessage("File [%s], NOT found!", fileSpec);
+            bValidCommand = 0;
+        }
         if(bValidCommand) {
-            if(fileExists(fileSpec)) {
-                int nImageSize;
-                loadImageFromFile(fileSpec, &nImageSize);
-                int nBufferSize = frameBufferSizeInBytes();
-                if(nImageSize != nBufferSize) {
-                    warningMessage("Filesize (%d bytes) incorrect for 32x24 matrix (%d bytes), display aborted!", nImageSize, nBufferSize);
-                }
-                else {
-                    uint8_t *pCurrBuffer = (uint8_t *)ptrBuffer(s_nCurrentBufferIdx + 1);
-                    xlateLoadedImageIntoBuffer(pCurrBuffer, nBufferSize);
-                }
+            int nImageSize;
+            loadImageFromFile(fileSpec, &nImageSize);
+            int nBufferSize = frameBufferSizeInBytes();
+            if(nImageSize != nBufferSize) {
+                warningMessage("Filesize (%d bytes) incorrect for 32x24 matrix (%d bytes), display aborted!", nImageSize, nBufferSize);
+            }
+            else {
+                uint8_t *pCurrBuffer = (uint8_t *)ptrBuffer(s_nCurrentBufferIdx + 1);
+                xlateLoadedImageIntoBuffer(pCurrBuffer, nBufferSize);
             }
         }
     }
