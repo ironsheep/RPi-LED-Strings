@@ -150,9 +150,9 @@ static char pWorkString[WORK_STR_LEN + 1];
 
 char *trimAndUncomment(char *strWithWhite)
 {
-    debugMessage("trimAndUncomment(%s) - ENTRY", strWithWhite);
-    
-    
+    debugMessage("trimAndUncomment(%s) - ENTRY", );
+
+
     // remove comments & blank lines
     // remove leading & trailing spaces
     char *newString = strWithWhite;
@@ -166,8 +166,9 @@ char *trimAndUncomment(char *strWithWhite)
     }
     strncpy(pWorkString, pLineStart, WORK_STR_LEN);
     pWorkString[WORK_STR_LEN - 1] = 0x00;  // force and ending \0 byte
-    
     int nWorkLen = strlen(pWorkString);
+    debugMessage("trimAndUncomment() ç[%s](%d) -> workString[%s](%d)", strWithWhite, nLineLength, pWorkString, nWorkLen);
+
     pLineStart = pWorkString;
     char *pComment = strchr(pWorkString, '#');
     if(pComment != NULL) {
