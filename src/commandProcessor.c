@@ -341,7 +341,7 @@ int commandStringToScreen(int argc, const char *argv[])
     // IMPLEMENT:
     //   string {selectedBuffers} {string} {color} [{[p[1-3]}] - write string to screen w/wrap (or just single panel)
     if(stricmp(argv[0], commands[s_nCurrentCmdIdx].name) != 0) {
-        errorMessage("[CODE]: bad call commandColorToScreen with command [%s]", argv[0]);
+        errorMessage("[CODE]: bad call commandStringToScreen with command [%s]", argv[0]);
         bValidCommand = 0;
     }
     else if(argc - 1 < 3 || argc - 1 > 4) {
