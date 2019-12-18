@@ -167,31 +167,30 @@ char *trimAndUncomment(char *strWithWhite)
     pWorkString[WORK_STR_LEN - 1] = 0x00;  // force and ending \0 byte
     int nWorkLen = strlen(pWorkString);
     debugMessage("- old(%p)[%s](%d)", strWithWhite, strWithWhite, nLineLength);
-    debugMessage("- NEW(%p)[%s](%d)", pWorkString, pWorkString, nWorkLen);
+    debugMessage("- WRK(%p)[%s](%d)", pWorkString, pWorkString, nWorkLen);
 
     pLineStart = pWorkString;
+    int nTailIdx = strlen(pWorkString) - 1;
     char *pComment = strchr(pWorkString, '#');
     if(pComment != NULL) {
-        *pComment = 0x00; // replace our '#'
+        nTailIdx = (pComment - pLineStart);
     }
-    nWorkLen = strlen(pWorkString);
-    if(nWorkLen > 0) {
-        char *pLineEnd = &pWorkString[nWorkLen - 1];
-        while(isspace(*pLineEnd)) {
-            *pLineEnd = 0x00;
-            pLineEnd--;
-            if(pLineEnd == pLineStart) {
+    if(nTailIdx > 0) {
+       while(isspace(pWorkString[nTailIdx])) {
+            nTailIdx--;
+
+            if(nTailIdx <= 0) {
                 break;
             }
         }
     }
-
+    pWorkString[nTailIdx + 1] = 0x00;   // set new terminator
     size_t nNewLength = strlen(pWorkString);
     if(nNewLength != nLineLength) {
         debugMessage("- old(%p)[%s](%d)", strWithWhite, strWithWhite, nLineLength);
-        debugMessage("- NEW(%p)[%s](%d)", pWorkString, pWorkString, nNewLength);
-        newString = strdup(pLineStart);
-        debugMessage("discarding [%s]", strWithWhite);
+        newString = strdup(pWorkString);
+        debugMessage("- NEW(%p)[%s](%d)", newString, newString, nNewLength);
+        debugMessage("** discarding [%s]", strWithWhite);
         free(strWithWhite);
     }
     debugMessage("trimAndUncomment() -> (%s) - EXIT", newString);
