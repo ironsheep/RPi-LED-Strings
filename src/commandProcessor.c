@@ -73,6 +73,7 @@ void processCommands(int argc, const char *argv[])
     size_t lineLength;
     const char **args;
     int argCt;
+    int loopStatus;
     int status;
 
     printf("- processCommands() argc=(%d)\n", argc);
@@ -92,6 +93,7 @@ void processCommands(int argc, const char *argv[])
             if(s_fpCommandFile != NULL) {
                 lineLength = 0;
                 if(line != NULL) {
+                    debugMessage("** FREE(1) [%s]", line);
                     free(line);
                 }
                 line = NULL;
@@ -113,21 +115,19 @@ void processCommands(int argc, const char *argv[])
             debugMessage("process line [%s] into arguments", line);
             if(line != NULL) {
                 args = lsh_split_line(line, &argCt);
-                status = perform(argCt, args);
+                loopStatus = perform(argCt, args);
+                debugMessage("** FREE(2) [%s]", line);
                 free(line);
                 line = NULL;
                 free(args);
             }
-            else {
-                status = 1; // just continue in loop
-            }
-        } while (status);
+        } while (loopStatus);
     }
 }
 
 int getlineIgnoringComments(char **pLine, size_t *nLineLength, FILE *stream)
 {
-    //debugMessage("getlineIgnoringComments() - ENTRY");
+    debugMessage("getlineIgnoringComments() - ENTRY");
     int returnValue = 0;
     int bLookingForNextLine = 1;
     do {
@@ -136,15 +136,13 @@ int getlineIgnoringComments(char **pLine, size_t *nLineLength, FILE *stream)
             perrorMessage("processCommands() [from file] failed");
             bLookingForNextLine = 0;    // no longer
             returnValue = status;
-            break;
         }
         else if(status  == -1 && errno == 0) {
             // END OF FILE
             debugMessage("at EOF!");
-            returnValue = 0; 
+            returnValue = 0;
             *pLine = NULL;
             bLookingForNextLine = 0;    // no longer
-            break;
         }
         else {
             char *origLine = *pLine;
@@ -166,7 +164,7 @@ int getlineIgnoringComments(char **pLine, size_t *nLineLength, FILE *stream)
             }
         }
     } while(bLookingForNextLine);
-    //debugMessage("getlineIgnoringComments() - EXIT");
+    debugMessage("getlineIgnoringComments() - EXIT");
     return returnValue;
 }
 
@@ -192,64 +190,13 @@ char *trimAndUncomment(char *strWithWhite)
         //debugMessage("- old(%p)[%s](%d)", strWithWhite, strWithWhite, nLineLength);
         newString = strdup(pLineStart);
         //debugMessage("- NEW(%p)[%s](%d)", newString, newString, nNewLength);
-        debugMessage("** FREE [%s]", strWithWhite);
+        debugMessage("** FREE(3) [%s]", strWithWhite);
         free(strWithWhite);
     }
     //debugMessage("trimAndUncomment() -> (%s) - EXIT", newString);
     return newString;
 }
 
-
-#ifdef OLD_WAY
-char *trimAndUncomment(char *strWithWhite)
-{
-    debugMessage("trimAndUncomment(%s) - ENTRY", strWithWhite);
-
-    // remove comments & blank lines
-    // remove leading & trailing spaces
-    char *newString = strWithWhite;
-    size_t nLineLength = strlen(strWithWhite);
-    char *pLineStart = strWithWhite;
-    while(isspace(*pLineStart)) {
-        pLineStart++;
-        if(*pLineStart == 0x00) {
-            break;
-        }
-    }
-    strncpy(pWorkString, pLineStart, WORK_STR_LEN);
-    pWorkString[WORK_STR_LEN - 1] = 0x00;  // force and ending \0 byte
-    int nWorkLen = strlen(pWorkString);
-    debugMessage("- old(%p)[%s](%d)", strWithWhite, strWithWhite, nLineLength);
-    debugMessage("- WRK(%p)[%s](%d)", pWorkString, pWorkString, nWorkLen);
-
-    pLineStart = pWorkString;
-    int nTailIdx = strlen(pWorkString) - 1;
-    char *pComment = strchr(pWorkString, '#');
-    if(pComment != NULL) {
-        nTailIdx = (pComment - pLineStart) - 1;
-    }
-    if(nTailIdx > 0) {
-       while(isspace(pWorkString[nTailIdx])) {
-            nTailIdx--;
-
-            if(nTailIdx <= 0) {
-                break;
-            }
-        }
-    }
-    pWorkString[nTailIdx + 1] = 0x00;   // set new terminator
-    size_t nNewLength = strlen(pWorkString);
-    if(nNewLength != nLineLength) {
-        debugMessage("- old(%p)[%s](%d)", strWithWhite, strWithWhite, nLineLength);
-        newString = strdup(pWorkString);
-        debugMessage("- NEW(%p)[%s](%d)", newString, newString, nNewLength);
-        debugMessage("** discarding [%s]", strWithWhite);
-        free(strWithWhite);
-    }
-    debugMessage("trimAndUncomment() -> (%s) - EXIT", newString);
-    return newString;
-}
-#endif
 
 // forward declarations for command functions
 int commandHelp(int argc, const char *argv[]);
