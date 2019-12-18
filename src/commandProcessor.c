@@ -56,13 +56,14 @@ int stringIsHexValue(const char *colorSpec);
 int isHexDigitsString(const char *posHexDigits);
 void combineTokens(char **tokens, int ltIdx, int rtIdx);
 char *strconcat(char *str1, char *str2);
+char *trimAndUncomment(char *strWithWhite);
 
 
 // ----------------------------------------------------------------------------
 //  Main Entry point
 //
 static int s_nCurrentBufferIdx = 0;
-static int s_fpCommandFile = NULL;
+static FILE *s_fpCommandFile = NULL;
 
 int getlineIgnoringComments(char **lineptr, size_t *n, FILE *stream);
 
@@ -91,10 +92,10 @@ void processCommands(int argc, const char *argv[])
             if(s_fpCommandFile != NULL) {
                 lineLength = 0;
                 if(line != NULL) {
-                    free(line)
+                    free(line);
                 }
                 line = NULL;
-                if(getlineIgnoringComments(&line, &lineLength, s_fpCommandFile) == -1)
+                if(getlineIgnoringComments(&line, &lineLength, s_fpCommandFile) == -1) {
                     perrorMessage("processCommands() [from file] failed");
                     s_fpCommandFile = NULL;
                 }
@@ -117,7 +118,7 @@ int getlineIgnoringComments(char **pLine, size_t *nLineLength, FILE *stream)
     int returnValue = 0;
     int bLookingForNextLine = 1;
     do {
-        if(getlineIgnoringComments(pLine, lineLength, stream) == -1)
+        if(getlineIgnoringComments(pLine, nLineLength, stream) == -1) {
             perrorMessage("processCommands() [from file] failed");
             bLookingForNextLine = 0;    // no longer
         }
@@ -136,7 +137,7 @@ int getlineIgnoringComments(char **pLine, size_t *nLineLength, FILE *stream)
                 returnValue = *nLineLength = strlen(*pLine);
             }
         }
-    } while(blookingForNextLine);
+    } while(bLookingForNextLine);
     return returnValue;
 }
 
@@ -219,7 +220,7 @@ struct _commandEntry {
     { "lineto",      "lineto x y [{lineColor}] - draw line from curr X,Y to new X,Y", 2, 3 },
     { "loadbmpfile", "loadbmpfile {bmpFileName} - load 24-bit bitmap into current buffer", 1, 1, &commandLoadBmpFile },
     { "loadscreensfile", "loadscreensfile {screenSetFileName} - sets NbrScreensLoaded, ensures sufficient buffers allocated, starting from current buffer", 1, 1 },
-    { "loadcmdfile", "loadcmdfile {commandsFileName} - iterates over commands read from file, once.", 1, 1 },
+    { "loadcmdfile", "loadcmdfile {commandsFileName} - iterates over commands read from file, once.", 1, 1, &commandLoadCmdFile },
     { "helpcommands", "helpcommands - display list of available commands", 0, 0, &commandHelp },
     { "quit",         "quit - exit command processor", 0, 0, &commandQuit },
     { "exit",         "exit - exit command processor", 0, 0, &commandQuit },
@@ -316,7 +317,7 @@ int commandLoadCmdFile(int argc, const char *argv[])
         if(bValidCommand) {
             // FIXME: UNDONE do something important here....
             s_fpCommandFile = fopen(fileSpec,"r");
-            if(!fpTestFile) {
+            if(!s_fpCommandFile) {
                 perrorMessage("fopen() failure");
                 s_fpCommandFile = NULL; // indicate there is no OPEN file!
             }
