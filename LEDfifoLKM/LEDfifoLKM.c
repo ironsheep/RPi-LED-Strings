@@ -1022,7 +1022,7 @@ void taskletTestWrites(unsigned long data)
 
 	// ============= BEGIN CRITICAL SECTION ==================
 	//
-	// let's prevent interrupts for this one LED write
+	// let's prevent interrupts for this burst of LED writes
 	spin_lock_irqsave(&mr_lock, flags);
 
     // data is [0,1] for directing write of 0's or 1's test pattern
@@ -1151,7 +1151,7 @@ void taskletScreenFill(unsigned long data)
     
 	// ============= BEGIN CRITICAL SECTION ==================
 	//
-	// let's prevent interrupts for this one LED write
+	// let's prevent interrupts for this burst of LED writes
 	spin_lock_irqsave(&mr_lock, flags);
 
    // for each LED in a panel
@@ -1225,7 +1225,7 @@ void taskletScreenWrite(unsigned long data)
     
 	// ============= BEGIN CRITICAL SECTION ==================
 	//
-	// let's prevent interrupts for this series of LED writes
+	// let's prevent interrupts for this burst of LED writes
 	spin_lock_irqsave(&mr_wr_lock, flags);
 
    // for each LED in a panel
