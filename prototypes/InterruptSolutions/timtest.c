@@ -262,29 +262,27 @@ int interrupts(int flag)
   static int disflag = 0;
 
 
-  if(pitype == NOTSET)
-    {
+  if(pitype == NOTSET) {
     printf("Setup not done\n");
     return(0);
     }
 
-  if(flag == 0)    // disable
-    {
-    if(disflag != 0)
-      {
+ // disable
+  if(flag == 0) {
+    if(disflag != 0) {
       // Interrupts already disabled so avoid printf
       return(1);
-      }
+    }
 
    // Note on register offsets
    // If a register is described in the documentation as offset 0x20C = 524 bytes
    // The pointers such as intrupt are 4 bytes long,
    // so intrupt+131 points to intrupt + 4x131 = offset 0x20C
 
-           // save current interrupt settings
+   // save current interrupt settings
 
-    if(pitype == ARM7)   // Pi3 only
-      {
+    if(pitype == ARM7) {
+   // Pi3 only
       sav4 = *(intquad+4);     // Performance Monitor Interrupts set  register 0x0010
       sav16 = *(intquad+16);   // Core0 timers Interrupt control  register 0x0040
       sav17 = *(intquad+17);   // Core1 timers Interrupt control  register 0x0044
@@ -295,15 +293,13 @@ int interrupts(int flag)
       sav21 = *(intquad+21);   // Core1 Mailbox Interrupt control  register 0x0054
       sav22 = *(intquad+22);   // Core2 Mailbox Interrupt control  register 0x0058
       sav23 = *(intquad+23);   // Core3 Mailbox Interrupt control  register 0x005C
-      }
+    }
 
-    if(pitype == PI4)
-      {
+    if(pitype == PI4) {
       sav4 = *(intrupt);               // GICD_CTLR register
       *(intrupt) = sav4 & 0xFFFFFFFE;  // clear bit 0 enable forwarding to CPU
-      }
-    else
-      {
+    }
+    else {
       sav134 = *(intrupt+134);  // Enable basic IRQs register 0x218
       sav132 = *(intrupt+132);  // Enable IRQs 1 register 0x210
       sav133 = *(intrupt+133);  // Enable IRQs 2 register 0x214
@@ -312,13 +308,14 @@ int interrupts(int flag)
            // Seems to work OK without this, but it does no harm
            // Limit to 100 tries to avoid infinite loop
       n = 0;
-      while( (*(intrupt+128) | *(intrupt+129) | *(intrupt+130)) != 0 && n < 100)
+      while( (*(intrupt+128) | *(intrupt+129) | *(intrupt+130)) != 0 && n < 100) {
         ++n;
       }
+    }
          // disable all interrupts
 
-    if(pitype == ARM7)   // Pi3 only
-      {
+    if(pitype == ARM7) {
+      // Pi3 only
       *(intquad+5) = sav4;   // disable via Performance Monitor Interrupts clear  register 0x0014
       *(intquad+16) = 0;     // disable by direct write
       *(intquad+17) = 0;
@@ -328,10 +325,9 @@ int interrupts(int flag)
       *(intquad+21) = 0;
       *(intquad+22) = 0;
       *(intquad+23) = 0;
-      }
+    }
 
-    if(pitype != PI4)
-      {
+    if(pitype != PI4) {
       temp131 = *(intrupt+131);  // read FIQ control register 0x20C
       temp131 &= ~(1 << 7);      // zero FIQ enable bit 7
       *(intrupt+131) = temp131;  // write back to register
@@ -344,7 +340,7 @@ int interrupts(int flag)
              // disable by writing to Disable IRQs 2 register 0x220
       *(intrupt+137) = sav134;
              // disable by writing to Disable basic IRQs register 0x224
-      }
+    }
 
     disflag = 1;   // interrupts disabled
     }
@@ -405,7 +401,7 @@ int setup()
     int memfd;
     void *gpio_map;
     void *timer_map;
-    void *int_map
+    void *int_map;
     void *quad_map;
     unsigned int baseadd;
     FILE *stream;
@@ -451,11 +447,11 @@ int setup()
         printf("Pi type = ARMv6\n");
     }
     else if(baseadd == 0x3F000000) {
-        pitype = ARM7;  // 3B+
+        pitype = ARM7;  // Pi3B+
         printf("Pi type = ARMv7\n");
     }
     else if(baseadd == 0xFE000000) {
-        pitype = PI4;
+        pitype = PI4;   // Pi4
         printf("Pi type = Pi4\n");
     }
     else {
@@ -465,29 +461,25 @@ int setup()
 
     memfd = open("/dev/mem",O_RDWR|O_SYNC);
     if(memfd < 0) {
-        printf("Mem open error\n");
+        printf("Mem open error! Run as sudo?\n");
         pitype = NOTSET;
         return(0);
     }
 
-    gpio_map = mmap(NULL,4096,PROT_READ|PROT_WRITE,
-    MAP_SHARED,memfd,baseadd+GPIO_BASE);
+    gpio_map = mmap(NULL,4096,PROT_READ|PROT_WRITE, MAP_SHARED,memfd,baseadd+GPIO_BASE);
 
-    timer_map = mmap(NULL,4096,PROT_READ|PROT_WRITE,
-    MAP_SHARED,memfd,baseadd+TIMER_BASE);
+    timer_map = mmap(NULL,4096,PROT_READ|PROT_WRITE, MAP_SHARED,memfd,baseadd+TIMER_BASE);
 
     if(pitype == PI4) {
-        int_map = mmap(NULL,4096,PROT_READ|PROT_WRITE,
-        MAP_SHARED,memfd,0xFF841000);  // GIC distributor
+        int_map = mmap(NULL,4096,PROT_READ|PROT_WRITE, MAP_SHARED,memfd,0xFF841000);  // GIC distributor
     }
     else {
-        int_map = mmap(NULL,4096,PROT_READ|PROT_WRITE,
-        MAP_SHARED,memfd,baseadd+INT_BASE);
+        int_map = mmap(NULL,4096,PROT_READ|PROT_WRITE, MAP_SHARED,memfd,baseadd+INT_BASE);
     }
 
-    if(pitype == ARM7) { // Pi3
-        quad_map = mmap(NULL,4096,PROT_READ|PROT_WRITE,
-        MAP_SHARED,memfd,0x40000000);
+    if(pitype == ARM7) { 
+        // Pi3
+        quad_map = mmap(NULL,4096,PROT_READ|PROT_WRITE, MAP_SHARED,memfd,0x40000000);
     }
     else  {
         quad_map = MAP_FAILED;
@@ -496,7 +488,7 @@ int setup()
     close(memfd);
 
     if(gpio_map == MAP_FAILED || timer_map == MAP_FAILED || int_map == MAP_FAILED || (pitype == ARM7 && quad_map == MAP_FAILED)) {
-        printf("Map failed\n");
+        printf("setup failed\n");
         pitype = NOTSET;
         return(0);
     }
