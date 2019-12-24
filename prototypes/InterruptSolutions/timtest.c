@@ -158,7 +158,7 @@ int main()
 
   n = measureints();
 
-  printf("Count of interrupts that disrupt TIMERLOOP = %d\n",n);
+  printf("Count of interrupts that disrupt TIMERLOOP = %d\n\n\n",n);
 
   return(0);
   }
@@ -173,46 +173,43 @@ the 10 microsecond delay causing a timing error
 **************************/
 
 int measureints()
-  {
+{
   int n,count;
 
   n = 0;
   count = 0;
-  do
-    {
+  do {
     timend = *timer + 10;  // 10 us delay
     TIMERLOOP;
-    if( (*timer - timend) != 0 )
+    if( (*timer - timend) != 0 ) {
       ++count;            // missed 10us timend
-
-    ++n;
     }
-  while(n < 3e6);   // 30 seconds
+    ++n;
+  } while(n < 3e6);   // 30 seconds
 
   return(count);
-  }
+}
 
-/************ HARDWARE TEST *************
-sets up GPIO 2 as output
+/************ HARDWARE TEST ************* 
+sets up GPIO 2 as output 
 disables interrupts
 puts a 50kHz signal on GPIO 2 for 20 seconds
 enables interrupts
 *******************************************/
 
 void hardwaretest()
-  {
+{
   int n;
 
                  // set GPIO 2 as output
   INP_GPIO(2);   // must do this first to zero control bits
   OUT_GPIO(2);   // set as output
 
-  if(interrupts(0) == 0)  // disable interrupts
+  if(interrupts(0) == 0) {  // disable interrupts
     return;
+  }
 
-  timend = *timer;   // current timer value
-  for(n = 0 ;  n < 1000000  ; ++n)
-    {
+  for(n = 0 ;  n < 1000000  ; ++n) {
     timend += 10;    // 10us
     TIMERLOOP;
 
@@ -222,10 +219,10 @@ void hardwaretest()
     TIMERLOOP;
 
     GP2_LO;         // output GPIO 2 lo
-    }
+  }
 
   interrupts(1);    // re-enable interrupts
-  }
+}
 
 
 /******************** INTERRUPTS *************
@@ -244,7 +241,7 @@ or key strokes will not be dealt with properly
 *******************************************/
 
 int interrupts(int flag)
-  {
+{
   int n;
   unsigned int temp131;
   static unsigned int sav132 = 0;
@@ -265,30 +262,30 @@ int interrupts(int flag)
   if(pitype == NOTSET) {
     printf("Setup not done\n");
     return(0);
-    }
+  }
 
- // disable
+  // disable
   if(flag == 0) {
     if(disflag != 0) {
       // Interrupts already disabled so avoid printf
       return(1);
     }
 
-   // Note on register offsets
-   // If a register is described in the documentation as offset 0x20C = 524 bytes
-   // The pointers such as intrupt are 4 bytes long,
-   // so intrupt+131 points to intrupt + 4x131 = offset 0x20C
+    // Note on register offsets
+    // If a register is described in the documentation as offset 0x20C = 524 bytes
+    // The pointers such as intrupt are 4 bytes long,
+    // so intrupt+131 points to intrupt + 4x131 = offset 0x20C
 
-   // save current interrupt settings
+    // save current interrupt settings
 
     if(pitype == ARM7) {
-   // Pi3 only
+      // Pi3 only
       sav4 = *(intquad+4);     // Performance Monitor Interrupts set  register 0x0010
       sav16 = *(intquad+16);   // Core0 timers Interrupt control  register 0x0040
       sav17 = *(intquad+17);   // Core1 timers Interrupt control  register 0x0044
       sav18 = *(intquad+18);   // Core2 timers Interrupt control  register 0x0048
       sav19 = *(intquad+19);   // Core3 timers Interrupt control  register 0x004C
-             // the Mailbox interrupts are probably disabled anyway - but to be safe:
+      // the Mailbox interrupts are probably disabled anyway - but to be safe:
       sav20 = *(intquad+20);   // Core0 Mailbox Interrupt control  register 0x0050
       sav21 = *(intquad+21);   // Core1 Mailbox Interrupt control  register 0x0054
       sav22 = *(intquad+22);   // Core2 Mailbox Interrupt control  register 0x0058
@@ -304,15 +301,16 @@ int interrupts(int flag)
       sav132 = *(intrupt+132);  // Enable IRQs 1 register 0x210
       sav133 = *(intrupt+133);  // Enable IRQs 2 register 0x214
 
-           // Wait for pending interrupts to clear
-           // Seems to work OK without this, but it does no harm
-           // Limit to 100 tries to avoid infinite loop
+      // Wait for pending interrupts to clear
+      // Seems to work OK without this, but it does no harm
+      // Limit to 100 tries to avoid infinite loop
       n = 0;
       while( (*(intrupt+128) | *(intrupt+129) | *(intrupt+130)) != 0 && n < 100) {
         ++n;
       }
     }
-         // disable all interrupts
+
+    // disable all interrupts
 
     if(pitype == ARM7) {
       // Pi3 only
@@ -334,31 +332,25 @@ int interrupts(int flag)
                                // attempting to clear bit 7 of *(intrupt+131) directly
                                // will crash the system
 
-      *(intrupt+135) = sav132;
-              // disable by writing to Disable IRQs 1 register 0x21C
-      *(intrupt+136) = sav133;
-             // disable by writing to Disable IRQs 2 register 0x220
-      *(intrupt+137) = sav134;
-             // disable by writing to Disable basic IRQs register 0x224
+      *(intrupt+135) = sav132; // disable by writing to Disable IRQs 1 register 0x21C
+      *(intrupt+136) = sav133; // disable by writing to Disable IRQs 2 register 0x220
+      *(intrupt+137) = sav134; // disable by writing to Disable basic IRQs register 0x224
     }
 
     disflag = 1;   // interrupts disabled
-    }
-  else            // flag = 1 enable
-    {
-    if(disflag == 0)
-      {
+  }
+  else {
+    // flag = 1 enable
+    if(disflag == 0) {
       // Interrupts are enabled
       return(1);
-      }
+    }
 
-             // restore all saved interrupts
-    if(pitype == PI4)
-      {
+    // restore all saved interrupts
+    if(pitype == PI4) {
       *(intrupt) = sav4;  // set bit 0
-      }
-    else
-      {
+    }
+    else {
       *(intrupt+134) = sav134;
       *(intrupt+133) = sav133;
       *(intrupt+132) = sav132;
@@ -366,10 +358,10 @@ int interrupts(int flag)
       temp131 = *(intrupt+131);     // read FIQ control register 0x20C
       temp131 |= (1 << 7);          // set FIQ enable bit
       *(intrupt+131) = temp131;     // write back to register
-      }
+    }
 
-    if(pitype == ARM7)  // Pi3 only
-      {
+    if(pitype == ARM7) {
+      // Pi3 only
       *(intquad+4) = sav4;
       *(intquad+16) = sav16;
       *(intquad+17) = sav17;
@@ -379,12 +371,12 @@ int interrupts(int flag)
       *(intquad+21) = sav21;
       *(intquad+22) = sav22;
       *(intquad+23) = sav23;
-      }
+    }
 
     disflag = 0;         // indicates interrupts enabled
-    }
-  return(1);
   }
+  return(1);
+}
 
 /***************** SETUP ****************
 Determines Pi type ARMv6 or ARMv7:
@@ -425,8 +417,7 @@ int setup()
 
     getout = 0;
     n = 0;
-    do
-    {
+    do {
         c = getc(stream);
         if(c == EOF) {
             baseadd = 0;
@@ -471,6 +462,7 @@ int setup()
     timer_map = mmap(NULL,4096,PROT_READ|PROT_WRITE, MAP_SHARED,memfd,baseadd+TIMER_BASE);
 
     if(pitype == PI4) {
+        // Pi4
         int_map = mmap(NULL,4096,PROT_READ|PROT_WRITE, MAP_SHARED,memfd,0xFF841000);  // GIC distributor
     }
     else {
