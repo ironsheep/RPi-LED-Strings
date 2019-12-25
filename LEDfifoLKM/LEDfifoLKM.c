@@ -7,13 +7,13 @@
  * in the /var/log/kern.log file when the module is loaded and removed. The module can accept an
  * argument when it is loaded -- the name, which appears in the kernel log files.
  * @see http://www.derekmolloy.ie/ for a full description and follow-up descriptions.
- 
- 
+
+
 - History:
 -   Round 1 direct I/O
 -   Round 2 let's awaken mem/map access...
 */
- 
+
 #include <linux/init.h>             // Macros used to mark up functions e.g., __init __exit
 #include <linux/module.h>           // Core header for loading LKMs into the kernel
 #include <linux/kernel.h>           // Contains types, macros, functions for the kernel
@@ -50,7 +50,7 @@ MODULE_LICENSE("GPL");              ///< The license type -- this affects runtim
 MODULE_AUTHOR("Stephen M Moraco");      ///< The author -- visible when you use modinfo
 MODULE_DESCRIPTION("An LED Matrix display GPIO Driver.");  ///< The description -- see modinfo
 MODULE_VERSION("0.1");              ///< The version of the module
- 
+
 static char *name = "{nameParm}";        ///< An example LKM argument -- default value is "{nameParm}"
 module_param(name, charp, S_IRUGO); ///< Param desc. charp = char ptr, S_IRUGO can be read/not changed
 MODULE_PARM_DESC(name, "The name to display in /var/log/kern.log");  ///< parameter description
@@ -115,6 +115,7 @@ static struct class *cl; // Global variable for the device class
 static struct proc_dir_entry *parent;
 static struct proc_dir_entry *file;
 
+static uint32_t s_pRPiModelIOBaseAddress;
 static volatile unsigned int *gpio;
 
 static uint8_t *kernel_buffer;
@@ -165,23 +166,28 @@ static ssize_t LEDfifo_write(struct file *f, const char __user *buf, size_t len,
     loff_t *off)
 {
     unsigned long bytesNotCopied;
-    
+
     printk(KERN_INFO "LEDfifo: write(%d) bytes\n", len);
     bytesNotCopied = len;
-    
-    if(len > s_screenBufferSizeInBytes) {
-        printk(KERN_ERR "LEDfifo: write() Abort, too long (%ld bytes) [> max %d]\n", bytesNotCopied, s_screenBufferSizeInBytes);
+
+    if(s_ePiType == NOTSET) {
+        printk(KERN_ERR "LEDfifo: write() Abort, RPi Model not yet identified! (IO not configured!)\n");
     }
     else {
-        bytesNotCopied = copy_from_user(kernel_buffer, buf, len);
-        if(bytesNotCopied != 0) {
-            printk(KERN_ERR "LEDfifo: write() Failed to copy %ld bytes in kernel\n", bytesNotCopied);
+        if(len > s_screenBufferSizeInBytes) {
+            printk(KERN_ERR "LEDfifo: write() Abort, too long (%ld bytes) [> max %d]\n", bytesNotCopied, s_screenBufferSizeInBytes);
         }
         else {
-            // write buffer via GPIO to matrix
-            // FIXME: UNDONE maybe pass desired buffer ptr as data? at task init
-            tasklet_init(&tasklet, taskletScreenWrite, 0); 
-            tasklet_hi_schedule(&tasklet);
+            bytesNotCopied = copy_from_user(kernel_buffer, buf, len);
+            if(bytesNotCopied != 0) {
+                printk(KERN_ERR "LEDfifo: write() Failed to copy %ld bytes in kernel\n", bytesNotCopied);
+            }
+            else {
+                // write buffer via GPIO to matrix
+                // FIXME: UNDONE maybe pass desired buffer ptr as data? at task init
+                tasklet_init(&tasklet, taskletScreenWrite, 0);
+                tasklet_hi_schedule(&tasklet);
+            }
         }
     }
     return len - bytesNotCopied;
@@ -235,10 +241,10 @@ static long LEDfifo_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
         return -ENOTTY;
     if (_IOC_NR(cmd) > LED_FIFO_IOC_MAXNR)
         return -ENOTTY;
-        
+
     /*
     * the direction is a bitmask, and VERIFY_WRITE catches R/W * transfers.
-    * `Type' is user-oriented, while access_ok is kernel-oriented, so the 
+    * `Type' is user-oriented, while access_ok is kernel-oriented, so the
     * concept of "read" and * "write" is reversed
     */
     if (_IOC_DIR(cmd) & _IOC_READ)
@@ -249,7 +255,7 @@ static long LEDfifo_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
         return -EFAULT;
 
     /*
-    * now handle the legitimate command 
+    * now handle the legitimate command
     */
     switch (cmd)
     {
@@ -291,7 +297,7 @@ static long LEDfifo_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
             periodT0HCount = cfg.periodT0HCount;
             periodT1HCount = cfg.periodT1HCount;
             periodTRESETCount = cfg.periodTRESETCount;
-            
+
             // if we now have pins configure them and load our bit-send table
             initCurrentPins();
             initBitTableForCurrentPins();
@@ -321,26 +327,46 @@ static long LEDfifo_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
             break;
         case CMD_TEST_BIT_WRITES:
             printk(KERN_INFO "LEDfifo: ioctl() test bit writes w/(%ld's)\n", arg);
-            if(arg == 0) {
-                //testXmitZeros(1000);
-                tasklet_init(&tasklet, taskletTestWrites, 0); 
-                tasklet_hi_schedule(&tasklet);
+            if(s_ePiType == NOTSET) {
+                printk(KERN_ERR "LEDfifo: ioctl() Abort, RPi Model not yet identified! (IO not configured!)\n");
             }
             else {
-                //testXmitOnes(1000);
-                tasklet_init(&tasklet, taskletTestWrites, 1); 
-                tasklet_hi_schedule(&tasklet);
+                if(arg == 0) {
+                    //testXmitZeros(1000);
+                    tasklet_init(&tasklet, taskletTestWrites, 0);
+                    tasklet_hi_schedule(&tasklet);
+                }
+                else {
+                    //testXmitOnes(1000);
+                    tasklet_init(&tasklet, taskletTestWrites, 1);
+                    tasklet_hi_schedule(&tasklet);
+               }
            }
             break;
         case CMD_CLEAR_SCREEN:
             printk(KERN_INFO "LEDfifo: ioctl() clear screen: set screen color 0x%06X\n", 0);
-            tasklet_init(&tasklet, taskletScreenFill, 0); 
-            tasklet_hi_schedule(&tasklet);
+            if(s_ePiType == NOTSET) {
+                printk(KERN_ERR "LEDfifo: ioctl() Abort, RPi Model not yet identified! (IO not configured!)\n");
+            }
+            else {
+                tasklet_init(&tasklet, taskletScreenFill, 0);
+                tasklet_hi_schedule(&tasklet);
+            }
             break;
         case CMD_SET_SCREEN_COLOR:
             printk(KERN_INFO "LEDfifo: ioctl() set screen color 0x%06lX\n", arg);
-            tasklet_init(&tasklet, taskletScreenFill, arg); 
-            tasklet_hi_schedule(&tasklet);
+            if(s_ePiType == NOTSET) {
+                printk(KERN_ERR "LEDfifo: ioctl() Abort, RPi Model not yet identified! (IO not configured!)\n");
+            }
+            else {
+                tasklet_init(&tasklet, taskletScreenFill, arg);
+                tasklet_hi_schedule(&tasklet);
+            }
+            break;
+        case CMD_SET_IO_BASE_ADDRESS:
+            printk(KERN_INFO "LEDfifo: ioctl() set rpiBaseAddr 0x%08lX\n", arg);
+            s_pRPiModelIOBaseAddress = arg;
+            configureDriverIO(arg);
             break;
         default:
             printk(KERN_WARNING "LEDfifo: ioctl() unknown command (%d) !!\n", cmd);
@@ -361,13 +387,13 @@ static int config_read(struct seq_file *m, void *v)
     //int freqInKHz;
     int pinIndex;
     unsigned char *loopStatus;
-    
+
     STR_PRINTF_RET(len, "LED String Type: %s\n", ledType);
     STR_PRINTF_RET(len, "GPIO Pins Assigned:\n");
     for(pinIndex = 0; pinIndex < FIFO_MAX_PIN_COUNT; pinIndex++) {
         if(gpioPins[pinIndex] != 0) {
         	STR_PRINTF_RET(len, " - #%d - GPIO %d\n", pinIndex+1, gpioPins[pinIndex]);
-    	} 
+    	}
     	else {
             	STR_PRINTF_RET(len, " - #%d - {not set}\n", pinIndex+1);
     	}
@@ -380,7 +406,7 @@ static int config_read(struct seq_file *m, void *v)
     loopStatus = (loopEnabled) ? "YES" : "no";
     STR_PRINTF_RET(len, "  Looping Enabled: %s\n", loopStatus);
     STR_PRINTF_RET(len, "\n");
-    
+
     return len;
 }
 
@@ -410,7 +436,7 @@ static int __init LEDfifoLKM_init(void){
     int ret;
     struct device *dev_ret;
 
-    printk(KERN_INFO "LEDfifo: init(%s) ENTRY\n", name);    
+    printk(KERN_INFO "LEDfifo: init(%s) ENTRY\n", name);
 
     printk(KERN_INFO "LEDfifo: ofcd register");
     if ((ret = alloc_chrdev_region(&firstDevNbr, LED_FIFO_MAJOR, LED_FIFO_NR_DEVS, "ledfifo")) < 0)
@@ -419,7 +445,7 @@ static int __init LEDfifoLKM_init(void){
         return ret;
     }
     printk(KERN_INFO "LEDfifo: <Major, Minor>: <%d, %d> (dev_t=0x%8X)\n", MAJOR(firstDevNbr), MINOR(firstDevNbr), firstDevNbr);
-    
+
     if (IS_ERR(cl = class_create(THIS_MODULE, "ledfifo")))      // should find this in /sys/class/ledfifo
     {
         unregister_chrdev_region(firstDevNbr, 1);
@@ -441,7 +467,7 @@ static int __init LEDfifoLKM_init(void){
         unregister_chrdev_region(firstDevNbr, 1);
         return ret;
     }
-    
+
     // and now our proc entries (fm Chap16)
     printk(KERN_INFO "LEDfifo: /proc/driver add\n");
     if ((parent = proc_mkdir("driver/ledfifo", NULL)) == NULL)
@@ -453,15 +479,7 @@ static int __init LEDfifoLKM_init(void){
         remove_proc_entry("driver/ledfifo", NULL);
         return -1;
     }
-    
-    // setup gpio memory map
-    init_gpio_access();
-    
-    // initialize our pin-set
-    initCurrentPins();
-    // initialize our xmit bit table
-    initBitTableForCurrentPins();
-    
+
     printk(KERN_INFO "LEDfifo: init EXIT\n");
 
     return 0;
@@ -473,7 +491,7 @@ static int __init LEDfifoLKM_init(void){
  */
 static void __exit LEDfifoLKM_exit(void){
     printk(KERN_INFO "LEDfifo: Exit(%s)\n", name);
-    
+
     /* release the mapping */
     printk(KERN_INFO "LEDfifo: : release gpio io-remap\n");
     iounmap((void *)gpio);
@@ -481,7 +499,7 @@ static void __exit LEDfifoLKM_exit(void){
     // fm Chap16
     remove_proc_entry("config", parent);
     remove_proc_entry("driver/ledfifo", NULL);
-    
+
     // fm Chap5
     cdev_del(&c_dev);
     device_destroy(cl, firstDevNbr);
@@ -493,7 +511,7 @@ static void __exit LEDfifoLKM_exit(void){
 
     printk(KERN_INFO "LEDfifo: ofcd unregistered\n");
 }
- 
+
 /** @brief A module must use the module_init() module_exit() macros from linux/init.h, which
  *  identify the initialization function at insertion time and the cleanup function (as
  *  listed above)
@@ -517,18 +535,35 @@ struct GpioRegisters {
 
 struct GpioRegisters volatile *s_pGpioRegisters;
 
-// RPi 1
-//#define BCM2708_PERI_BASE        0x20000000
+enum pitypes {NOTSET,ARM6,ARM7,PI4};
+static enum pitypes s_ePiType = NOTSET;  // set by identifyPiModel()  0=not set 1=ARMv6  2=ARMv7, etc.
 
-// RPi 2/3
-//#define BCM2708_PERI_BASE        0x3F000000
+
+// RPi 1
+#define RPI1_BCM2708_PERI_BASE        0x20000000
+
+// RPi 2
+#define RPI2_BCM2708_PERI_BASE        0x3F000000
+
+// RPi 3 (same as 2!)
+//#define RPI3_BCM2708_PERI_BASE        0x3F000000
 
 // RPi 4
-#define BCM2708_PERI_BASE        0xFE000000
+#define RPI4_BCM2708_PERI_BASE        0xFE000000
+
+#define GPIO_OFFSET 0x00200000
+#define TIMER_OFFSET 0x00003000
+#define INT_OFFSET 0x0000B000
+
+#define RPI4_GIC_distributor 0xFF841000
+#define RPI2_3_CORES_BASE 0x40000000
 
 // GPIO controller
-#define GPIO_BASE                (BCM2708_PERI_BASE + 0x200000) 
+//#define GPIO_BASE                (BCM2708_PERI_BASE + GPIO_OFFSET)
 #define GPIO_BLOCK_SIZE (4*1024)
+#define INTR_BLOCK_SIZE (4*1024)
+#define CORES_BLOCK_SIZE (4*1024)
+#define TIMER_BLOCK_SIZE (4*1024)
 
 /*
 **
@@ -568,12 +603,63 @@ struct GpioRegisters volatile *s_pGpioRegisters;
 #define GPREG_CLR0 10
 #define GPREG_CLR1 10
 #define GPIO_ADDR(reg) (&gpio[reg])
+
+#define RPI1_BCM2708_PERI_BASE        0x20000000
+
+// RPi 2
+#define RPI2_BCM2708_PERI_BASE        0x3F000000
+
+// RPi 3 (same as 2!)
+//#define RPI3_BCM2708_PERI_BASE        0x3F000000
+
+// RPi 4
+#define RPI4_BCM2708_PERI_BASE        0xFE000000
+
 */
+
+static void configureDriverIO(uint32_t baseAddress)
+{
+    s_pRPiModelIOBaseAddress = arg;
+
+    switch(s_pRPiModelIOBaseAddress) {
+        case RPI1_BCM2708_PERI_BASE:
+            s_ePiType = ARM6;
+            break;
+        case RPI2_BCM2708_PERI_BASE:    // and RPi3 as is same value!
+            s_ePiType = ARM7;
+            break;
+        case RPI4_BCM2708_PERI_BASE:
+            s_ePiType = PI4;
+            break;
+        default:
+            s_ePiType = NOTSET; // we just don't know!
+            break;
+    }
+
+    if(s_ePiType != NOTSET) {
+        // setup gpio memory map
+        init_gpio_access();
+
+        // setup timer memory map
+        //init_timer_access();
+
+        // setup interrupt table memory map
+        init_interrupt_access();
+
+        // initialize our pin-set
+        initCurrentPins();
+
+        // initialize our xmit bit table
+        initBitTableForCurrentPins();
+    }
+}
+
+
 
 static void init_gpio_access(void)
 {
     void *gpio_map;
-    
+
 /*
     gpio = (volatile uint32_t *)GPIO_BASE;
     s_pGpioRegisters = (struct GpioRegisters *)(unsigned long)GPIO_BASE;
@@ -590,13 +676,14 @@ static void init_gpio_access(void)
     printk(KERN_WARNING "LEDfifo:  GPIO_SET_REG0 0x%p\n", GPIO_SET_REG0);
     printk(KERN_WARNING "LEDfifo:  GPIO_CLR_REG0 0x%p\n", GPIO_CLR_REG0);
 */
-    gpio_map = ioremap(GPIO_BASE, GPIO_BLOCK_SIZE);
+    uint32_t pGpioBaseAddress = s_pRPiModelIOBaseAddress + GPIO_OFFSET;
+    gpio_map = ioremap(pGpioBaseAddress, GPIO_BLOCK_SIZE);
     printk(KERN_WARNING "LEDfifo:  GPIO MAP      0x%p\n", gpio_map);
-    
+
     // Always use volatile pointer!
     gpio = (volatile uint32_t *)gpio_map;
     s_pGpioRegisters = (struct GpioRegisters *)gpio;
-/* 
+/*
     printk(KERN_WARNING "LEDfifo:  GPIO Reg Bank 0x%p\n", (void *)s_pGpioRegisters);
     printk(KERN_WARNING "LEDfifo:      GPFSEL[0] 0x%p\n", &(s_pGpioRegisters->GPFSEL[0]));
     printk(KERN_WARNING "LEDfifo:      GPFSEL[1] 0x%p\n", &(s_pGpioRegisters->GPFSEL[1]));
@@ -613,6 +700,190 @@ static void init_gpio_access(void)
 */
 }
 
+volatile unsigned *s_pInterruptEnableBase;
+volatile unsigned *s_pInterruptCoresEnableBase;
+
+static void init_interrupt_access(void)
+{
+    uint32_t pIntrptBaseAddress = s_pRPiModelIOBaseAddress + INT_OFFSET;
+    if(s_ePiType == PI4) {
+        // we are RPi4!
+        pIntrptBaseAddress = RPI4_GIC_distributor;
+    }
+    //int_map = mmap(NULL,4096,PROT_READ|PROT_WRITE, MAP_SHARED,memfd,baseadd+INT_BASE);
+    s_pInterruptEnableBase = ioremap(pIntrptBaseAddress, INTR_BLOCK_SIZE);
+
+
+    if(s_ePiType == ARM7) {
+        // Pi2 or RPi3
+        //quad_map = mmap(NULL,4096,PROT_READ|PROT_WRITE, MAP_SHARED,memfd,0x40000000);
+        s_pInterruptCoresEnableBase = ioremap(RPI2_3_CORES_BASE, CORES_BLOCK_SIZE);
+    }
+}
+
+volatile unsigned *s_pTimersBase;
+
+static void init_timer_access(void)
+{
+    uint32_t pTimersBaseAddress = s_pRPiModelIOBaseAddress + TIMER_OFFSET;
+    //timer_map = mmap(NULL,4096,PROT_READ|PROT_WRITE, MAP_SHARED,memfd,baseadd+TIMER_BASE);
+    s_pTimersBase = ioremap(pTimersBaseAddress, TIMER_BLOCK_SIZE);
+}
+
+/******************** INTERRUPTS *************
+
+  REF: https://www.raspberrypi.org/forums/viewtopic.php?f=29&t=52393&p=1559190&hilit=interrupts#p1559190
+
+interrupts(0)   disable interrupts
+interrupts(1)   re-enable interrupts
+
+return 1 = OK
+       0 = error with message print
+
+Uses s_ePiType and s_pInterruptEnableBase/s_pInterruptCoresEnableBase pointers set by setup()
+
+Avoid calling immediately after keyboard input
+or key strokes will not be dealt with properly
+
+*******************************************/
+
+int interrupts(int bDisableRequest)
+{
+  int n;
+  unsigned int temp131;
+  static unsigned int sav132 = 0;
+  static unsigned int sav133 = 0;
+  static unsigned int sav134 = 0;
+  static unsigned int sav4 = 0;
+  static unsigned int sav16 = 0;
+  static unsigned int sav17 = 0;
+  static unsigned int sav18 = 0;
+  static unsigned int sav19 = 0;
+  static unsigned int sav20 = 0;
+  static unsigned int sav21 = 0;
+  static unsigned int sav22 = 0;
+  static unsigned int sav23 = 0;
+  static int s_bDisabledState = 0;
+
+
+  if(s_ePiType == NOTSET) {
+    printk(KERN_ERROR "interrupts() Setup not done\n");
+    return(0);
+  }
+
+  // disable
+  if(bDisableRequest == 0) {
+    if(s_bDisabledState != 0) {
+      // Interrupts already disabled so avoid printf
+      return(1);
+    }
+
+    // Note on register offsets
+    // If a register is described in the documentation as offset 0x20C = 524 bytes
+    // The pointers such as s_pInterruptEnableBase are 4 bytes long,
+    // so s_pInterruptEnableBase+131 points to s_pInterruptEnableBase + 4x131 = offset 0x20C
+
+    // save current interrupt settings
+
+    if(s_ePiType == ARM7) {
+      // Pi3 only
+      sav4 = *(s_pInterruptCoresEnableBase+4);     // Performance Monitor Interrupts set  register 0x0010
+      sav16 = *(s_pInterruptCoresEnableBase+16);   // Core0 timers Interrupt control  register 0x0040
+      sav17 = *(s_pInterruptCoresEnableBase+17);   // Core1 timers Interrupt control  register 0x0044
+      sav18 = *(s_pInterruptCoresEnableBase+18);   // Core2 timers Interrupt control  register 0x0048
+      sav19 = *(s_pInterruptCoresEnableBase+19);   // Core3 timers Interrupt control  register 0x004C
+      // the Mailbox interrupts are probably disabled anyway - but to be safe:
+      sav20 = *(s_pInterruptCoresEnableBase+20);   // Core0 Mailbox Interrupt control  register 0x0050
+      sav21 = *(s_pInterruptCoresEnableBase+21);   // Core1 Mailbox Interrupt control  register 0x0054
+      sav22 = *(s_pInterruptCoresEnableBase+22);   // Core2 Mailbox Interrupt control  register 0x0058
+      sav23 = *(s_pInterruptCoresEnableBase+23);   // Core3 Mailbox Interrupt control  register 0x005C
+    }
+
+    if(s_ePiType == PI4) {
+      sav4 = *(s_pInterruptEnableBase);               // GICD_CTLR register
+      *(s_pInterruptEnableBase) = sav4 & 0xFFFFFFFE;  // clear bit 0 enable forwarding to CPU
+    }
+    else {
+      sav134 = *(s_pInterruptEnableBase+134);  // Enable basic IRQs register 0x218
+      sav132 = *(s_pInterruptEnableBase+132);  // Enable IRQs 1 register 0x210
+      sav133 = *(s_pInterruptEnableBase+133);  // Enable IRQs 2 register 0x214
+
+      // Wait for pending interrupts to clear
+      // Seems to work OK without this, but it does no harm
+      // Limit to 100 tries to avoid infinite loop
+      n = 0;
+      while( (*(s_pInterruptEnableBase+128) | *(s_pInterruptEnableBase+129) | *(s_pInterruptEnableBase+130)) != 0 && n < 100) {
+        ++n;
+      }
+    }
+
+    // disable all interrupts
+
+    if(s_ePiType == ARM7) {
+      // Pi3 only
+      *(s_pInterruptCoresEnableBase+5) = sav4;   // disable via Performance Monitor Interrupts clear  register 0x0014
+      *(s_pInterruptCoresEnableBase+16) = 0;     // disable by direct write
+      *(s_pInterruptCoresEnableBase+17) = 0;
+      *(s_pInterruptCoresEnableBase+18) = 0;
+      *(s_pInterruptCoresEnableBase+19) = 0;
+      *(s_pInterruptCoresEnableBase+20) = 0;
+      *(s_pInterruptCoresEnableBase+21) = 0;
+      *(s_pInterruptCoresEnableBase+22) = 0;
+      *(s_pInterruptCoresEnableBase+23) = 0;
+    }
+
+    if(s_ePiType != PI4) {
+      temp131 = *(s_pInterruptEnableBase+131);  // read FIQ control register 0x20C
+      temp131 &= ~(1 << 7);      // zero FIQ enable bit 7
+      *(s_pInterruptEnableBase+131) = temp131;  // write back to register
+                               // attempting to clear bit 7 of *(s_pInterruptEnableBase+131) directly
+                               // will crash the system
+
+      *(s_pInterruptEnableBase+135) = sav132; // disable by writing to Disable IRQs 1 register 0x21C
+      *(s_pInterruptEnableBase+136) = sav133; // disable by writing to Disable IRQs 2 register 0x220
+      *(s_pInterruptEnableBase+137) = sav134; // disable by writing to Disable basic IRQs register 0x224
+    }
+
+    s_bDisabledState = 1;   // interrupts disabled
+  }
+  else {
+    // bDisableRequest = 1 enable
+    if(s_bDisabledState == 0) {
+      // Interrupts are enabled
+      return(1);
+    }
+
+    // restore all saved interrupts
+    if(s_ePiType == PI4) {
+      *(s_pInterruptEnableBase) = sav4;  // set bit 0
+    }
+    else {
+      *(s_pInterruptEnableBase+134) = sav134;
+      *(s_pInterruptEnableBase+133) = sav133;
+      *(s_pInterruptEnableBase+132) = sav132;
+
+      temp131 = *(s_pInterruptEnableBase+131);      // read FIQ control register 0x20C
+      temp131 |= (1 << 7);                          // set FIQ enable bit
+      *(s_pInterruptEnableBase+131) = temp131;      // write back to register
+    }
+
+    if(s_ePiType == ARM7) {
+      // Pi3 only
+      *(s_pInterruptCoresEnableBase+4) = sav4;
+      *(s_pInterruptCoresEnableBase+16) = sav16;
+      *(s_pInterruptCoresEnableBase+17) = sav17;
+      *(s_pInterruptCoresEnableBase+18) = sav18;
+      *(s_pInterruptCoresEnableBase+19) = sav19;
+      *(s_pInterruptCoresEnableBase+20) = sav20;
+      *(s_pInterruptCoresEnableBase+21) = sav21;
+      *(s_pInterruptCoresEnableBase+22) = sav22;
+      *(s_pInterruptCoresEnableBase+23) = sav23;
+    }
+
+    s_bDisabledState = 0;   // indicates interrupts enabled (not disabled)
+  }
+  return(1);
+}
 
 // ---------------------
 // Operation NOTE:
@@ -623,15 +894,15 @@ static void SetGPIOFunction(int GPIO, int functionCode)
 {
     int registerIndex = GPIO / 10;
     int bit = (GPIO % 10) * 3;
- 
+
     unsigned oldValue = s_pGpioRegisters-> GPFSEL[registerIndex];
     unsigned mask = 0b111 << bit;
-    printk(KERN_INFO "LEDfifo: Changing function of GPIO%d from %x to %x\n", 
+    printk(KERN_INFO "LEDfifo: Changing function of GPIO%d from %x to %x\n",
            GPIO,
            (oldValue >> bit) & 0b111,
            functionCode);
- 
-    s_pGpioRegisters-> GPFSEL[registerIndex] = 
+
+    s_pGpioRegisters-> GPFSEL[registerIndex] =
         (oldValue & ~mask) | ((functionCode << bit) & mask);
 }
 
@@ -672,10 +943,10 @@ static void initCurrentPins(void)
 // ---------------------
 // DURATION TABLE def's
 //
-enum eGpioOperationType { 
+enum eGpioOperationType {
     // zero NOT used, on purpose! (zero indicates value not set)
-    OP_GPIO_SET=1, 
-    OP_GPIO_CLR=2 
+    OP_GPIO_SET=1,
+    OP_GPIO_CLR=2
 };
 
 typedef struct _gpioCrontrolWord
@@ -703,8 +974,8 @@ static uint32_t pinsAllActive;
 
 #define PIN_PRESENT(pinIdx) ((gpioPins[pinIdx] != 0) ? 1 : 0)
 //#define PIN_VALUE_IF_SELECTED(index, ) ((gpioPins[pinIdx] != 0) ? 1 : 0)
- 
-    
+
+
 static void initBitTableForCurrentPins(void)
 {
     //
@@ -729,11 +1000,11 @@ static void initBitTableForCurrentPins(void)
     uint8_t nRemainingHighPeriodLength;
     uint8_t nRemainingLowPeriodLength;
     uint8_t n0IsShorterThan1;
-   
+
     nPinCount  = (gpioPins[0] != 0) ? 1 : 0;
     nPinCount += (gpioPins[1] != 0) ? 1 : 0;
     nPinCount += (gpioPins[2] != 0) ? 1 : 0; // [0-3]
-                    
+
     switch(nPinCount) {
 	case 3:
             nMaxTableEntries = 8;
@@ -750,28 +1021,28 @@ static void initBitTableForCurrentPins(void)
     }
 
 #define CODE_LENGTH_IN_PERIODS 0
-#define CODE_CORRECTION_LITERAL 0 
-                        
+#define CODE_CORRECTION_LITERAL 0
+
     // zero fill our structure
     memset(gpioBitControlEntries, 0, sizeof(gpioBitControlEntries));
-    
+
     // if we have table entries to populate...
     printk(KERN_INFO "LEDfifo: initBitTableForCurrentPins() loading %d entries\n", nMaxTableEntries);
     if(nMaxTableEntries > 0) {
-       
+
         // set our pins
         pinValueIdx0 = (gpioPins[0] != 0) ? 1<<gpioPins[0] : 0;
         pinValueIdx1 = (gpioPins[1] != 0) ? 1<<gpioPins[1] : 0;
         pinValueIdx2 = (gpioPins[2] != 0) ? 1<<gpioPins[2] : 0;
-            
+
         pinsAllActive = pinValueIdx0 | pinValueIdx1 | pinValueIdx2;
-        
+
         n0IsShorterThan1 = (periodT0HCount < periodT1HCount);
-            
+
         nMinHighPeriodLength = (n0IsShorterThan1) ? periodT0HCount : periodT1HCount;
         nRemainingHighPeriodLength = (n0IsShorterThan1) ? periodT1HCount - periodT0HCount : periodT0HCount - periodT1HCount;
         nRemainingLowPeriodLength = periodCount - (nMinHighPeriodLength + nRemainingHighPeriodLength + CODE_LENGTH_IN_PERIODS);
-            
+
         // set bit on time
         nWordIdx = 0;
         for(nTableIdx = 0; nTableIdx < nMaxTableEntries; nTableIdx++) {
@@ -783,7 +1054,7 @@ static void initBitTableForCurrentPins(void)
                 gpioBitControlEntries[nTableIdx].word[nWordIdx].gpioOperation = OP_GPIO_SET;
                 gpioBitControlEntries[nTableIdx].word[nWordIdx].durationToNext = nOnlyHighPeriodLength * periodDurationNsec;
                 gpioBitControlEntries[nTableIdx].word[nWordIdx].entryOccupied = 1;
-                
+
                 // if we have all pins 0 or all pins 1 then...
                 // do our only clear (0 bits -or- 1 bits)
                 nOnlyRemainingPeriodLength = periodCount - nOnlyHighPeriodLength - CODE_LENGTH_IN_PERIODS;
@@ -794,12 +1065,12 @@ static void initBitTableForCurrentPins(void)
                 gpioBitControlEntries[nTableIdx].word[nWordIdx+1].entryOccupied = 1;
             }
             else {
-                // do our min-duration set for all active pins               
+                // do our min-duration set for all active pins
                 gpioBitControlEntries[nTableIdx].word[nWordIdx].gpioPinBits = pinsAllActive;
                 gpioBitControlEntries[nTableIdx].word[nWordIdx].gpioOperation = OP_GPIO_SET;
                 gpioBitControlEntries[nTableIdx].word[nWordIdx].durationToNext = nMinHighPeriodLength * periodDurationNsec;
                 gpioBitControlEntries[nTableIdx].word[nWordIdx].entryOccupied = 1;
-                
+
                 // calculate masks for early then late clears
                 pinsActiveLow = ((nTableIdx & 0x01) == 0x01) ? 0 : pinValueIdx0;
                 pinsActiveLow |= ((nTableIdx & 0x02) == 0x02) ? 0 : pinValueIdx1;
@@ -884,9 +1155,9 @@ static void dumpPinTable(void)
     int nWordIdx;
     char *opText;
     char *validText;
-    
+
     printk(KERN_INFO "LEDfifo: dumpPinTable ------------------\n");
-    
+
     for(nEntryIdx = 0; nEntryIdx < MAX_GPIO_CONTROL_ENTRIES; nEntryIdx++) {
         printk(KERN_INFO "LEDfifo: Entry for bits %x:\n", nEntryIdx);
         selectedEntry = &gpioBitControlEntries[nEntryIdx];
@@ -912,7 +1183,7 @@ static void dumpPinTable(void)
             }
        }
     }
-    
+
     printk(KERN_INFO "LEDfifo: dumpPinTable ------------------\n");
 }
 
@@ -920,7 +1191,7 @@ static void dumpPinTable(void)
 #define MAX_COUNT_ENTRIES 8
 static int nValueCountsAr[MAX_COUNT_ENTRIES];
 
-static void clearCounts(void) 
+static void clearCounts(void)
 {
 	int countIdx;
 	for(countIdx = 0; countIdx<MAX_COUNT_ENTRIES; countIdx++) {
@@ -928,7 +1199,7 @@ static void clearCounts(void)
 	}
 }
 
-static void showCounts(void) 
+static void showCounts(void)
 {
 	int countIdx;
     printk(KERN_INFO "LEDfifo: ----- bit-values sent----\n");
@@ -953,7 +1224,7 @@ static void xmitBitValuesToAllChannels(uint8_t bitsIndex)
     // spinlock_t mr_lock = SPIN_LOCK_UNLOCKED;
     // DEFINE_SPINLOCK(mr_lock);
     // unsigned long flags;
-    
+
     //printk(KERN_INFO "LEDfifo: xmitBitValuesToAllChannels(%d)\n", bitsIndex);
     if(bitsIndex >= MAX_GPIO_CONTROL_ENTRIES) {
         printk(KERN_ERR "LEDfifo: [CODE] xmitBitValuesToAllChannels(%d) OUT-OF-RANGE bitIndex not [0-%d]\n", bitsIndex, MAX_GPIO_CONTROL_ENTRIES-1);
@@ -970,7 +1241,7 @@ static void xmitBitValuesToAllChannels(uint8_t bitsIndex)
         // select a table entry
         // then do timed set and clear(s) based on entry content
         selectedEntry = &gpioBitControlEntries[bitsIndex];
-        
+
         for(nWordIdx = 0; nWordIdx < MAX_GPIO_CONTROL_WORDS; nWordIdx++) {
             selectedWord = &selectedEntry->word[nWordIdx];
             // is this entry valid?
@@ -1024,6 +1295,7 @@ void taskletTestWrites(unsigned long data)
 	//
 	// let's prevent interrupts for this burst of LED writes
 	spin_lock_irqsave(&mr_lock, flags);
+	interupts(0);   // disable
 
     // data is [0,1] for directing write of 0's or 1's test pattern
     if(data == 0) {
@@ -1032,12 +1304,13 @@ void taskletTestWrites(unsigned long data)
     else {
         testXmitOnes(1008);
     }
-    
+
 	// and then allow interrupts once again...
+	interupts(1);   // re-enable
 	spin_unlock_irqrestore(&mr_lock, flags);
 	//
 	// ============== END CRITICAL SECTION ===================
-	
+
     printk(KERN_INFO "LEDfifo: taskletTestWrites() EXIT\n");
 }
 
@@ -1049,8 +1322,8 @@ static void testXmitZeros(uint32_t nCount)
     printk(KERN_INFO "LEDfifo: testXmitZeros(x %d)\n", nCount);
     if(nCount > 0) {
         for(nCounter = 0; nCounter < nCount; nCounter++) {
-            xmitBitValuesToAllChannels(0b000); 
-        } 
+            xmitBitValuesToAllChannels(0b000);
+        }
     }
 }
 
@@ -1104,7 +1377,7 @@ void nSecDelay(int nSecDuration)
     //int delayCount = SHIFT_MULT_X100(nSecDuration) / 1748; // div by 17.48
     //int delayCount = SHIFT_MULT_X10(nSecDuration) / 175; // div by 17.5 better
     //int delayCount = SHIFT_MULT_X10(nSecDuration) / 178; // div by 17.8 worse
-    
+
     for(ctr=0; ctr<delayCount; ctr++) { tst++; }
 }
 
@@ -1117,10 +1390,10 @@ void taskletScreenFill(unsigned long data)
     // data is 24-bit RGB value to be written
     uint8_t buffer[3];      // our 3 isolated colors
     uint8_t nPanelByte[3];	// 1 byte buffer for each panel (not 256x3 bytes)
-    
+
     uint16_t nBytesWritten;
     uint16_t nLedIdx;
-    
+
     uint8_t red;
     uint8_t green;
     uint8_t blue;
@@ -1128,31 +1401,32 @@ void taskletScreenFill(unsigned long data)
     uint8_t nPanelIdx;  // [0-2]
     uint8_t nBitShiftCount;  // [0-7]
     uint8_t nAllBits;
-    
+
     DEFINE_SPINLOCK(mr_lock);
     unsigned long flags;
 
     clearCounts();
     nBytesWritten = 0;
-    
-   
+
+
     printk(KERN_INFO "LEDfifo: taskletScreenFill(0x%08lX) ENTRY\n", data);
-    
+
     red = (data >> 16) & 0x000000ff;
     green = (data >> 8) & 0x000000ff;
     blue = (data >> 0) & 0x000000ff;
-    
+
     // in memory the colors for the LED String are ordered as GRB!!!!
     // for this form, taskletScreenFill(), we simply have a 3-byte buffer we use for all LEDs on all Panels
-    
+
     buffer[0] = green;
     buffer[1] = red;
     buffer[2] = blue;
-    
+
 	// ============= BEGIN CRITICAL SECTION ==================
 	//
 	// let's prevent interrupts for this burst of LED writes
 	spin_lock_irqsave(&mr_lock, flags);
+	interupts(0);   // disable
 
    // for each LED in a panel
     for(nLedIdx = 0; nLedIdx < HARDWARE_MAX_LEDS_PER_PANEL; nLedIdx++) {
@@ -1162,7 +1436,7 @@ void taskletScreenFill(unsigned long data)
             nPanelByte[0] = buffer[nColorIdx];
             nPanelByte[1] = buffer[nColorIdx];
             nPanelByte[2] = buffer[nColorIdx];
-            
+
             // for ea. bit MSBit to LSBit... [OR-in each of the three panel bits 0b00000321] then write all 3 gpio pins
             for(nBitShiftCount = 0; nBitShiftCount < 8; nBitShiftCount++) {
                 // mask out the bits and OR them together (so they can all be written at one time)
@@ -1172,19 +1446,20 @@ void taskletScreenFill(unsigned long data)
                 }
                 xmitBitValuesToAllChannels(nAllBits);
             }
-            
+
     	    // count this a 1 byte written - will be three per LED!
             nBytesWritten++;
         }
     }
 
+	interupts(1);   // re-enable
 	// and then allow interrupts once again...
 	spin_unlock_irqrestore(&mr_lock, flags);
 	//
 	// ============== END CRITICAL SECTION ===================
-	
+
     xmitResetToAllChannels();
-    
+
     printk(KERN_INFO "LEDfifo: -------------------------\n");
     printk(KERN_INFO "LEDfifo: %d bytes written\n", nBytesWritten);
     showCounts();
@@ -1198,35 +1473,36 @@ void taskletScreenWrite(unsigned long data)
     uint8_t *pPanelByte[3];
     uint16_t nPanelOffsetInBytes[3];
     uint16_t nBytesWritten;
-    
-    
+
+
     uint16_t nLedIdx;   // [0-255]
     uint16_t nLEDOffset;  // [0-765]
     uint8_t nColorOffset;  // [0-2]
-    
+
     uint8_t nPanelIdx;  // [0-2]
     uint8_t nBitShiftCount;  // [0-7]
     uint8_t nAllBits;
-    
+
     DEFINE_SPINLOCK(mr_wr_lock);
     unsigned long flags;
 
     clearCounts();
     nBytesWritten = 0;
-    
+
     printk(KERN_INFO "LEDfifo: taskletScreenWrite(0x%p) ENTRY\n", (void *)data);
-    
+
     // in memory the colors for the LED String are ordered as GRB!!!!
     // for this form, taskletScreenWrite(), we translate the current contents of kernel_buffer writing results to our GPIO's
-    
+
     nPanelOffsetInBytes[0] = 0;
     nPanelOffsetInBytes[1] = 1 * (HARDWARE_MAX_LEDS_PER_PANEL * HARDWARE_MAX_COLOR_BYTES_PER_LED);
     nPanelOffsetInBytes[2] = 2 * (HARDWARE_MAX_LEDS_PER_PANEL * HARDWARE_MAX_COLOR_BYTES_PER_LED);
-    
+
 	// ============= BEGIN CRITICAL SECTION ==================
 	//
 	// let's prevent interrupts for this burst of LED writes
 	spin_lock_irqsave(&mr_wr_lock, flags);
+	interupts(0);   // disable
 
    // for each LED in a panel
     for(nLedIdx = 0; nLedIdx < HARDWARE_MAX_LEDS_PER_PANEL; nLedIdx++) {
@@ -1238,7 +1514,7 @@ void taskletScreenWrite(unsigned long data)
             for(nPanelIdx = 0; nPanelIdx < HARDWARE_MAX_PANELS; nPanelIdx++) {
                 pPanelByte[nPanelIdx] = &kernel_buffer[nPanelOffsetInBytes[nPanelIdx] + nLEDOffset + nColorOffset];
             }
-            
+
             // for ea. bit MSBit to LSBit... [OR-in each of the three panel bits 0b00000321] then write all 3 gpio pins
             for(nBitShiftCount = 0; nBitShiftCount < 8; nBitShiftCount++) {
                 // mask out the bits and OR them together (so they can all be written at one time)
@@ -1248,23 +1524,24 @@ void taskletScreenWrite(unsigned long data)
                 }
                 xmitBitValuesToAllChannels(nAllBits);
             }
-            
+
     	    // count this a 1 byte written - will be three per LED!
             nBytesWritten++;
         }
     }
 
 	// and then allow interrupts once again...
+	interupts(1);   // re-enable
 	spin_unlock_irqrestore(&mr_wr_lock, flags);
 	//
 	// ============== END CRITICAL SECTION ===================
-	
+
     xmitResetToAllChannels();
-    
+
     printk(KERN_INFO "LEDfifo: -------------------------\n");
     printk(KERN_INFO "LEDfifo: %d bytes written\n", nBytesWritten);
-    showCounts();    
+    showCounts();
     printk(KERN_INFO "LEDfifo: taskletScreenWrite() EXIT\n");
-    
+
 }
- 
+

@@ -32,11 +32,15 @@
 // forward declarations
 void show_vars(int fd);
 void setPins(int fd, int pinsAr[], int pinCount);
+void identifyPiModel(int fd);
 void resetToWS2812bValues(int fd);
 void clearToColor(int fd, uint32_t color);
+int setIOBaseAddress(int fd, uint32_t baeeAddress);
 
 void testSetPins(int fd);
 
+enum pitypes {NOTSET,ARM6,ARM7,PI4};
+static enum pitypes s_ePiType = NOTSET;  // set by identifyPiModel()  0=not set 1=ARMv6  2=ARMv7, etc.
 
 static int s_fdDriver;
 
@@ -52,16 +56,82 @@ int openMatrix(void)
         errorValue = 0;	// error
     }
     else {
-        // configure for WS2812B
-        resetToWS2812bValues(s_fdDriver);
+        // configure for RPi Model
+        int status = identifyPiModel(s_fdDriver);
+        if(status) {
+            // configure for WS2812B
+            resetToWS2812bValues(s_fdDriver);
 
-        // and set our pins
-        setPins(s_fdDriver, &s_nPinsAr[0], sizeof(s_nPinsAr)/sizeof(int));
+            // and set our pins
+            setPins(s_fdDriver, &s_nPinsAr[0], sizeof(s_nPinsAr)/sizeof(int));
 
-        // reset all pixels to off (black)
-        clearToColor(s_fdDriver, 0x000000);
+            // reset all pixels to off (black)
+            clearToColor(s_fdDriver, 0x000000);
+        }
+        else {
+            errorMessage("openMatrix() failed to ID RPi Model");
+            errorValue = 0;	// error
+        }
+
     }
     return errorValue;
+}
+
+int identifyPiModel(int fd)
+{
+    s_ePiType = NOTSET;  // in case fails
+
+    uint32_t baseadd = 0;
+
+    FILE *stream = fopen("/proc/device-tree/soc/ranges","rb");
+
+    if(stream == NULL) {
+        errorMessage("Failed to open /proc/device-tree/soc/ranges");
+        return(0); // failed identify
+    }
+
+    int getout = 0;
+    int n = 0;
+    do {
+        int c = getc(stream);
+        if(c == EOF) {
+            baseadd = 0;
+            getout = 1;
+        }
+        else if(n > 3) {
+            baseadd = (baseadd << 8) + c;
+        }
+        ++n;
+        if(n == 8 && baseadd == 0) {
+            n = 4;  // read third 4 bytes
+        }
+    } while(getout == 0 && n < 8);
+    fclose(stream);
+
+    // now determine this model's IO base address
+    if(baseadd == 0x20000000) {
+        s_ePiType = ARM6;   // Pi2
+        debugMessage("RPi type = ARMv6");
+    }
+    else if(baseadd == 0x3F000000) {
+        s_ePiType = ARM7;  // Pi3B+
+        debugMessage("RPi type = ARMv7");
+    }
+    else if(baseadd == 0xFE000000) {
+        s_ePiType = PI4;   // Pi4
+        debugMessage("RPi type = Pi4");
+    }
+    else {
+        errorMessage("Failed to determine RPi type");
+        return(0); // failed identify
+    }
+
+    // now inform our driver!
+    if(!setIOBaseAddress(s_fdDriver, baseadd)) {
+        return(0); // failed identify
+    }
+
+    return(1);
 }
 
 int closeMatrix(void)
@@ -173,6 +243,20 @@ void clearToColor(int fd, uint32_t color)
         perror("clearToColor() ioctl fill w/color");
     }
     debugMessage("-- clearToColor() EXIT");
+}
+
+int setIOBaseAddress(int fd, uint32_t baeeAddress)
+{
+    int returnStatus = -1; // SUCCESS
+    debugMessage("-> setIOBaseAddress(0x%.08X) ENTRY", color);
+
+    if (ioctl(fd, CMD_SET_IO_BASE_ADDRESS, baeeAddress) == -1)
+    {
+        perror("setIOBaseAddress() ioctl set baseAddr");
+        returnStatus = 0; // FAILURE
+    }
+    debugMessage("-- setIOBaseAddress() EXIT");
+    return returnStatus;
 }
 
 

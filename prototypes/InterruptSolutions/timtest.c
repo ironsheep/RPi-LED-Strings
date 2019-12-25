@@ -127,7 +127,7 @@ set GPIO 2 level
 ******************* END GPIO ****************/
 
 int main()
-  {
+{
   int n;
 
   printf("Setting up...\n");
@@ -161,7 +161,7 @@ int main()
   printf("Count of interrupts that disrupt TIMERLOOP = %d\n\n\n",n);
 
   return(0);
-  }
+}
 
 
 /********** MEASURE INTERRUPT ERRORS *******
