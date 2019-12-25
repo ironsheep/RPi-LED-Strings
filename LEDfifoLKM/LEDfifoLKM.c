@@ -87,6 +87,8 @@ MODULE_PARM_DESC(name, "The name to display in /var/log/kern.log");  ///< parame
 // forward declarations
 static long LEDfifo_ioctl(struct file *f, unsigned int cmd, unsigned long arg);
 static void init_gpio_access(void);
+//static void init_timer_access(void);
+static void init_interrupt_access(void);
 static void resetCurrentPins(void);
 static void initCurrentPins(void);
 static void initBitTableForCurrentPins(void);
@@ -98,6 +100,8 @@ static void testXmitBit(uint16_t onDelay, uint16_t offDelay);
 static void dumpPinTable(void);
 static void hexDump(const char message[], const char *addr, const int len);
 
+static void configureDriverIO(uint32_t baseAddress);
+int interrupts(int bDisableRequest);
 void taskletTestWrites(unsigned long data);
 void taskletScreenFill(unsigned long data);
 void taskletScreenWrite(unsigned long data);
@@ -114,6 +118,9 @@ static struct class *cl; // Global variable for the device class
 
 static struct proc_dir_entry *parent;
 static struct proc_dir_entry *file;
+
+enum pitypes {NOTSET,ARM6,ARM7,PI4};
+static enum pitypes s_ePiType = NOTSET;  // set by identifyPiModel()  0=not set 1=ARMv6  2=ARMv7, etc.
 
 static uint32_t s_pRPiModelIOBaseAddress;
 static volatile unsigned int *gpio;
@@ -535,8 +542,6 @@ struct GpioRegisters {
 
 struct GpioRegisters volatile *s_pGpioRegisters;
 
-enum pitypes {NOTSET,ARM6,ARM7,PI4};
-static enum pitypes s_ePiType = NOTSET;  // set by identifyPiModel()  0=not set 1=ARMv6  2=ARMv7, etc.
 
 
 // RPi 1
@@ -619,7 +624,7 @@ static enum pitypes s_ePiType = NOTSET;  // set by identifyPiModel()  0=not set 
 
 static void configureDriverIO(uint32_t baseAddress)
 {
-    s_pRPiModelIOBaseAddress = arg;
+    s_pRPiModelIOBaseAddress = baseAddress;
 
     switch(s_pRPiModelIOBaseAddress) {
         case RPI1_BCM2708_PERI_BASE:
@@ -767,7 +772,7 @@ int interrupts(int bDisableRequest)
 
 
   if(s_ePiType == NOTSET) {
-    printk(KERN_ERROR "interrupts() Setup not done\n");
+    printk(KERN_ERR "interrupts() Setup not done\n");
     return(0);
   }
 
@@ -1295,7 +1300,7 @@ void taskletTestWrites(unsigned long data)
 	//
 	// let's prevent interrupts for this burst of LED writes
 	spin_lock_irqsave(&mr_lock, flags);
-	interupts(0);   // disable
+	interrupts(0);   // disable
 
     // data is [0,1] for directing write of 0's or 1's test pattern
     if(data == 0) {
@@ -1306,7 +1311,7 @@ void taskletTestWrites(unsigned long data)
     }
 
 	// and then allow interrupts once again...
-	interupts(1);   // re-enable
+	interrupts(1);   // re-enable
 	spin_unlock_irqrestore(&mr_lock, flags);
 	//
 	// ============== END CRITICAL SECTION ===================
@@ -1426,7 +1431,7 @@ void taskletScreenFill(unsigned long data)
 	//
 	// let's prevent interrupts for this burst of LED writes
 	spin_lock_irqsave(&mr_lock, flags);
-	interupts(0);   // disable
+	interrupts(0);   // disable
 
    // for each LED in a panel
     for(nLedIdx = 0; nLedIdx < HARDWARE_MAX_LEDS_PER_PANEL; nLedIdx++) {
@@ -1452,7 +1457,7 @@ void taskletScreenFill(unsigned long data)
         }
     }
 
-	interupts(1);   // re-enable
+	interrupts(1);   // re-enable
 	// and then allow interrupts once again...
 	spin_unlock_irqrestore(&mr_lock, flags);
 	//
@@ -1502,7 +1507,7 @@ void taskletScreenWrite(unsigned long data)
 	//
 	// let's prevent interrupts for this burst of LED writes
 	spin_lock_irqsave(&mr_wr_lock, flags);
-	interupts(0);   // disable
+	interrupts(0);   // disable
 
    // for each LED in a panel
     for(nLedIdx = 0; nLedIdx < HARDWARE_MAX_LEDS_PER_PANEL; nLedIdx++) {
@@ -1531,7 +1536,7 @@ void taskletScreenWrite(unsigned long data)
     }
 
 	// and then allow interrupts once again...
-	interupts(1);   // re-enable
+	interrupts(1);   // re-enable
 	spin_unlock_irqrestore(&mr_wr_lock, flags);
 	//
 	// ============== END CRITICAL SECTION ===================

@@ -32,7 +32,7 @@
 // forward declarations
 void show_vars(int fd);
 void setPins(int fd, int pinsAr[], int pinCount);
-void identifyPiModel(int fd);
+int identifyPiModel(int fd);
 void resetToWS2812bValues(int fd);
 void clearToColor(int fd, uint32_t color);
 int setIOBaseAddress(int fd, uint32_t baeeAddress);
@@ -245,12 +245,12 @@ void clearToColor(int fd, uint32_t color)
     debugMessage("-- clearToColor() EXIT");
 }
 
-int setIOBaseAddress(int fd, uint32_t baeeAddress)
+int setIOBaseAddress(int fd, uint32_t baseAddress)
 {
     int returnStatus = -1; // SUCCESS
-    debugMessage("-> setIOBaseAddress(0x%.08X) ENTRY", color);
+    debugMessage("-> setIOBaseAddress(0x%.08X) ENTRY", baseAddress);
 
-    if (ioctl(fd, CMD_SET_IO_BASE_ADDRESS, baeeAddress) == -1)
+    if (ioctl(fd, CMD_SET_IO_BASE_ADDRESS, baseAddress) == -1)
     {
         perror("setIOBaseAddress() ioctl set baseAddr");
         returnStatus = 0; // FAILURE
