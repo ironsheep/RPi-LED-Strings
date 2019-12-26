@@ -63,11 +63,11 @@ MODULE_PARM_DESC(name, "The name to display in /var/log/kern.log");  ///< parame
 #define LED_FIFO_NR_DEVS 1    /* ledfifo0  (not ledfifo0-ledfifoN) */
 
 #define DEFAULT_LED_STRTYPE "WS2812B"
-#define DEFAULT_PERIOD_IN_NSEC 50
+#define DEFAULT_PERIOD_IN_NSEC 51
 #define DEFAULT_PERIOD_COUNT 25
 #define DEFAULT_T0H_COUNT 8
 #define DEFAULT_T1H_COUNT 16
-#define DEFAULT_TRESET_COUNT 1000
+#define DEFAULT_TRESET_COUNT 980
 #define DEFAULT_LOOP_ENABLE 0
 
 // our LED Matrix dimensions
