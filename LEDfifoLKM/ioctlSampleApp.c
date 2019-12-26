@@ -8,7 +8,7 @@
  * argument when it is loaded -- the name, which appears in the kernel log files.
  * @see http://www.derekmolloy.ie/ for a full description and follow-up descriptions.
 */
- 
+
 #include <stdio.h>
 #include <sys/ioctl.h>
 #include <fcntl.h>  // for open()
@@ -29,18 +29,18 @@ void testSet2815(int fd);
 int main()
 {
     int fd;
-    
+
     printf("\nOpening Driver\n");
     fd = open("/dev/ledfifo0", O_RDWR);
     if(fd < 0) {
         printf("ERROR: Failed to open device file...\n");
         return -1;
     }
-    
+
     get_vars(fd);
-    
+
     testLOOPingControl(fd);
-    
+
     testSetPins(fd);
 
     testSet2815(fd);
@@ -48,7 +48,7 @@ int main()
 
     clr_vars(fd);
     get_vars(fd);
-    
+
     printf("Closing Driver\n");
     close(fd);
 }
@@ -57,9 +57,9 @@ int main()
 void get_vars(int fd)
 {
     configure_arg_t deviceValues;
-    
+
     printf("-> get_vars() ENTRY\n");
-    
+
     if (ioctl(fd, CMD_GET_VARIABLES, &deviceValues) == -1)
     {
         perror("query_app ioctl get");
@@ -87,7 +87,7 @@ void get_vars(int fd)
 void testSetPins(int fd)
 {
     configure_arg_t deviceValues;
-    
+
     printf("-> testSetPins() ENTRY\n");
     if (ioctl(fd, CMD_GET_VARIABLES, &deviceValues) == -1)
     {
@@ -125,18 +125,18 @@ void testSetPins(int fd)
 void testSet2815(int fd)
 {
     configure_arg_t deviceValues;
-    
+
     printf("-> testSetPins() ENTRY\n");
 
     strcpy(deviceValues.ledType, "WS2815\0");
     deviceValues.gpioPins[0] = 17;
     deviceValues.gpioPins[1] = 27;
     deviceValues.gpioPins[2] = 22;
-    deviceValues.periodDurationNsec = 50;
+    deviceValues.periodDurationNsec = 51;
     deviceValues.periodCount = 27;
     deviceValues.periodT0HCount = 6;
     deviceValues.periodT1HCount = 21;
-    deviceValues.periodTRESETCount = 5600;
+    deviceValues.periodTRESETCount = 5545;
     if (ioctl(fd, CMD_SET_VARIABLES, &deviceValues) == -1)
     {
         perror("query_app ioctl set");
@@ -162,25 +162,25 @@ void testLOOPingControl(int fd)
     printf("-> testLOOPingControl() ENTRY\n");
     int loopStatusBefore = ioctl(fd, CMD_GET_LOOP_ENABLE);
     printf(" - loop Enable (before): %d\n", loopStatusBefore);
-    
+
     int testValue = (loopStatusBefore == 0) ? -1 : 0;
-    
+
     // write alternate value
     if(ioctl(fd, CMD_SET_LOOP_ENABLE, testValue) == -1)
     {
         perror("query_app ioctl SET LOOP");
     }
-    
+
     // check value on readback
     int loopStatusAfter = ioctl(fd, CMD_GET_LOOP_ENABLE);
     printf(" - loop Enable (after): %d\n", loopStatusAfter);
-    
+
     if(loopStatusAfter == testValue) {
         printf("- TEST PASS\n");
     }
     else {
         printf("- TEST FAILURE!!\n");
     }
-    
+
     printf("-- testLOOPingControl() EXIT\n\n");
 }
