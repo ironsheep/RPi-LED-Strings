@@ -1,0 +1,4 @@
+#!/bin/bash
+
+dmesg
+cat /proc/driver/ledfifo/config

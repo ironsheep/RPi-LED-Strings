@@ -10,6 +10,7 @@ SRCS = LEDfifoLKM.c
 TEST_SRCS = testApp.c ioctlSampleApp.c
 
 OBJS = $(SRCS:.c=.o)
+
 TEST_OBJS = $(TEST_SRCS:.c=.o)
 
 $(LKM_NAME)-y = $(OBJS)
@@ -18,7 +19,11 @@ testApp: testApp.o
 
 ioctlSampleApp: ioctlSampleApp.o
  
-all: testApp ioctlSampleApp
+.PHONY: clean driver all
+
+all: driver testApp ioctlSampleApp
+
+driver: 
 	make -C /lib/modules/$(shell uname -r)/build/ M=$(PWD) modules
 
 cleanTest:

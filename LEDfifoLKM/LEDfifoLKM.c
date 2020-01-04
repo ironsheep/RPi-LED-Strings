@@ -63,11 +63,11 @@ MODULE_PARM_DESC(name, "The name to display in /var/log/kern.log");  ///< parame
 #define LED_FIFO_NR_DEVS 1    /* ledfifo0  (not ledfifo0-ledfifoN) */
 
 #define DEFAULT_LED_STRTYPE "WS2812B"
-#define DEFAULT_PERIOD_IN_NSEC 51
-#define DEFAULT_PERIOD_COUNT 25
+#define DEFAULT_PERIOD_IN_NSEC 49
+#define DEFAULT_PERIOD_COUNT 26
 #define DEFAULT_T0H_COUNT 8
-#define DEFAULT_T1H_COUNT 16
-#define DEFAULT_TRESET_COUNT 980
+#define DEFAULT_T1H_COUNT 17
+#define DEFAULT_TRESET_COUNT 1020
 #define DEFAULT_LOOP_ENABLE 0
 
 // our LED Matrix dimensions
@@ -1366,7 +1366,7 @@ static void testXmitBit(uint16_t onDelay, uint16_t offDelay)
 //  x8 = <<3 + x2 = <<1 -> x10!
 #define SHIFT_MULT_X10(value) ((value << 3) + (value << 1))
 //  x64 = <<7 + x32 = <<6 + x4 = << 2 -> x100!
-#define SHIFT_MULT_X100(value) ((value << 7) + (value << 6) + (value << 2))
+#define SHIFT_MULT_X100(value) ((value << 6) + (value << 5) + (value << 2))
 
 void nSecDelay(int nSecDuration)
 {
@@ -1376,12 +1376,43 @@ void nSecDelay(int nSecDuration)
     //int delayCount = SHIFT_MULT_X10(nSecDuration) / 165; // div by 16.5 worse
     //int delayCount = SHIFT_MULT_X10(nSecDuration) / 170; // div by 17.0
     //int delayCount = SHIFT_MULT_X10(nSecDuration) / 173; // div by 17.3 worse
-    int delayCount = SHIFT_MULT_X10(nSecDuration) / 174; // div by 17.4 best
+    //int delayCount = SHIFT_MULT_X10(nSecDuration) / 174; // div by 17.4 best
     //int delayCount = SHIFT_MULT_X100(nSecDuration) / 1742; // div by 17.42
     //int delayCount = SHIFT_MULT_X100(nSecDuration) / 1745; // div by 17.45
     //int delayCount = SHIFT_MULT_X100(nSecDuration) / 1748; // div by 17.48
     //int delayCount = SHIFT_MULT_X10(nSecDuration) / 175; // div by 17.5 better
     //int delayCount = SHIFT_MULT_X10(nSecDuration) / 178; // div by 17.8 worse
+
+
+    //int delayCount = SHIFT_MULT_X10(nSecDuration) / 174; // div by 17.4 best (T0H 370)
+    //int delayCount = SHIFT_MULT_X10(nSecDuration) / 184; // div by 18.4 best (T0H 350)
+    //int delayCount = SHIFT_MULT_X10(nSecDuration) / 163; // div by 16.3 best (T0H 400-420)
+    //int delayCount = SHIFT_MULT_X10(nSecDuration) / 164; // div by 16.4 best (T0H 375-385)
+    //int delayCount = SHIFT_MULT_X100(nSecDuration) / 1635; // div by 16.35 best (T0H 375-385)
+    //int delayCount = SHIFT_MULT_X100(nSecDuration) / 1625; // div by 16.35 best (T0H 375-385)
+    //int delayCount = SHIFT_MULT_X100(nSecDuration) / 1615; // div by 16.35 best (T0H 395-400)
+
+    //int delayCount = SHIFT_MULT_X100(nSecDuration) / 1615; // div by 16.35 best (T1H 860-870)
+    //int delayCount = SHIFT_MULT_X100(nSecDuration) / 1625; // div by 16.35 best (T0H 375-385)
+    //int delayCount = SHIFT_MULT_X100(nSecDuration) / 1627; // div by 16.35 best (T0H 380-385)
+    //int delayCount = SHIFT_MULT_X100(nSecDuration) / 1637; // div by 16.37 best (T0H 390-405)
+    //int delayCount = SHIFT_MULT_X100(nSecDuration) / 1636; // div by 16.37 best (T0H 375-385)
+
+    //int delayCount = SHIFT_MULT_X100(nSecDuration) / 1637; // div by 16.37 best (T0H 365-370: want 392)
+    //int delayCount = SHIFT_MULT_X100(nSecDuration) / 1627; // div by 16.37 best (T0H 365-370: want 392)
+    //int delayCount = SHIFT_MULT_X100(nSecDuration) / 1227; // div by 16.37 best (T0H 365-370: want 392)
+
+    // AT cpuinfo_cur_freq = 1,500,000 (vs. 600,000)
+    //int delayCount = SHIFT_MULT_X100(nSecDuration) / 1627; // div by 16.37 best (T0H 150) @1.5 GHz clock
+    //int delayCount = SHIFT_MULT_X100(nSecDuration) / 1227; // div by 16.37 best (T0H 210-220)
+    //int delayCount = SHIFT_MULT_X100(nSecDuration) / 30; // div by 00.30 best (T0H 7800)
+    //int delayCount = SHIFT_MULT_X100(nSecDuration) / 4030; // div by 40.30 best (T0H 60)
+    //int delayCount = SHIFT_MULT_X100(nSecDuration) / 1030; // div by 10.30 best (T0H 250-260)
+    //int delayCount = SHIFT_MULT_X100(nSecDuration) / 1100; // div by 11.00 best (T0H 240)
+    //int delayCount = SHIFT_MULT_X100(nSecDuration) / 950; // div by 9.50 best (T0H 280-300)
+    //int delayCount = SHIFT_MULT_X100(nSecDuration) / 750; // div by 7.50 best (T0H 340-350)
+    //int delayCount = SHIFT_MULT_X100(nSecDuration) / 600; // div by 6.00 best (T0H 430-440)
+    int delayCount = SHIFT_MULT_X100(nSecDuration) / 656; // div by 6.00 best (T0H 380-390)
 
     for(ctr=0; ctr<delayCount; ctr++) { tst++; }
 }
