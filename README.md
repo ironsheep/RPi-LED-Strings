@@ -43,6 +43,12 @@ Here's the pinout I use:
 
 (*wiring schematic TBD* - *but easy to figure out*)
 
+### 3D Printed things
+
+The RPi case I printed can be found at [ThingVerse](https://www.thingiverse.com/thing:3717401)
+
+The brackets I printed I have not yet uploaded to ThingVerse but email me if you'd like the STLs which I designed using my favorite 3D design tool [Shapr3D for iPad Pro](https://www.shapr3d.com/). 
+
 
 ## Here in this repo
 
