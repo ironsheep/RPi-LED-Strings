@@ -49,6 +49,10 @@ The RPi case I printed can be found at [ThingVerse](https://www.thingiverse.com/
 
 The brackets I printed I have not yet uploaded to ThingVerse but email me if you'd like the STLs which I designed using my favorite 3D design tool [Shapr3D for iPad Pro](https://www.shapr3d.com/). 
 
+### Verifying performance
+
+I use the [SQ200 from ikalogic.com](https://www.ikalogic.com/sq-logic-analyzer-pattern-generator/) Inexpensive ~$175 Logic Analyzer / Pattern Generator. It comes with ScanaStudio software which automatically decodes most protocols I use in my play/work efforts.  (*Yes, it even decodes the WS2812B protocol!*)  If you know me, you know that I spent years on a largescale logic analyzer development team. It's hard for me to be happy with Logic Analyzer software / capabiliteis as i'm a bit more critical but this one has me smiling every time I use it!.  And the protocols are open source!
+
 
 ## Here in this repo
 
