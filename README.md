@@ -101,7 +101,7 @@ See [./prototypes/](prototypes) for my initial projects as I awakened this hardw
 
 [license-shield]: https://img.shields.io/github/license/ironsheep/RPi-LED-Strings.svg?style=for-the-badge
 
-[maintenance-shield]: https://img.shields.io/badge/maintainer-S%20M%20Moraco%20%40ironsheepbiz-blue.svg?style=for-the-badge
+[maintenance-shield]: https://img.shields.io/badge/maintainer-stephen%40ironsheep.biz-blue.svg?style=for-the-badge
 
 [releases-shield]: https://img.shields.io/github/release/ironsheep/RPi-LED-Strings.svg?style=for-the-badge
 [releases]: https://github.com/ironsheep/RPi-LED-Strings/releases
